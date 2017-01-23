@@ -1,0 +1,10 @@
+<style>
+table {
+    padding:15px;
+}
+
+td {
+    border-bottom: 1px solid #ddd;
+    padding: 4;
+}
+</style>

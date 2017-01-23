@@ -1,0 +1,44 @@
+<!-- checkboxes =  -->
+<!-- form_items = ['', 'unchecked', checked 'unchecked'] ('gamertag', 'server', 'server', 'filter_by_50') -->
+
+<!-- submit_button -->
+<!-- tank_table -->
+
+{% extends "index.html" %}
+{% block content %}
+
+    <form action="." method="POST">
+        
+        <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto; width: 100%; margin-bottom: 5px;">
+            <table style="padding-left: 40px; padding-right: 40px; width:100%;">
+                <tr>
+                    <td colspan=2><input name="playername" type="text" value="{{ playername }}" placeholder="Enter your playername"/></td>
+                    {% for i in range(0,18,3) %}
+                    <td><input type="checkbox" name="checkboxes_input" value="{{ checkboxes[i][1] }}"{{ ' checked' if checkboxes[i][2] == 'checked' }}> {{ checkboxes[i][0] }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><input name="server" type="radio" value="xbox" {{ 'checked' if server == 'xbox' }}/> Xbox</td>
+                    <td><input name="server" type="radio" value="ps4" {{ 'checked' if server == 'ps4' }}/> Playstation</td>
+                    {% for i in range(1,18,3) %}
+                    <td><input type="checkbox" name="checkboxes_input" value="{{ checkboxes[i][1] }}"{{ ' checked' if checkboxes[i][2] == 'checked' }}> {{ checkboxes[i][0] }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td colspan=2><input type="checkbox" name="filter_by_50" value="checked"{{ ' checked' if filter_by_50 == 'checked' }}> Filter by battles > 50</td>
+                    {% for i in range(2,18,3) %}
+                    <td><input type="checkbox" name="checkboxes_input" value="{{ checkboxes[i][1] }}"{{ ' checked' if checkboxes[i][2] == 'checked' }}> {{ checkboxes[i][0] }}</td>
+                    {% endfor %}
+                </tr>
+            </table>
+        </section>
+        
+        <br>
+        
+        {{ submit_button|safe }}
+        
+        {{ tank_table|safe }} 
+    
+    </form>
+
+{% endblock %}

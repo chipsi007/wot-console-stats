@@ -1,0 +1,12 @@
+JAN 23 - This site is now open source on <a href="https://github.com/IDDT/wot-console-stats">GitHub</a>
+JAN 23 - WN8 values are updated. Console specific tanks are 0.
+JAN 22 - Using cookies from now on. No need to input the same playername again and again.
+JAN 20 - WG is currently returning "SOURCE_NOT_AVAILABLE" error which was crashing the site. Now handled correctly.
+JAN 20 - Now using caching (once in 5 minutes)! That means you can scroll through tabs as fast as you can.
+JAN 19 - Hosting has changed IP address after the maintenance, hence IP related error was shown. Fixed now.
+JAN 19 - Back to extended WN8 scale (<a href="http://wotlabs.net">from here</a>) for readability and greater distinction.
+JAN 18 - Engine is rewritten and now allows to add other tools and content to the website.
+JAN 13 - Fixed WN8 calculation algorithm (console specific tanks are still 0). Leading 0's for WN8. Layout changes.
+JAN 11 - Added color tags for WN8 ratings. Bug fixes, thanks to <a href="https://www.reddit.com/r/WorldofTanksConsole/">r/WorldofTanksConsole</a>
+JAN 10 - Layout fixes, template is reworked for readability and functionality. Option to filter by more than 50 battles. Optimizations.
+DEC 31 - Initial release. Simple version.

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta content='width=1024' name='viewport'>
+    <link rel="stylesheet" href="{{ url_for('static',filename='index.css') }}">
+    <title>{{ title }}</title>
+</head>
+<body>
+    
+    <section class="top-panel">
+        {% for item in top_panel %}
+            <a href="{{ item[1] }}"{{ ' class="current"' if item[2] == 'current' }}>{{ item[0] }}</a>
+        {% endfor %}
+    </section>
+    
+    <header>
+        <div>
+            <ul>
+                {% for item in header %}
+                    <li>
+                        <a href="{{ item[1] }}" class="{{ 'current' if item[2] == 'current' }}">{{ item[0] }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </header>
+    
+    <br>
+    
+    {% block content %}
+    
+    {% endblock %} 
+    
+    <footer>
+        <div>
+            {% for item in footer %}
+                <a href="{{ item[1] }}">{{ item[0] }}</a>
+            {% endfor %}
+        </div>
+    </footer>
+
+</body>
+</html>
