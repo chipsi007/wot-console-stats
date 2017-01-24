@@ -31,7 +31,7 @@ h4 {
 }
 
 
-/*stuff for top-panel*/
+/*top-panel*/
 .top-panel  {
   position: relative;
   width: 100%;
@@ -53,7 +53,7 @@ h4 {
 }
 
 
-/*stuff for header*/
+/*header*/
 header  {
   border-bottom: 1px solid #d5dddf;
   box-sizing: border-box;
@@ -97,7 +97,7 @@ header > div > ul > li > .current   {
 }
 
 
-/*stuff for menu_tabs*/
+/*menu_tabs*/
 .tabs {
   max-width: 1164px;
   min-width: 1024px;
@@ -144,7 +144,7 @@ header > div > ul > li > .current   {
 }
 
 
-/*stuff for tables*/
+/*tables*/
 .table {
   max-width: 1164px;
   min-width: 1024px;
@@ -188,8 +188,57 @@ header > div > ul > li > .current   {
 }
 
 
+/*form-table*/
+.form-table {
+    max-width: 1164px; 
+    min-width: 1024px; 
+    margin: 0 auto; 
+    width: 100%; 
+    margin-bottom: 5px;
+}
+.wrapper    {
+    padding-left: 40px;
+    padding-right: 40px;
+    width: 100%;
+}
+.wrapper table   {
+    width: 100%;
+    border: 1px solid #ccc;
+}
+.wrapper table tr  {
+    height: 30px;
+}
+.form-table .button-box {
+    border: 0;
+	clip: rect(0 0 0 0);
+	height: 0px;
+	margin: -1px;
+	overflow: hidden;
+	padding: 0;
+	position: absolute;
+	width: 0px;
+}
+.form-table label {
+  padding: 5px;
+  border: 1px solid white;
+  color: #555;
+  display: block;
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari*/
+     -khtml-user-select: none; /* Konqueror */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none;
+}
+.form-table label:hover {
+  background: #e6eff2;
+}
+input:checked + label, input:checked + label:hover {
+  background-color: #cee0e6;
+}
 
-/*stuff for text*/
+
+/*text*/
 .text   {
   max-width: 1164px;
   min-width: 1024px;
@@ -204,7 +253,8 @@ header > div > ul > li > .current   {
   padding-left: 10px;
 }
 
-/*stuff for footer*/
+
+/*footer*/
 footer {
   max-width: 1164px;
   min-width: 1024px;

@@ -1,6 +1,7 @@
 import requests
 import json
 
+#Server doesn't matter here.
 server = 'xbox'
 
 url = 'https://api-'+server+'-console.worldoftanks.com/wotx/encyclopedia/vehicles/?application_id=demo'
@@ -20,12 +21,9 @@ for key, value in vehicles['data'].items():
     if tank_id not in tanks_dict:
         tanks_dict[tank_id] = name
 
-#saving tankopedia data
-filename = '../references/tankopedia.json'
-with open(filename,'w') as myfile:
+#Saving tankopedia data
+with open('../references/tankopedia.json','w') as myfile:
     json.dump(tankopedia, myfile)
 
-#saving dictionary 'id: name'
-filename = '../references/tanks_dict.json'
-with open(filename,'w') as myfile:
+with open('../references/tanks_dict.json','w') as myfile:
     json.dump(tanks_dict, myfile)
