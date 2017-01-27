@@ -1,0 +1,57 @@
+{% extends "index.html" %}
+{% block content %}
+    
+    <form action="." method="POST">
+        
+        <section class="form-table">
+            <table class="wrapper">
+              <tr>
+                <td>
+                  <table>
+                    <tr>
+                        <td colspan="2"><input name="playername" type="text" value="{{ playername }}" placeholder="Enter your playername" /><br></td>
+                        <td><input name="server" type="radio" value="xbox" {{ 'checked' if server == 'xbox' }}/> XBOX</td>
+                        <td><input name="server" type="radio" value="ps4" {{ 'checked' if server == 'ps4' }}/> PS4</td>
+                        <td colspan="2"><input type="checkbox" name="filter_by_50" value="checked" {{ ' checked' if filter_by_50 == 'checked' }}> More than 50 battles</td>
+                    </tr>
+                  </table>
+                </td>
+                <td>
+                  <table>
+                        <tr>
+                            {% for i in range(0,15) %}
+                                <td><input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" class="button-box" value="{{ checkboxes_filter[i][1] }}"{{ ' checked' if checkboxes_filter[i][2] == 'checked' }} /><label for="{{ checkboxes_filter[i][1] }}">{{ checkboxes_filter[i][0] }}</label></td>
+                            {% endfor %}
+                        </tr>
+                </table> 
+                </td>
+              </tr>
+              
+            </table>
+        </section>
+            
+        <br>
+        
+        {{ submit_button|safe }}
+
+        <br>
+        
+        <section class="form-table">
+            <table class="wrapper">
+                <tr>
+                    <td>
+                        <table>
+                            <tr>
+                                <td>aaaa</td>
+                    
+                            </tr>
+                
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </section>                       
+    
+    </form>    
+    
+{% endblock %}

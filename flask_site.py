@@ -4,6 +4,7 @@ import requests
 import json
 import pickle
 import datetime
+import pygal
 import template_functions as template
 
 
@@ -33,21 +34,65 @@ class userlog(db.Model):
     server = db.Column(db.String(20))
     timestamp = db.Column(db.Integer)
     count = db.Column(db.Integer)
-def userlog_add_entry(gamertag, server):
-    #Getting current timestamp in UTC
-    timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-    #Checking if user is already in the database
-    logged_user_search = userlog.query.filter_by(gamertag=gamertag, server=server).first()
-    #Adding new entry if not found
-    if logged_user_search == None:
-        action = userlog(gamertag=gamertag, server=server, timestamp=timestamp, count=1)
-        db.session.add(action)
-    #Updating timestamp and count if found
-    else:
-        logged_user_search.timestamp = timestamp
-        logged_user_search.count = logged_user_search.count + 1
-    db.session.commit()
-    return()
+
+    @classmethod
+    def add_entry(cls, gamertag, server):
+        #Getting current timestamp in UTC
+        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
+        #Checking if user is already in the database
+        logged_user_search = cls.query.filter_by(gamertag=gamertag, server=server).first()
+        #Adding new entry if not found
+        if logged_user_search == None:
+            action = cls(gamertag=gamertag, server=server, timestamp=timestamp, count=1)
+            db.session.add(action)
+        #Updating timestamp and count if found
+        else:
+            logged_user_search.timestamp = timestamp
+            logged_user_search.count = logged_user_search.count + 1
+        db.session.commit()
+class userdata_history(db.Model):
+    __tablename__ = "history"
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.Integer)
+    player_id = db.Column(db.Integer)
+    gamertag = db.Column(db.String(100))
+    server = db.Column(db.String(20))
+    player_data = db.Column(db.PickleType)
+
+    @classmethod
+    def add_or_update(cls, gamertag, server, account_id, player_data):
+        #Searching for all entries for gamertag-server.
+        user_history_search = cls.query.filter_by(gamertag=gamertag, server=server).all()
+        #If entries found.
+        if len(user_history_search) > 0:
+            #Looking for latest entry.
+            max_timestamp = 0
+            for row in user_history_search:
+                if row.timestamp > max_timestamp:
+                    max_timestamp = row.timestamp
+            #If latest entry is today, updating today's record.
+            if datetime.datetime.utcfromtimestamp(max_timestamp).date() == datetime.datetime.utcnow().date():
+                for row in user_history_search:
+                    if row.timestamp == max_timestamp:
+                        current_user = row
+
+                current_user.timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
+                current_user.player_data = player_data
+                db.session.commit()
+            #If max timestamp is not today, creating new record.
+            else:
+                timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
+                entry = cls(timestamp = timestamp, player_id=account_id, gamertag=gamertag, server=server, player_data=player_data)
+                db.session.add(entry)
+                db.session.commit()
+        #If no entries found.
+        else:
+            timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
+            entry = userdata_history(timestamp = timestamp, player_id=account_id, gamertag=gamertag, server=server, player_data=player_data)
+            db.session.add(entry)
+            db.session.commit()
+        return()
+
 class usercache(db.Model):
     __tablename__ = "usercache"
     id = db.Column(db.Integer, primary_key=True)
@@ -394,6 +439,89 @@ class user_data:
             #Adding to the rest of the data.
             new_data.append(temp_list)
         self.player_data = new_data
+#Class to handle form data.
+class form_data:
+
+    def __init__(self):
+        self.header_clicked = 'none'
+        self.playername = ''
+        self.server = 'xbox'
+        self.filter_by_50 = 'unchecked'
+        self.checkboxes_input = ['wr', 'exp_perc', 'avg_lifetime']
+        self.filter_input = []
+        self.checkboxes = [['WinRate', 'wr', ''],
+                          ['Battles', 'battles', ''],
+                          ['Survived', 'survived', ''],
+
+                          ['Avg Dmg', 'avg_dmg', ''],
+                          ['Avg Frags', 'avg_frags', ''],
+                          ['Avg Exp', 'avg_exp', ''],
+
+                          ['Avg DPM', 'avg_dpm', ''],
+                          ['Avg FPM', 'avg_fpm', ''],
+                          ['Avg EPM', 'avg_epm', ''],
+
+                          ['Dmg Percentile', 'dmg_perc', ''],
+                          ['WR Percentile', 'wr_perc', ''],
+                          ['Exp Percentile', 'exp_perc', ''],
+
+                          ['Penetrated/Hits caused', 'pen_hits_ratio', ''],
+                          ['Bounced/Hits received', 'bounced_hits_r', ''],
+                          ['HE hits/Hits received', 'he_received', ''],
+
+                          ['Total Lifetime', 'total_time', ''],
+                          ['Average Lifetime', 'avg_lifetime', ''],
+                          ['Last battle time', 'last_time', '']]
+        self.checkboxes_filter = [['T7', '7', ''],
+                                  ['T4', '4', ''],
+                                  ['T1', '1', ''],
+
+                                  ['T8', '8', ''],
+                                  ['T5', '5', ''],
+                                  ['T2', '2', ''],
+
+                                  ['T9', '9', ''],
+                                  ['T6', '6', ''],
+                                  ['T3', '3', ''],
+
+                                  ['T10', '10', ''],
+                                  ['AT', 'AT-SPG', ''],
+                                  ['SPG', 'SPG', ''],
+
+                                  ['HT', 'heavyTank', ''],
+                                  ['MT', 'mediumTank', ''],
+                                  ['LT', 'lightTank', '']]
+
+    def request_cookies(self, playername, server, filter_by_50, checkboxes_input, filter_input):
+        if playername is not None:
+            self.playername = playername
+
+        if server is not None:
+            self.server = server
+
+        #Checkboxes.
+        if checkboxes_input is not None:
+            self.checkboxes_input = json.loads(checkboxes_input)
+
+        #Loading filter parameters.
+        if filter_input is not None:
+            self.filter_input = json.loads(filter_input)
+
+        #Filter by 50 battles option.
+        if filter_by_50 is not None:
+            self.filter_by_50 = filter_by_50
+
+    def generate_checkboxes(self):
+        for item in self.checkboxes:
+            if item[1] in self.checkboxes_input:
+                item[2] = 'checked'
+            else:
+                item[2] = ''
+        for item in self.checkboxes_filter:
+            if item[1] in self.filter_input:
+                item[2] = 'checked'
+            else:
+                item[2] = ''
 
 #Misc data that never changes.
 app_id = 'demo'
@@ -404,91 +532,7 @@ footer =[['GitHub', 'https://github.com/IDDT/wot-console-stats']]
 @app.route('/', methods=["GET", "POST"])
 def index():
 
-    #Class to handle form data.
-    class form_data:
-
-        def __init__(self):
-            self.header_clicked = 'none'
-            self.playername = ''
-            self.server = 'xbox'
-            self.filter_by_50 = 'unchecked'
-            self.checkboxes_input = ['wr', 'exp_perc', 'avg_lifetime']
-            self.filter_input = []
-            self.checkboxes = [['WinRate', 'wr', ''],
-                              ['Battles', 'battles', ''],
-                              ['Survived', 'survived', ''],
-
-                              ['Avg Dmg', 'avg_dmg', ''],
-                              ['Avg Frags', 'avg_frags', ''],
-                              ['Avg Exp', 'avg_exp', ''],
-
-                              ['Avg DPM', 'avg_dpm', ''],
-                              ['Avg FPM', 'avg_fpm', ''],
-                              ['Avg EPM', 'avg_epm', ''],
-
-                              ['Dmg Percentile', 'dmg_perc', ''],
-                              ['WR Percentile', 'wr_perc', ''],
-                              ['Exp Percentile', 'exp_perc', ''],
-
-                              ['Penetrated/Hits caused', 'pen_hits_ratio', ''],
-                              ['Bounced/Hits received', 'bounced_hits_r', ''],
-                              ['HE hits/Hits received', 'he_received', ''],
-
-                              ['Total Lifetime', 'total_time', ''],
-                              ['Average Lifetime', 'avg_lifetime', ''],
-                              ['Last battle time', 'last_time', '']]
-            self.checkboxes_filter = [['T7', '7', ''],
-                                      ['T4', '4', ''],
-                                      ['T1', '1', ''],
-
-                                      ['T8', '8', ''],
-                                      ['T5', '5', ''],
-                                      ['T2', '2', ''],
-
-                                      ['T9', '9', ''],
-                                      ['T6', '6', ''],
-                                      ['T3', '3', ''],
-
-                                      ['T10', '10', ''],
-                                      ['AT', 'AT-SPG', ''],
-                                      ['SPG', 'SPG', ''],
-
-                                      ['HT', 'heavyTank', ''],
-                                      ['MT', 'mediumTank', ''],
-                                      ['LT', 'lightTank', '']]
-
-        def request_cookies(self, playername, server, filter_by_50, checkboxes_input, filter_input):
-            if playername is not None:
-                self.playername = playername
-
-            if server is not None:
-                self.server = server
-
-            #Checkboxes.
-            if checkboxes_input is not None:
-                self.checkboxes_input = json.loads(checkboxes_input)
-
-            #Loading filter parameters.
-            if filter_input is not None:
-                self.filter_input = json.loads(filter_input)
-
-            #Filter by 50 battles option.
-            if filter_by_50 is not None:
-                self.filter_by_50 = filter_by_50
-
-        def generate_checkboxes(self):
-            for item in self.checkboxes:
-                if item[1] in self.checkboxes_input:
-                    item[2] = 'checked'
-                else:
-                    item[2] = ''
-            for item in self.checkboxes_filter:
-                if item[1] in self.filter_input:
-                    item[2] = 'checked'
-                else:
-                    item[2] = ''
-
-    title = 'Check tank statistics'
+    title = 'Statistics table'
     header = template.generate_header(0)
 
     #Requesting cookies.
@@ -565,8 +609,8 @@ def index():
             user.player_data = pickle.loads(current_user.player_data)
             user.gamertag = current_user.gamertag
 
-        #Add entry into SQL 'log_user'.
-        userlog_add_entry(user.gamertag, user.server)
+        #Log user into SQL.
+        userlog.add_entry(user.gamertag, user.server)
 
         #Filtering and extracting data based on checkbox_input.
         user.filter_data(form.filter_by_50, form.filter_input, tankopedia)
@@ -602,7 +646,120 @@ def index():
         return response
     return redirect(url_for('index'))
 
+@app.route('/statistics-overview/', methods=["GET", "POST"])
+def statistics_overview():
 
+    #Class to handle form data.
+    class stats_overview(user_data):
+        def __init__(self, app_id, server, playername):
+            user_data.__init__(self, app_id, server, playername)
+
+    title = 'Statistics overview'
+    header = template.generate_header(1)
+
+    #Requesting cookies.
+    form = form_data()
+    form.checkboxes_filter = [['T1', '1', ''],
+                              ['T2', '2', ''],
+                              ['T3', '3', ''],
+                              ['T4', '4', ''],
+                              ['T5', '5', ''],
+                              ['T6', '6', ''],
+                              ['T7', '7', ''],
+                              ['T8', '8', ''],
+                              ['T9', '9', ''],
+                              ['T10', '10', ''],
+                              ['HT', 'heavyTank', ''],
+                              ['MT', 'mediumTank', ''],
+                              ['LT', 'lightTank', ''],
+                              ['AT', 'AT-SPG', ''],
+                              ['SPG', 'SPG', '']]
+    form.request_cookies(request.cookies.get('playername'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
+                         request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
+
+
+    if request.method == "GET":
+        submit_button = template.single_submit_button('<strong>Submit</strong>')
+        form.generate_checkboxes()
+        return render_template("stats_overview.html", title=title, top_panel=top_panel, header=header, footer=footer,
+                                                      playername=form.playername, server=form.server, filter_by_50=form.filter_by_50,
+                                                      checkboxes_filter=form.checkboxes_filter,
+                                                      submit_button=submit_button)
+
+    if request.method == "POST":
+
+        #Collecting form items.
+        user                         = stats_overview(app_id, request.form["server"], request.form["playername"])
+        form.playername, form.server = user.gamertag, user.server
+        form.filter_input            = request.form.getlist('filter_input')
+        form.filter_by_50            = request.form['filter_by_50'] if 'filter_by_50' in request.form else ''
+
+        #Searching for user
+        user.search_by_playername()
+        #Request vehicle data only if the status is 'ok'.
+        if user.status == 'ok':
+            user.request_vehicles()
+        #Return error If status not 'ok'.
+        if user.status != 'ok':
+            button_message = user.message + ' Click here to <b>submit</b> again.'
+            code = '<section class="tabs"><div><ul><li>'
+            code = code + '<button type="submit" class="current">' + str(button_message) + '</button>'
+            code = code + '</li></ul></div></section>'
+            return render_template("tanks_table.html", title=title, top_panel=top_panel, header=header, footer=footer,
+                                                       playername=form.playername, server=form.server, filter_by_50=form.filter_by_50,
+                                                       checkboxes_filter=form.checkboxes_filter,
+                                                       submit_button=code)
+
+        #Adding or updating todays record.
+        userdata_history.add_or_update(user.gamertag, user.server, user.account_id, pickle.dumps(user.player_data))
+
+
+        #Calculating winrates.
+        user_history_search = userdata_history.query.filter_by(gamertag=user.gamertag, server=user.server).all()
+
+        winrates = []
+        xlabels = []
+        for row in user_history_search:
+
+            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
+            xlabels.append(str(timedelta.days) + 'd ago')
+
+            day_data = pickle.loads(row.player_data)
+
+            battles = []
+            wins = []
+            for tank in day_data:
+                if tank['battles'] > 0:
+                    battles.append(tank['battles'])
+                    wins.append(tank['wins'])
+            winrates.append(round(sum(wins)/sum(battles)*100, 2))
+
+
+        #Pygal code
+        line_chart = pygal.Line(height=200)
+        line_chart.title = 'Winrate (in %)'
+        line_chart.x_labels = xlabels
+        line_chart.add('Winrates', winrates)
+        line_chart = line_chart.render_data_uri()
+
+
+
+
+
+        submit_button = template.single_submit_button('<strong>Submit</strong>')
+
+        #Making response & assigning cookies.
+        response = make_response(render_template("stats_overview.html", title=title, top_panel=top_panel, header=header, footer=footer,
+                                                                        playername=form.playername, server=form.server, filter_by_50=form.filter_by_50,
+                                                                        checkboxes_filter=form.checkboxes_filter,
+                                                                        submit_button=submit_button, chart=line_chart))
+        expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+        response.set_cookie('playername', form.playername, expires=expire_date)
+        response.set_cookie('server', form.server, expires=expire_date)
+        response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
+        response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
+        return response
+    return redirect(url_for('statistics_overview'))
 
 @app.route('/about')
 def about():
