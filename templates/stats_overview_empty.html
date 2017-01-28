@@ -9,10 +9,9 @@
                 <td>
                   <table>
                     <tr>
-                        <td colspan="2"><input name="playername" type="text" value="{{ playername }}" placeholder="Enter your playername" /><br></td>
-                        <td><input name="server" type="radio" value="xbox" {{ 'checked' if server == 'xbox' }}/> XBOX</td>
-                        <td><input name="server" type="radio" value="ps4" {{ 'checked' if server == 'ps4' }}/> PS4</td>
-                        <td colspan="2"><input type="checkbox" name="filter_by_50" value="checked" {{ ' checked' if filter_by_50 == 'checked' }}> More than 50 battles</td>
+                        <td colspan="2"><input name="playername" type="text" value="{{ playername }}" style="width:95%;" placeholder="Enter your playername" /></td>
+                        <td><input type="radio" name="server" id="xbox" class="button-box" value="xbox" {{ 'checked' if server == 'xbox' }}/><label for="xbox">XBOX</label></td>
+                        <td><input type="radio" name="server" id="ps4" class="button-box" value="ps4" {{ 'checked' if server == 'ps4' }}/><label for="ps4">PS4</label></td>
                     </tr>
                   </table>
                 </td>
@@ -34,23 +33,7 @@
         
         {{ submit_button|safe }}
 
-        <br>
-        
-        <section class="form-table">
-            <table class="wrapper">
-                <tr>
-                    <td>
-                        <table>
-                            <tr>
-                                <td>aaaa</td>
-                    
-                            </tr>
-                
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </section>                       
+        <br>                    
     
     </form>    
     

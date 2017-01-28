@@ -92,7 +92,6 @@ class userdata_history(db.Model):
             db.session.add(entry)
             db.session.commit()
         return()
-
 class usercache(db.Model):
     __tablename__ = "usercache"
     id = db.Column(db.Integer, primary_key=True)
@@ -659,21 +658,11 @@ def statistics_overview():
 
     #Requesting cookies.
     form = form_data()
-    form.checkboxes_filter = [['T1', '1', ''],
-                              ['T2', '2', ''],
-                              ['T3', '3', ''],
-                              ['T4', '4', ''],
-                              ['T5', '5', ''],
-                              ['T6', '6', ''],
-                              ['T7', '7', ''],
-                              ['T8', '8', ''],
-                              ['T9', '9', ''],
-                              ['T10', '10', ''],
-                              ['HT', 'heavyTank', ''],
-                              ['MT', 'mediumTank', ''],
-                              ['LT', 'lightTank', ''],
-                              ['AT', 'AT-SPG', ''],
-                              ['SPG', 'SPG', '']]
+    form.checkboxes_filter = [['T1', '1', ''], ['T2', '2', ''], ['T3', '3', ''],
+                              ['T4', '4', ''], ['T5', '5', ''], ['T6', '6', ''],
+                              ['T7', '7', ''], ['T8', '8', ''], ['T9', '9', ''],
+                              ['T10', '10', ''], ['HT', 'heavyTank', ''], ['MT', 'mediumTank', ''],
+                              ['LT', 'lightTank', ''], ['AT', 'AT-SPG', ''], ['SPG', 'SPG', '']]
     form.request_cookies(request.cookies.get('playername'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
                          request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
 
@@ -681,8 +670,8 @@ def statistics_overview():
     if request.method == "GET":
         submit_button = template.single_submit_button('<strong>Submit</strong>')
         form.generate_checkboxes()
-        return render_template("stats_overview.html", title=title, top_panel=top_panel, header=header, footer=footer,
-                                                      playername=form.playername, server=form.server, filter_by_50=form.filter_by_50,
+        return render_template("stats_overview_empty.html", title=title, top_panel=top_panel, header=header, footer=footer,
+                                                      playername=form.playername, server=form.server,
                                                       checkboxes_filter=form.checkboxes_filter,
                                                       submit_button=submit_button)
 
@@ -692,7 +681,6 @@ def statistics_overview():
         user                         = stats_overview(app_id, request.form["server"], request.form["playername"])
         form.playername, form.server = user.gamertag, user.server
         form.filter_input            = request.form.getlist('filter_input')
-        form.filter_by_50            = request.form['filter_by_50'] if 'filter_by_50' in request.form else ''
 
         #Searching for user
         user.search_by_playername()
@@ -702,13 +690,11 @@ def statistics_overview():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             button_message = user.message + ' Click here to <b>submit</b> again.'
-            code = '<section class="tabs"><div><ul><li>'
-            code = code + '<button type="submit" class="current">' + str(button_message) + '</button>'
-            code = code + '</li></ul></div></section>'
-            return render_template("tanks_table.html", title=title, top_panel=top_panel, header=header, footer=footer,
+            submit_button = template.single_submit_button(button_message)
+            return render_template("stats_overview.html", title=title, top_panel=top_panel, header=header, footer=footer,
                                                        playername=form.playername, server=form.server, filter_by_50=form.filter_by_50,
                                                        checkboxes_filter=form.checkboxes_filter,
-                                                       submit_button=code)
+                                                       submit_button=submit_button)
 
         #Adding or updating todays record.
         userdata_history.add_or_update(user.gamertag, user.server, user.account_id, pickle.dumps(user.player_data))
@@ -724,11 +710,12 @@ def statistics_overview():
             timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
             xlabels.append(str(timedelta.days) + 'd ago')
 
-            day_data = pickle.loads(row.player_data)
+            user.player_data = pickle.loads(row.player_data)
+            user.filter_data(form.filter_by_50, form.filter_input, tankopedia)
 
             battles = []
             wins = []
-            for tank in day_data:
+            for tank in user.player_data:
                 if tank['battles'] > 0:
                     battles.append(tank['battles'])
                     wins.append(tank['wins'])
@@ -737,26 +724,26 @@ def statistics_overview():
 
         #Pygal code
         line_chart = pygal.Line(height=200)
-        line_chart.title = 'Winrate (in %)'
         line_chart.x_labels = xlabels
-        line_chart.add('Winrates', winrates)
+        line_chart.add('Winrate', winrates)
         line_chart = line_chart.render_data_uri()
 
 
 
-
-
-        submit_button = template.single_submit_button('<strong>Submit</strong>')
+        #Generating output.
+        form.playername = user.gamertag
+        form.generate_checkboxes()
+        message = 'Found data for <b>'+str(user.gamertag)+'</b> &nbsp;Click here to <b>resubmit</b>'
+        submit_button = template.single_submit_button(message)
 
         #Making response & assigning cookies.
         response = make_response(render_template("stats_overview.html", title=title, top_panel=top_panel, header=header, footer=footer,
-                                                                        playername=form.playername, server=form.server, filter_by_50=form.filter_by_50,
+                                                                        playername=form.playername, server=form.server,
                                                                         checkboxes_filter=form.checkboxes_filter,
                                                                         submit_button=submit_button, chart=line_chart))
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
         response.set_cookie('playername', form.playername, expires=expire_date)
         response.set_cookie('server', form.server, expires=expire_date)
-        response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
         response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
         return response
     return redirect(url_for('statistics_overview'))

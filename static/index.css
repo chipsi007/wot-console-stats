@@ -204,6 +204,7 @@ header > div > ul > li > .current   {
 .wrapper table   {
     width: 100%;
     border: 1px solid #ccc;
+    color: #555;
 }
 .wrapper table tr  {
     height: 30px;
