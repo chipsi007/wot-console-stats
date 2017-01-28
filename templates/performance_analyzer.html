@@ -32,12 +32,33 @@
         <br>
         
         {{ submit_button|safe }}
+        
+        <br>
+        
+        <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">
+            <table style="padding-left: 40px; padding-right: 40px;">
+                <tr>
+                    <td style="width:25%;"><embed style="width: 100%" type="image/svg+xml" src= {{ g_chart0|safe }} /></td>
+                    <td style="width:25%;"><embed style="width: 100%" type="image/svg+xml" src= {{ g_chart1|safe }} /></td>
+                    <td style="width:25%;"><embed style="width: 100%" type="image/svg+xml" src= {{ g_chart2|safe }} /></td>
+                    <td style="width:25%;"><embed style="width: 100%" type="image/svg+xml" src= {{ g_chart2|safe }} /></td>
+                </tr>
+            </table>
+        </section>
+        
+        <br>
+        
+        <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">    
+            <div style="padding-left: 40px; padding-right: 40px;">
+                <embed type="image/svg+xml" src= {{ radar_chart|safe }} />
+            </div>
+        </section>
 
         <br>
         
         <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">    
             <div style="padding-left: 40px; padding-right: 40px;">
-                <embed type="image/svg+xml" src= {{ chart|safe }} />
+                <embed type="image/svg+xml" src= {{ line_chart|safe }} />
             </div>
         </section>                       
     

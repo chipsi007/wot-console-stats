@@ -1,6 +1,6 @@
 #generate nav_bar, set index to 99 for everything inactive
 def generate_header(index_of_current_page):
-    header = [['Statistics table', '/', 'not_current'], ['Statistics overview', '/statistics-overview', 'not_current'], ['About', '/about', 'not_current']]
+    header = [['Statistics table', '/', 'not_current'], ['About', '/about', 'not_current']]
     for i, item in enumerate(header):
         if i == index_of_current_page:
             item[2] = 'current'
