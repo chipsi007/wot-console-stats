@@ -4,7 +4,6 @@ import requests
 import json
 import pickle
 import datetime
-import pygal
 
 #Importing necessary files.
 with open('references/tanks_dict.json','r') as infile:
@@ -307,7 +306,7 @@ class user_data:
                     temp_list.append(0)
             if 'dmg_perc' in checkbox_input:
                 value = vehicle['damage_dealt']/vehicle['battles']
-                perc = self.percentile_calculator('dmg', vehicle['tank_id'], value)
+                perc = self.percentile_calculator('dmgc', vehicle['tank_id'], value)
                 temp_list.append(perc)
             if 'wr_perc' in checkbox_input:
                 value = vehicle['wins']/vehicle['battles']*100
@@ -569,7 +568,7 @@ class template_generator:
         self.footer =[['GitHub', 'https://github.com/IDDT/wot-console-stats']]
     #generate nav_bar, set index to 99 for everything inactive
     def generate_header(self, index_of_current_page):
-        header = [['Statistics table', '/', 'not_current'], ['Performance Analyzer', '/performance-analyzer/', 'not_current'], ['About', '/about', 'not_current']]
+        header = [['Statistics table', '/', 'not_current'], ['Player Performance', '/player_performance/', 'not_current'], ['FAQ', '/faq', 'not_current']]
         for i, item in enumerate(header):
             if i == index_of_current_page:
                 item[2] = 'current'
@@ -725,16 +724,16 @@ def index():
         return response
     return redirect(url_for('index'))
 
-@app.route('/performance-analyzer/', methods=["GET", "POST"])
-def performance_analyzer():
+@app.route('/player_performance/', methods=["GET", "POST"])
+def player_performance():
 
-    #Class to handle form data.
-    class perf_analyzer(user_data):
+    #Class to handle 'player_performance' page.
+    class player_perf(user_data):
         def __init__(self, app_id, server, playername):
             user_data.__init__(self, app_id, server, playername)
 
-    title = 'Performance Analyzer'
-    header = template.generate_header(99)
+    title = 'Player Performance'
+    header = template.generate_header(1)
 
     #Requesting cookies.
     form = form_data()
@@ -750,14 +749,14 @@ def performance_analyzer():
     if request.method == "GET":
         submit_button = template.single_submit_button('<strong>Submit</strong>')
         form.generate_checkboxes()
-        return render_template("performance_analyzer_empty.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
+        return render_template("player_performance_empty.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
                                                                   playername=form.playername, server=form.server,
                                                                   checkboxes_filter=form.checkboxes_filter, submit_button=submit_button)
 
     if request.method == "POST":
 
         #Collecting form items.
-        user                         = perf_analyzer(template.app_id, request.form["server"], request.form["playername"])
+        user                         = player_perf(template.app_id, request.form["server"], request.form["playername"])
         form.playername, form.server = user.gamertag, user.server
         form.filter_input            = request.form.getlist('filter_input')
 
@@ -773,7 +772,7 @@ def performance_analyzer():
             if user.status != 'ok':
                 button_message = user.message + ' Click here to <b>submit</b> again.'
                 submit_button = template.single_submit_button(button_message)
-                return render_template("performance_analyzer_empty.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
+                return render_template("player_performance_empty.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
                                                                           playername=form.playername, server=form.server,
                                                                           checkboxes_filter=form.checkboxes_filter, submit_button=submit_button)
             #Delete all expired records from SQL 'cache_user_data'.
@@ -794,76 +793,55 @@ def performance_analyzer():
             user.account_id = current_user.player_id
 
 
-        #Calculating charts.
+        #Searching all records of the player in SQL 'history'.
         user_history_search = userdata_history.query.filter_by(gamertag=user.gamertag, server=user.server).all()
 
-        #Radar chart.
-        max_timestamp = max(row.timestamp for row in user_history_search)
-        for row in user_history_search:
-            if row.timestamp == max_timestamp:
-                user.player_data = pickle.loads(row.player_data)
-        #Filtering the data.
-        user.filter_data('unchecked', form.filter_input, tankopedia)
-        #Defining list.
-        percentiles = [['Dmg Percentile', 'dmg', 0, []], ['WR Percentile', 'wr', 0, []], ['Exp Percentile', 'exp', 0, []]]
-        #Calculating percentiles for every vehicle.
-        for vehicle in user.player_data:
-            if vehicle['battles'] > 0:
-                percentiles[0][3].append(user.percentile_calculator('dmg', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']))
-                percentiles[1][3].append(user.percentile_calculator('wr', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100))
-                percentiles[2][3].append(user.percentile_calculator('exp', vehicle['tank_id'], vehicle['xp']/vehicle['battles']))
-        #Calculating averages.
-        for p_type in percentiles:
-            if len(p_type[3]) > 0:
-                p_type[2] = round(sum(p_type[3])/len(p_type[3]), 2)
-            else:
-                p_type[2] = 0.0
-        #Preparing the chart.
-        radar_chart = pygal.Radar(range=(0, 100), show_legend=False)
-        radar_chart.x_labels = [row[0] for row in percentiles]
-        radar_chart.add('Last snapshot', [row[2] for row in percentiles], fill=True)
-        radar_chart = radar_chart.render_data_uri()
-
-        #Gauges
-        g_charts = [None, None, None]
-        for p, p_type in enumerate(percentiles):
-            gauge = pygal.SolidGauge(half_pie=True, inner_radius=0.70, style=pygal.style.styles['default'](value_font_size=12),
-                                     show_legend=False, height=400, width=400, margin=5, margin_top=10, title=p_type[0])
-
-            percent_formatter = lambda x: '{:.10g}%'.format(x)
-            gauge.value_formatter = percent_formatter
-
-            gauge.add(p_type[0], [{'value': p_type[2], 'max_value': 100}])
-            g_charts[p] = gauge.render_data_uri()
 
 
-        #Winrates chart
-        winrates = []
+        #Calculating percentiles for line chart.
         xlabels = []
+        percentiles = [['Accuracy', 'acc'],
+                       ['Damage Caused', 'dmgc'],
+                       ['Radio Assist', 'rass'],
+                       ['WinRate', 'wr'],
+                       ['Damage Received', 'dmgr']]
+        #Empty list of lists to hold data.
+        chart_data = [[],[],[],[],[]]
         for row in user_history_search:
-
+            #Getting 'xlabels.'
             timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
-            xlabels.append(str(timedelta.days) + 'd ago')
-
+            if timedelta.days > 0:
+                xlabels.append(str(timedelta.days) + 'd ago')
+            else:
+                xlabels.append('Today')
+            #Getting and filtering player data.
             user.player_data = pickle.loads(row.player_data)
             user.filter_data('unchecked', form.filter_input, tankopedia)
 
-            battles = []
-            wins = []
-            for tank in user.player_data:
-                if tank['battles'] > 0:
-                    battles.append(tank['battles'])
-                    wins.append(tank['wins'])
-            if len(battles) > 0:
-                winrates.append(round(sum(wins)/sum(battles)*100, 2))
-            else:
-                winrates.append(0.0)
+            dmgc_temp, wr_temp, rass_temp, dmgr_temp, acc_temp = ([] for i in range(5))
+            for vehicle in user.player_data:
+                if vehicle['battles'] > 0:
+                    dmgc_temp.append(user.percentile_calculator('dmgc', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']))
+                    wr_temp.append(user.percentile_calculator('wr', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100))
+                    rass_temp.append(user.percentile_calculator('rass', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']))
+                    dmgr_temp.append(user.percentile_calculator('dmgr', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']))
+                    if vehicle['hits'] > 0:
+                        acc_temp.append(user.percentile_calculator('acc', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100))
+                    else:
+                        acc_temp.append(0.0)
 
-        line_chart = pygal.Line(height=200)
-        line_chart.x_labels = xlabels
-        line_chart.add('Winrate', winrates)
-        line_chart = line_chart.render_data_uri()
+            chart_data[1].append(round(sum(dmgc_temp)/len(dmgc_temp), 2))
+            chart_data[3].append(round(sum(wr_temp)/len(wr_temp), 2))
+            chart_data[2].append(round(sum(rass_temp)/len(rass_temp), 2))
+            chart_data[4].append(abs(round(sum(dmgr_temp)/len(dmgr_temp), 2)-100))
+            chart_data[0].append(round(sum(acc_temp)/len(acc_temp), 2))
 
+        #Radar chart.
+        RadarChart = [json.dumps([row[0] for row in percentiles]), json.dumps([item[-1] for item in chart_data])]
+        #Line chart.
+        x_labels = json.dumps(xlabels)
+        chart_names = [item[0] for item in percentiles]
+        line_charts = [json.dumps(item) for item in chart_data]
 
 
         #Generating output.
@@ -873,52 +851,63 @@ def performance_analyzer():
         submit_button = template.single_submit_button(message)
 
         #Making response & assigning cookies.
-        response = make_response(render_template("performance_analyzer.html", title=title, top_panel=template.top_panel, header=header,
+        response = make_response(render_template("player_performance.html", title=title, top_panel=template.top_panel, header=header,
                                                                               footer=template.footer, submit_button=submit_button,
                                                                               playername=form.playername, server=form.server,
                                                                               checkboxes_filter=form.checkboxes_filter,
-                                                                              g_chart0=g_charts[0], g_chart1=g_charts[1], g_chart2=g_charts[2],
-                                                                              radar_chart=radar_chart, line_chart=line_chart))
+                                                                              line_charts=line_charts, chart_names=chart_names, x_labels=x_labels,
+                                                                              RadarChart=RadarChart))
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
         response.set_cookie('playername', form.playername, expires=expire_date)
         response.set_cookie('server', form.server, expires=expire_date)
         response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
         return response
-    return redirect(url_for('performance_analyzer'))
+    return redirect(url_for('player_performance'))
 
-@app.route('/about')
-def about():
 
-    title = 'About'
+@app.route('/faq')
+def faq():
+
+    title = 'FAQ'
     header = template.generate_header(2)
 
-    with open('references/about.txt','r') as infile:
-        text = infile.read()
+    text = '<b>What\'s the point of using percentiles instead of WN8 or other ratings?</b><br>'
+    text = text + 'WN8 rating is based on PC expected statistics table. Most of the sites visualizing worldoftanks statistics for consoles use PC table even though WTE100, BatChat and many other tanks are different from the PC version of the game. '
+    text = text + 'Additionally WN8 formula was build on the data from the game where it is easier to use aiming capabilities of the tank. '
+    text = text + 'All these differences make WN8 rating hardly useful when evaluating console players.<br><br>'
 
-    checkboxes_help = [['<b>Checkbox</b>' , '<b>Meaning</b>'],
-                       ['WinRate', 'Winning battles/total number of battles'],
-                       ['Battles', 'Total battles on the account'],
-                       ['Survived', 'Percent of the battles where player survived'],
-                       ['Avg Damage', 'Average damage dealt per battle'],
-                       ['Avg Frags', 'Average number of frags per battle'],
-                       ['Avg EXP', 'Average experience per battle'],
-                       ['Avg DPM', 'The actual Damage Per Minute that player achieved on the tank'],
-                       ['Avg FPM', 'Average frags per minute'],
-                       ['Avg EPM', 'Average experience per minute'],
-                       ['Dmg Percentile', 'Shows the percent of players that have lower average damage per battle number'],
-                       ['WR Percentile', 'Shows the percent of players that have lower average winning rate'],
-                       ['Exp Percentile', 'Shows the percent of players that have lower average experience per battle'],
-                       ['Penetrated/Hits caused', 'Percentage of player\'s penetrating hits out of all hits, excluding misses'],
-                       ['Bounced/Hits received', 'Percent of all non-damage hits that hit the player'],
-                       ['HE hits/Hits received', 'Percent of how many of all shells were High Explosives that hit the player'],
-                       ['Total Lifetime', 'Total number of minutes spent driving the tank ***'],
-                       ['Average Lifetime', 'Average lifetime ***'],
-                       ['Last battle time', 'How many (min, h, d, m, y) ago the tank was driven']]
+    text = text + '<b>How percentiles were calculated?</b><br>'
+    text = text + 'The data of 50,000 random WoT Console profiles was collected. To be a piece of valid data, the player must have had at least 2500 battles on the account. '
+    text = text + 'Then ratios were calculated for each tank of every player. To be included in the final rating, Tier 6+ vehicles had to have more than 100 battles, 20 battles for Tier 3+ and 10 battles for Tier 4-. '
+    text = text + 'After assembling all player ratios, the percentiles for each tank were calculated using a math module. '
+    text = text + 'More information about percentile can be found in <a href="https://en.wikipedia.org/wiki/Percentile">Wikipedia.</a><br><br>'
 
-    checkboxes_disclaimer = [['*** Only the time between the actual start of the battle (15:00 on battle timer) and player death is included']]
+    text = text + '<b>What exactly do all these selectors mean?</b><br>'
+    text = text + 'WinRate -- Winning battles/total number of battles<br>'
+    text = text + 'Battles -- Total battles on the account<br>'
+    text = text + 'Survived -- Percent of the battles where player survived<br>'
+    text = text + 'Avg Damage -- Average damage dealt per battle<br>'
+    text = text + 'Avg Frags -- Average number of frags per battle<br>'
+    text = text + 'Avg EXP -- Average experience per battle<br>'
+    text = text + 'Avg DPM -- The actual Damage Per Minute that player achieved on the tank<br>'
+    text = text + 'Avg FPM -- Average frags per minute<br>'
+    text = text + 'Avg EPM -- Average experience per minute<br>'
+    text = text + 'Dmg Percentile -- Shows the percent of players that have lower average damage per battle number<br>'
+    text = text + 'WR Percentile -- Shows the percent of players that have lower average winning rate<br>'
+    text = text + 'Exp Percentile -- Shows the percent of players that have lower average experience per battle<br>'
+    text = text + 'Penetrated/Hits caused -- Percentage of player\'s penetrating hits out of all hits, excluding misses<br>'
+    text = text + 'Bounced/Hits received -- Percent of all non-damage hits that hit the player<br>'
+    text = text + 'HE hits/Hits received -- Percent of how many of all shells were High Explosives that hit the player<br>'
+    text = text + 'Total Lifetime -- Total number of minutes spent driving the tank ***<br>'
+    text = text + 'Average Lifetime -- Average lifetime ***<br>'
+    text = text + 'Last battle time -- How many (min, h, d, m, y) ago the tank was driven<br>'
+    text = text + '*** Only the time between the actual start of the battle (15:00 on battle timer) and player death is included<br><br>'
 
-    text = text + template.generate_simple_table(checkboxes_help)
-    text = text + template.generate_simple_table(checkboxes_disclaimer)
+    text = text + '<b>How long does the website keep the data?</b><br>'
+    text = text + 'I haven\'t figured out that one yet, but obviously there are limits. The biggest limiting factor right now is low amount of space on free hosting.<br><br>'
+
+    text = text + '<b>Something doesn\'t seem to work properly and I feel helpful.</b><br>'
+    text = text + 'Follow the GitHub link in the footer and submit a bug report.<br><br>'
 
     return render_template("text_page.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer, text=text)
 

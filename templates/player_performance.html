@@ -1,0 +1,174 @@
+{% extends "index.html" %} {% block content %}
+
+<script src="{{ url_for('static',filename='Chart.js') }}"></script>
+
+<form action="." method="POST">
+
+    <section class="form-table">
+        <table class="wrapper">
+            <tr>
+                <td>
+                    <table>
+                        <tr>
+                            <td colspan="2">
+                                <input name="playername" type="text" value="{{ playername }}" style="width:95%;" placeholder="Enter your playername" />
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="xbox" class="button-box" value="xbox" {{ 'checked' if server=='xbox' }}/>
+                                <label for="xbox">XBOX</label>
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="ps4" class="button-box" value="ps4" {{ 'checked' if server=='ps4' }}/>
+                                <label for="ps4">PS4</label>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table>
+                        <tr>
+                            {% for i in range(0,15) %}
+                            <td>
+                                <input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" class="button-box" value="{{ checkboxes_filter[i][1] }}" {{ ' checked' if checkboxes_filter[i][2]=='checked' }} />
+                                <label for="{{ checkboxes_filter[i][1] }}">{{ checkboxes_filter[i][0] }}</label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+        </table>
+    </section>
+
+    <br> 
+    
+    {{ submit_button|safe }}
+
+    <br>
+    
+    <!--radar_chart-->
+    <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">
+        <div style="margin-left: 40px; margin-right: 40px; display: flex; justify-content: center; align-items: top;">
+            <div style="width: 50%;">
+                <canvas id="RadarChart" width="200" height="200"></canvas>
+                <script>
+                    var data = {
+                        labels: {{ RadarChart[0]|safe }},
+                        datasets: [{
+                            label: 'Last snapshot',
+                            fill: false,
+                            borderColor: '#8caab4',
+                            backgroundColor: '#8caab4',
+                            pointBorderColor: '#8caab4',
+                            pointBackgroundColor: '#8caab4',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: {{ RadarChart[1] }},
+                        }]
+                    };
+                    var ctx = document.getElementById("RadarChart");
+                    var myRadarChart = new Chart(ctx, {
+                        type: 'radar',
+                        data: data,
+                        options: {
+                            scale: {
+                                ticks: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                </script>
+            </div>
+            <div style="width: 50%;">
+                <canvas id="line_charts" width="200" height="180"></canvas>
+                <script>
+                    var data = {
+                        labels: {{ x_labels|safe }},
+                        datasets: [{
+                            label: '{{ chart_names[0] }}',
+                            fill: false,
+                            borderColor: '#b48c8c',
+                            backgroundColor: '#b48c8c',
+                            pointBorderColor: '#b48c8c',
+                            pointBackgroundColor: '#b48c8c',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: {{ line_charts[0] }},
+                        },{ 
+                            label: '{{ chart_names[1] }}',
+                            fill: false,
+                            borderColor: '#8c94b4',
+                            backgroundColor: '#8c94b4',
+                            pointBorderColor: '#8c94b4',
+                            pointBackgroundColor: '#8c94b4',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: {{ line_charts[1] }},
+                        },{ 
+                            label: '{{ chart_names[2] }}',
+                            fill: false,
+                            borderColor: '#8ca9b4',
+                            backgroundColor: '#8ca9b4',
+                            pointBorderColor: '#8ca9b4',
+                            pointBackgroundColor: '#8ca9b4',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: {{ line_charts[2] }},
+                        },{ 
+                            label: '{{ chart_names[3] }}',
+                            fill: false,
+                            borderColor: '#8cb491',
+                            backgroundColor: '#8cb491',
+                            pointBorderColor: '#8cb491',
+                            pointBackgroundColor: '#8cb491',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: {{ line_charts[3] }},
+                        },{ 
+                            label: '{{ chart_names[4] }}',
+                            fill: false,
+                            borderColor: '#b4b48c',
+                            backgroundColor: '#b4b48c',
+                            pointBorderColor: '#b4b48c',
+                            pointBackgroundColor: '#b4b48c',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: {{ line_charts[4] }},
+                        }],
+                    };
+                    var ctx = document.getElementById("line_charts");
+                    var myLineChart = new Chart(ctx, {
+                        type: 'line',
+                        data: data,
+                        options: {
+                            title: {
+                                display: true,
+                                text: 'Total Percentiles'
+                            },
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                }
+                            },
+                            scales: {
+                                yAxes: [{
+                                    ticks: {
+                                        callback: function(label, index, labels) {
+                                            return label+'%';
+                                        }
+                                    },
+                                }],
+                            },
+                        },
+                    });
+                </script>
+            </div>
+        </div>
+    </section>
+    
+</form>
+
+{% endblock %}
