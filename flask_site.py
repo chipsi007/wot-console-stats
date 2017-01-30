@@ -871,43 +871,24 @@ def faq():
     title = 'FAQ'
     header = template.generate_header(2)
 
-    text = '<b>What\'s the point of using percentiles instead of WN8 or other ratings?</b><br>'
-    text = text + 'WN8 rating is based on PC expected statistics table. Most of the sites visualizing worldoftanks statistics for consoles use PC table even though WTE100, BatChat and many other tanks are different from the PC version of the game. '
-    text = text + 'Additionally WN8 formula was build on the data from the game where it is easier to use aiming capabilities of the tank. '
-    text = text + 'All these differences make WN8 rating hardly useful when evaluating console players.<br><br>'
+    with open('references/faq.txt', 'r') as myfile:
+        faq = myfile.read()
 
-    text = text + '<b>How percentiles were calculated?</b><br>'
-    text = text + 'The data of 50,000 random WoT Console profiles was collected. To be a piece of valid data, the player must have had at least 2500 battles on the account. '
-    text = text + 'Then ratios were calculated for each tank of every player. To be included in the final rating, Tier 6+ vehicles had to have more than 100 battles, 20 battles for Tier 3+ and 10 battles for Tier 4-. '
-    text = text + 'After assembling all player ratios, the percentiles for each tank were calculated using a math module. '
-    text = text + 'More information about percentile can be found in <a href="https://en.wikipedia.org/wiki/Percentile">Wikipedia.</a><br><br>'
-
-    text = text + '<b>What exactly do all these selectors mean?</b><br>'
-    text = text + 'WinRate -- Winning battles/total number of battles<br>'
-    text = text + 'Battles -- Total battles on the account<br>'
-    text = text + 'Survived -- Percent of the battles where player survived<br>'
-    text = text + 'Avg Damage -- Average damage dealt per battle<br>'
-    text = text + 'Avg Frags -- Average number of frags per battle<br>'
-    text = text + 'Avg EXP -- Average experience per battle<br>'
-    text = text + 'Avg DPM -- The actual Damage Per Minute that player achieved on the tank<br>'
-    text = text + 'Avg FPM -- Average frags per minute<br>'
-    text = text + 'Avg EPM -- Average experience per minute<br>'
-    text = text + 'Dmg Percentile -- Shows the percent of players that have lower average damage per battle number<br>'
-    text = text + 'WR Percentile -- Shows the percent of players that have lower average winning rate<br>'
-    text = text + 'Exp Percentile -- Shows the percent of players that have lower average experience per battle<br>'
-    text = text + 'Penetrated/Hits caused -- Percentage of player\'s penetrating hits out of all hits, excluding misses<br>'
-    text = text + 'Bounced/Hits received -- Percent of all non-damage hits that hit the player<br>'
-    text = text + 'HE hits/Hits received -- Percent of how many of all shells were High Explosives that hit the player<br>'
-    text = text + 'Total Lifetime -- Total number of minutes spent driving the tank ***<br>'
-    text = text + 'Average Lifetime -- Average lifetime ***<br>'
-    text = text + 'Last battle time -- How many (min, h, d, m, y) ago the tank was driven<br>'
-    text = text + '*** Only the time between the actual start of the battle (15:00 on battle timer) and player death is included<br><br>'
-
-    text = text + '<b>How long does the website keep the data?</b><br>'
-    text = text + 'I haven\'t figured out that one yet, but obviously there are limits. The biggest limiting factor right now is low amount of space on free hosting.<br><br>'
-
-    text = text + '<b>Something doesn\'t seem to work properly and I feel helpful.</b><br>'
-    text = text + 'Follow the GitHub link in the footer and submit a bug report.<br><br>'
+    #Cutting text in piesces.
+    text = ''
+    counter = 0
+    for line in faq.split('\n'):
+        if line != '' and counter == 0:
+            text = text + '<b>' + line + '</b><br>'
+        elif line == '' and counter == 0:
+            counter = 1
+        elif line != '' and counter == 1:
+            text = text + line + '<br>'
+        elif line == '' and counter == 1:
+            text = text + '<br>'
+            counter = 0
+        else:
+            text = text + line
 
     return render_template("text_page.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer, text=text)
 

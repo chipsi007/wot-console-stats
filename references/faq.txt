@@ -1,0 +1,37 @@
+What's the point of using percentiles instead of WN8 or other ratings?
+
+WN8 rating is based on PC expected statistics table. Most of the sites visualizing worldoftanks statistics for consoles use PC table even though WTE100, BatChat and many other tanks are different from the PC version of the game. Additionally WN8 formula was build on the data from the game where it is easier to use aiming capabilities of the tank. All these differences make WN8 rating hardly useful when evaluating console players.
+
+How percentiles were calculated?
+
+The data of 50,000 random WoT Console profiles was collected. To be a piece of valid data, the player must have had at least 2500 battles on the account. Then ratios were calculated for each tank of every player. To be included in the final rating, Tier 6+ vehicles had to have more than 100 battles, 20 battles for Tier 3+ and 10 battles for Tier 4-. After assembling all player ratios, the percentiles for each tank were calculated using a math module. More information about percentile can be found in <a href="https://en.wikipedia.org/wiki/Percentile">Wikipedia</a>.
+
+What exactly do all these selectors in the tanks' table mean?
+
+WinRate: Winning battles/total number of battles.
+Battles: Total battles on the account.
+Survived: Percent of the battles where player survived.
+Avg Damage: Average damage dealt per battle.
+Avg Frags: Average number of frags per battle.
+Avg EXP: Average experience per battle.
+Avg DPM: The actual Damage Per Minute that player achieved on the tank.
+Avg FPM: Average frags per minute.
+Avg EPM: Average experience per minute.
+Dmg Percentile: Shows the percent of players that have lower average damage per battle number.
+WR Percentile: Shows the percent of players that have lower average winning rate.
+Exp Percentile: Shows the percent of players that have lower average experience per battle.
+Penetrated/Hits caused: Percentage of player\'s penetrating hits out of all hits, excluding misses.
+Bounced/Hits received: Percent of all non-damage hits that hit the player.
+HE hits/Hits received: Percent of how many of all shells were High Explosives that hit the player.
+Total Lifetime: Total number of minutes spent driving the tank. ***
+Average Lifetime: Average lifetime. ***
+Last battle time: How many (min, h, d, m, y) ago the tank was driven.
+*** Only the time between the actual start of the battle (15:00 on battle timer) and player death is included.
+
+How long does the website keep the data?
+
+I haven't figured out that one yet, but obviously there are limits. The biggest limiting factor right now is low amount of space on free hosting.
+
+Something doesn't seem to work properly and I feel helpful.
+
+Follow the GitHub link in the footer and submit a bug report.
