@@ -6,3 +6,5 @@ sql_database.db
 template_test/
 
 static/Chart.js
+
+scripts/

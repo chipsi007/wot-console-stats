@@ -28,9 +28,17 @@ Average Lifetime: Average lifetime. ***
 Last battle time: How many (min, h, d, m, y) ago the tank was driven.
 *** Only the time between the actual start of the battle (15:00 on battle timer) and player death is included.
 
+Line charts in 'Player Performance' don't seem to move much. What exactly do they show?
+
+Line charts in 'Player Performance' follow totals for all player data for each logged day. It's different from day-to-day change. To see noticeable difference, deselect other lines by clicking labels in the legend.
+
+Line charts in 'Player Performance' show change in tiers or classes I didn't play, is that a bug?
+
+Most likely it's something related to WG changing player data, like it was on FEB 3 2017 when WG removed MLTS Blitzen from player records (on that day). That caused significant change in Tier 3 for many players.
+
 How long does the website keep the data?
 
-I haven't figured out that one yet, but obviously there are limits. The biggest limiting factor right now is low amount of space on free hosting.
+8 days for automatic snapshots and 24 hours for sessions. The numbers might change if I start running out of storage.
 
 Something doesn't seem to work properly and I feel helpful.
 
