@@ -66,9 +66,38 @@
         
         <br>
         
-        {{ submit_button|safe }}
+        <section class="tabs">
+            <div>
+                <ul>
+                    <li><button type="submit" class="current"> {{ button|safe }} </button></li>
+                </ul>
+            </div>
+        </section>
         
-        {{ tank_table|safe }} 
+        {% if tank_table|length > 0 %}
+        {% set col_len = 100/tank_table[0]|length %}
+        <section class="table">
+            <div>
+                <table>
+                    <tr>
+                        {% for header in tank_table[0] %}
+                        <td style="width: {{ col_len }} %;">
+                            <button type="submit" value="{{ header }}" name="header">{{ header }}</button>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% for row in tank_table[1:] %}
+                    <tr>
+                        <td style="width: {{ col_len }} %; font-weight: bold; text-align: left;">&nbsp{{ row[0] }}</td>
+                        {% for cell in row[1:] %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </section>     
+        {% endif %}
     
     </form>
 

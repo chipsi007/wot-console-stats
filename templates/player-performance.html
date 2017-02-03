@@ -43,10 +43,15 @@
 
     <br> 
     
-    {{ submit_button|safe }}
-
-    <br>
+    <section class="tabs">
+        <div>
+            <ul>
+                <li><button type="submit" class="current"> {{ button|safe }} </button></li>
+            </ul>
+        </div>
+    </section>
     
+    {% if RadarChart|length > 0 %}
     <!--radar_chart-->
     <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">
         <div style="margin-left: 40px; margin-right: 40px; display: flex; justify-content: center; align-items: top;">
@@ -67,8 +72,7 @@
                             data: {{ RadarChart[1] }},
                         }]
                     };
-                    var ctx = document.getElementById("RadarChart");
-                    var myRadarChart = new Chart(ctx, {
+                    var myRadarChart = new Chart(document.getElementById("RadarChart"), {
                         type: 'radar',
                         data: data,
                         options: {
@@ -138,8 +142,7 @@
                             data: {{ line_charts[4] }},
                         }],
                     };
-                    var ctx = document.getElementById("line_charts");
-                    var myLineChart = new Chart(ctx, {
+                    var myLineChart = new Chart(document.getElementById("line_charts"), {
                         type: 'line',
                         data: data,
                         options: {
@@ -168,6 +171,7 @@
             </div>
         </div>
     </section>
+    {% endif %}
     
 </form>
 

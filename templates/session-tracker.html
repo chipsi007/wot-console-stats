@@ -143,7 +143,13 @@
     
     <br>
     
-    {{ submit_button|safe }}
+    <section class="tabs">
+        <div>
+            <ul>
+                <li><button type="submit" class="current">{{ button|safe }}</button></li>
+            </ul>
+        </div>
+    </section>
 
     <br> 
     
@@ -340,8 +346,6 @@
 
     <br> 
     
-   
-
 </form>
 
 {% endblock %}

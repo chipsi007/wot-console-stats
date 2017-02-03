@@ -298,6 +298,13 @@ class user_data:
             return(0)
 
         return(index)
+    #Save class data into SQL 'usercache'.
+    def save_to_cache(self):
+        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
+        action = usercache(timestamp = timestamp, account_id=self.account_id, nickname=self.nickname,
+                           server=self.server, player_data=pickle.dumps(self.player_data))
+        db.session.add(action)
+        db.session.commit()
 
     def extract_needed_data(self, checkboxes, checkbox_input):
         extracted_data = []
@@ -568,6 +575,15 @@ class form_data:
                                   ['HT', 'heavyTank', ''],
                                   ['MT', 'mediumTank', ''],
                                   ['LT', 'lightTank', '']]
+        self.top_panel = []
+        self.footer = [['GitHub', 'https://github.com/IDDT/wot-console-stats']]
+
+    def generate_header(self, index_of_current_page):
+        header = [['Statistics table', '/', 'not_current'], ['Player Performance', '/player_performance/', 'not_current'], ['Session Tracker', '/session-tracker/', 'not_current'], ['FAQ', '/faq', 'not_current']]
+        for i, item in enumerate(header):
+            if i == index_of_current_page:
+                item[2] = 'current'
+        return(header)
 
     def request_cookies(self, nickname, server, filter_by_50, checkboxes_input, filter_input):
         if nickname is not None:
@@ -599,170 +615,102 @@ class form_data:
                 item[2] = 'checked'
             else:
                 item[2] = ''
-#Class to generate HTML elements.
-class template_generator:
-
-    def __init__(self):
-        self.app_id = 'demo'
-        self.top_panel = []
-        self.footer =[['GitHub', 'https://github.com/IDDT/wot-console-stats']]
-    #generate nav_bar, set index to 99 for everything inactive
-    def generate_header(self, index_of_current_page):
-        header = [['Statistics table', '/', 'not_current'], ['Player Performance', '/player_performance/', 'not_current'], ['Session Tracker', '/session-tracker/', 'not_current'], ['FAQ', '/faq', 'not_current']]
-        for i, item in enumerate(header):
-            if i == index_of_current_page:
-                item[2] = 'current'
-        return(header)
-    #create 1-row submit button
-    def single_submit_button(self, button_message):
-        code = '<section class="tabs"><div><ul><li>'
-        code = code + '<button type="submit" class="current">' + str(button_message) + '</button>'
-        code = code + '</li></ul></div></section>'
-        return(code)
-    #Function to generate a table for the tank stats viewer.
-    def generate_tanks_table(self, list_of_lists):
-        #Separating the headers.
-        headers = list_of_lists[0]
-        cols_n = len(headers)
-        list_of_lists = list_of_lists[1:]
-
-        #Starting the table.
-        code = '<section class="table"><div><table>'
-
-        #Generating the headers.
-        code = code + '<tr>'
-        for header in headers:
-            code = code + '<td style="width:' + str(100/cols_n) + '%;">'
-            code = code + '<button type="submit" value="' + str(header) + '" name="header">'
-            code = code + str(header) + '</button>'
-            code = code + '</td>'
-        code = code + '</tr> '
-
-        #Generating the table.
-        for row in list_of_lists:
-            code = code + '<tr>'
-            for c, cell in enumerate(row):
-                #Styling for tank names.
-                if c == 0:
-                    code = code + '<td style="width:' + str(100/cols_n) + '%; font-weight: bold; text-align: left;">'
-                    code = code + '&nbsp' + str(cell) + '</td>'
-                else:
-                    code = code + '<td>' + str(cell) + '</td>'
-            code = code + '</tr>'
-        code = code + '</table></div></section>'
-        return(code)
-    #Generate a simple HTML table out of list of lists.
-    def generate_simple_table(self, list_of_lists):
-        #Starting the table.
-        code = '<table>'
-        #Generating the table.
-        for row in list_of_lists:
-            code = code + '<tr>'
-            for cell in row:
-                code = code + '<td>' + str(cell) + '</td>'
-            code = code + '</tr>'
-        code = code + '</table>'
-        return(code)
-template = template_generator()
 
 @app.route('/', methods=["GET", "POST"])
 def index():
 
     title = 'Statistics table'
-    header = template.generate_header(0)
 
-    #Requesting cookies.
+    #Initializing 'form_data'.
     form = form_data()
+    header = form.generate_header(0)
+    #Requesting cookies.
     form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
                          request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
 
-
-    if request.method == "GET":
-        submit_button = template.single_submit_button('Enter the details above and click this button to <strong>Submit</strong>')
-        form.generate_checkboxes()
-        return render_template("tanks_table.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                   nickname=form.nickname, server=form.server, filter_by_50=form.filter_by_50,
-                                                   checkboxes=form.checkboxes, checkboxes_filter=form.checkboxes_filter,
-                                                   submit_button=submit_button)
+    #Setting defaults.
+    return_empty = True
+    button = 'Enter the details above and click here to <b>Submit</b>'
 
     if request.method == "POST":
-
+        return_empty = False
         #Collecting form items.
-        user                         = user_data(request.form['server'], request.form['nickname'])
-        form.nickname, form.server   = user.nickname, user.server
-        form.checkboxes_input        = request.form.getlist('checkboxes_input')
-        form.filter_input            = request.form.getlist('filter_input')
-        form.header_clicked          = request.form['header'] if 'header' in request.form else ''
-        form.filter_by_50            = request.form['filter_by_50'] if 'filter_by_50' in request.form else ''
+        form.server, form.nickname = request.form['server'], request.form['nickname']
+        form.checkboxes_input = request.form.getlist('checkboxes_input')
+        form.filter_input = request.form.getlist('filter_input')
+        form.header_clicked = request.form['header'] if 'header' in request.form else ''
+        form.filter_by_50 = request.form['filter_by_50'] if 'filter_by_50' in request.form else ''
 
+    #Initiating 'player_perf'.
+    user = user_data(form.server, form.nickname)
 
-        #Checking if user in SQL 'cache_user_data'.
+    #Checking if user in SQL 'cache_user_data'.
+    current_user = None
+    if return_empty == False:
         current_user = usercache.request_cache(user.nickname, user.server)
-        #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
-        if current_user == None:
-            user.search_by_nickname()
-            #Request vehicle data only if the status is 'ok'.
-            if user.status == 'ok':
-                user.request_vehicles()
-            #Return error If status not 'ok'.
-            if user.status != 'ok':
-                button_message = user.message + ' Click here to <b>submit</b> again.'
-                submit_button = template.single_submit_button(button_message)
-                return render_template("tanks_table.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                           nickname=form.nickname, server=form.server, filter_by_50=form.filter_by_50,
-                                                           checkboxes=form.checkboxes, checkboxes_filter=form.checkboxes_filter,
-                                                           submit_button=submit_button)
+
+    #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
+    if current_user == None and return_empty == False:
+        user.search_by_nickname()
+        #Request vehicle data only if the status is 'ok'.
+        if user.status == 'ok':
+            user.request_vehicles()
+        #Return error If status not 'ok'.
+        if user.status != 'ok':
+            return_empty = True
+            button = user.message + ' Click here to <b>submit</b> again.'
+        #SQL operations if all conditions passed.
+        if user.status == 'ok':
             #Delete all expired records from SQL 'cache_user_data'.
             usercache.delete_expired_cache()
-            #Log user into SQL.
+            #Logging and caching and adding history data point into SQL.
             userlog.add_entry(user.nickname, user.server)
-            #Save data into SQL 'cache_user_data'.
-            timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-            action = usercache(timestamp = timestamp, account_id=user.account_id, nickname=user.nickname, server=user.server, player_data=pickle.dumps(user.player_data))
-            db.session.add(action)
-            db.session.commit()
-            #Adding history data point into SQL.
+            user.save_to_cache()
             userdata_history.add_or_update(user.nickname, user.server, user.account_id, pickle.dumps(user.player_data))
-        #If recent data found in SQL 'cache_user_data'.
-        else:
-            user.player_data = pickle.loads(current_user.player_data)
-            user.nickname = current_user.nickname
-            user.account_id = current_user.account_id
 
+    #If recent data found in SQL 'cache_user_data'.
+    if current_user != None and return_empty == False:
+        user.player_data = pickle.loads(current_user.player_data)
+        user.nickname = current_user.nickname
+        user.account_id = current_user.account_id
 
+    #Placeholders.
+    tank_table = []
+
+    #Calculations.
+    if return_empty == False:
         #Filtering and extracting data based on checkbox_input.
         user.filter_data(form.filter_by_50, form.filter_input, tankopedia)
         user.extract_needed_data(form.checkboxes, form.checkboxes_input)
-
         #Identifying sorting column and sorting the data.
         user.find_sorting_column(form.header_clicked, form.checkboxes)
         user.sort()
-
         #Formatting table values. Naming headers acc. to values in checkboxes. Replacing tank IDs with names.
         user.make_data_readable()
         user.name_headers(form.checkboxes)
         user.name_tanks(tanks_dict)
-
         #Generating output.
-        form.nickname = user.nickname
-        form.generate_checkboxes()
-        message = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b> or any of the headers to sort by column'
-        submit_button = template.single_submit_button(message)
-        tank_table = template.generate_tanks_table(user.player_data)
+        tank_table=user.player_data
+        button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b> or any of the headers to sort by column'
 
-        #Making response & assigning cookies.
-        response = make_response(render_template("tanks_table.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                                     nickname=form.nickname, server=form.server, filter_by_50=form.filter_by_50,
-                                                                     checkboxes=form.checkboxes, checkboxes_filter=form.checkboxes_filter,
-                                                                     submit_button=submit_button, tank_table=tank_table))
+    #Generating output.
+    form.nickname = user.nickname
+    form.generate_checkboxes()
+    response = make_response(render_template("tanks-table.html", title=title, top_panel=form.top_panel, header=header, footer=form.footer,
+                                                                 nickname=form.nickname, server=form.server, filter_by_50=form.filter_by_50,
+                                                                 checkboxes=form.checkboxes, checkboxes_filter=form.checkboxes_filter,
+                                                                 button=button, tank_table=tank_table))
+
+    #Assigning cookies.
+    if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
         response.set_cookie('nickname', form.nickname, expires=expire_date)
         response.set_cookie('server', form.server, expires=expire_date)
         response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
         response.set_cookie('checkboxes_input', json.dumps(form.checkboxes_input), expires=expire_date)
         response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
-        return response
-    return redirect(url_for('index'))
+
+    return response
 
 @app.route('/player_performance/', methods=["GET", "POST"])
 def player_performance():
@@ -785,8 +733,8 @@ def player_performance():
                     self.xlabels.append('Today')
                 #Loading and filtering player data.
                 self.player_data = pickle.loads(row.player_data)
-                #Filtering data using classmethod.
-                user.filter_data('unchecked', filter_input, tankopedia)
+                #Filtering data using function of the same class.
+                self.filter_data('unchecked', filter_input, tankopedia)
 
                 dmgc_temp, wr_temp, rass_temp, dmgr_temp, acc_temp = ([] for i in range(5))
                 for vehicle in self.player_data:
@@ -811,13 +759,11 @@ def player_performance():
                 self.dmgr.append(abs(round(sum(dmgr_temp)/len(dmgr_temp), 2)-100))
                 self.acc.append(round(sum(acc_temp)/len(acc_temp), 2))
 
-
-
     title = 'Player Performance'
-    header = template.generate_header(1)
 
-    #Requesting cookies.
+    #Initiating 'form_data' class and requesting cookies.
     form = form_data()
+    header = form.generate_header(1)
     form.checkboxes_filter = [['T1', '1', ''], ['T2', '2', ''], ['T3', '3', ''],
                               ['T4', '4', ''], ['T5', '5', ''], ['T6', '6', ''],
                               ['T7', '7', ''], ['T8', '8', ''], ['T9', '9', ''],
@@ -826,86 +772,90 @@ def player_performance():
     form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
                          request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
 
+    #Setting defaults.
+    return_empty = True
+    button = 'Enter the details above and click here to <b>Submit</b>'
 
-    if request.method == "GET":
-        submit_button = template.single_submit_button('<strong>Submit</strong>')
-        form.generate_checkboxes()
-        return render_template("player_performance_empty.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                                  nickname=form.nickname, server=form.server,
-                                                                  checkboxes_filter=form.checkboxes_filter, submit_button=submit_button)
+    #Checking if there is info in cookies.
+    if form.nickname != '' and form.server in ['xbox', 'ps4']:
+        return_empty = False
 
+    #If there is new input.
     if request.method == "POST":
+        return_empty = False
+        form.server, form.nickname = request.form["server"], request.form["nickname"]
+        form.filter_input = request.form.getlist('filter_input')
 
-        #Collecting form items.
-        user                         = player_perf(request.form["server"], request.form["nickname"])
-        form.nickname, form.server   = user.nickname, user.server
-        form.filter_input            = request.form.getlist('filter_input')
+    #Initiating 'player_perf'.
+    user = player_perf(form.server, form.nickname)
 
-        #Checking if user in SQL 'cache_user_data'.
+    #Checking if user in SQL 'cache_user_data'.
+    current_user = None
+    if return_empty == False:
         current_user = usercache.request_cache(user.nickname, user.server)
-        #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
-        if current_user == None:
-            user.search_by_nickname()
-            #Request vehicle data only if the status is 'ok'.
-            if user.status == 'ok':
-                user.request_vehicles()
-            #Return error If status not 'ok'.
-            if user.status != 'ok':
-                button_message = user.message + ' Click here to <b>submit</b> again.'
-                submit_button = template.single_submit_button(button_message)
-                return render_template("player_performance_empty.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                                          nickname=form.nickname, server=form.server,
-                                                                          checkboxes_filter=form.checkboxes_filter, submit_button=submit_button)
+
+    #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
+    if current_user == None and return_empty == False:
+        user.search_by_nickname()
+        #Request vehicle data only if the status is 'ok'.
+        if user.status == 'ok':
+            user.request_vehicles()
+        #Return error If status not 'ok'.
+        if user.status != 'ok':
+            return_empty = True
+            button = user.message + ' Click here to <b>submit</b> again.'
+        #SQL operations if all conditions passed.
+        if user.status == 'ok':
             #Delete all expired records from SQL 'cache_user_data'.
             usercache.delete_expired_cache()
-            #Log user into SQL.
+            #Logging and caching and adding history data point into SQL.
             userlog.add_entry(user.nickname, user.server)
-            #Save data into SQL 'cache_user_data'.
-            timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-            action = usercache(timestamp = timestamp, account_id=user.account_id, nickname=user.nickname, server=user.server, player_data=pickle.dumps(user.player_data))
-            db.session.add(action)
-            db.session.commit()
-            #Adding history data point into SQL.
+            user.save_to_cache()
             userdata_history.add_or_update(user.nickname, user.server, user.account_id, pickle.dumps(user.player_data))
-        #If recent data found in SQL 'cache_user_data'.
-        else:
-            user.player_data = pickle.loads(current_user.player_data)
-            user.nickname = current_user.nickname
-            user.account_id = current_user.account_id
 
+    #If recent data found in SQL 'cache_user_data'.
+    if current_user != None and return_empty == False:
+        user.player_data = pickle.loads(current_user.player_data)
+        user.nickname = current_user.nickname
+        user.account_id = current_user.account_id
 
+    #Placeholders.
+    line_charts, chart_names, x_labels, RadarChart = ([] for i in range(4))
+
+    #Calculations.
+    if return_empty == False:
         #Searching all records of the player in SQL 'history'.
         user_history_search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server).all()
-
         #Calculating percentiles for line chart.
         user.calculate_line_charts(user_history_search, form.filter_input, tankopedia)
+        #Variables for export.
         x_labels = json.dumps(user.xlabels)
-
-        #line_charts = [json.dumps(item) for item in chart_data]
         chart_names = ['Accuracy', 'Damage Caused', 'Radio Assist', 'WinRate', 'Damage Received (inv)']
         line_ch = [user.acc, user.dmgc, user.rass, user.wr, user.dmgr]
         RadarChart = [json.dumps([item for item in chart_names]), json.dumps([item[-1] for item in line_ch])]
         line_charts = [json.dumps(item) for item in line_ch]
 
-        #Generating output.
+    #Generating output.
+    if return_empty == False:
         form.nickname = user.nickname
-        form.generate_checkboxes()
-        message = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b>'
-        submit_button = template.single_submit_button(message)
+        button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b>'
 
-        #Making response & assigning cookies.
-        response = make_response(render_template("player_performance.html", title=title, top_panel=template.top_panel, header=header,
-                                                                              footer=template.footer, submit_button=submit_button,
-                                                                              nickname=form.nickname, server=form.server,
-                                                                              checkboxes_filter=form.checkboxes_filter,
-                                                                              line_charts=line_charts, chart_names=chart_names, x_labels=x_labels,
-                                                                              RadarChart=RadarChart))
+    #Making response & assigning cookies.
+    form.generate_checkboxes()
+    response = make_response(render_template("player-performance.html", title=title, top_panel=form.top_panel, header=header,
+                                                                        footer=form.footer, button=button,
+                                                                        nickname=form.nickname, server=form.server,
+                                                                        checkboxes_filter=form.checkboxes_filter,
+                                                                        line_charts=line_charts, chart_names=chart_names, x_labels=x_labels,
+                                                                        RadarChart=RadarChart))
+    #Assigning cookies if not empty.
+    if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
         response.set_cookie('nickname', form.nickname, expires=expire_date)
         response.set_cookie('server', form.server, expires=expire_date)
         response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
-        return response
-    return redirect(url_for('player_performance'))
+
+    return response
 
 @app.route('/session-tracker/', methods=["GET", "POST"])
 def session_tracker():
@@ -917,64 +867,63 @@ def session_tracker():
             self.request = selected_radio
 
     title = 'Session tracker'
-    header = template.generate_header(2)
 
     #Requesting cookies.
     form = form_data()
+    header = form.generate_header(2)
+    form.request = ''
     form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
                          request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
 
-    #Placeholders for history points.
+    #Setting defaults.
+    return_empty = True
+    button = '<strong>Submit</strong>'
     history_checkpoints =  [['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0],
                             ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0]]
 
-    if request.method == "GET":
-        submit_button = template.single_submit_button('<strong>Submit</strong>')
-        return render_template("session-tracker.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                       nickname=form.nickname, server=form.server, submit_button=submit_button,
-                                                       history_checkpoints=history_checkpoints)
-
     if request.method == "POST":
+        return_empty = False
+        form.server, form.nickname, form.request = request.form["server"], request.form["nickname"], request.form["checkpoints"]
 
-        #Collecting form items.
-        user = session_tr(request.form["server"], request.form["nickname"], request.form["checkpoints"])
-        form.nickname, form.server = user.nickname, user.server
+    #Initiating 'session_tr'.
+    user = session_tr(form.server, form.nickname, form.request)
 
-        #Checking if user in SQL 'cache_user_data'.
+    #Checking if user in SQL 'cache_user_data'.
+    current_user = None
+    if return_empty == False:
         current_user = usercache.request_cache(user.nickname, user.server)
-        #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
-        if current_user == None:
-            user.search_by_nickname()
-            #Request vehicle data only if the status is 'ok'.
-            if user.status == 'ok':
-                user.request_vehicles()
-            #Return error If status not 'ok'.
-            if user.status != 'ok':
-                button_message = user.message + ' Click here to <b>submit</b> again.'
-                submit_button = template.single_submit_button(button_message)
-                return render_template("session-tracker.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                               nickname=form.nickname, server=form.server, submit_button=submit_button)
+
+    #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
+    if current_user == None and return_empty == False:
+        user.search_by_nickname()
+        #Request vehicle data only if the status is 'ok'.
+        if user.status == 'ok':
+            user.request_vehicles()
+        #Return error If status not 'ok'.
+        if user.status != 'ok':
+            return_empty = True
+            button = user.message + ' Click here to <b>submit</b> again.'
+        #SQL operations if all conditions passed.
+        if user.status == 'ok':
             #Delete all expired records from SQL 'cache_user_data'.
             usercache.delete_expired_cache()
-            #Log user into SQL.
+            #Logging and caching and adding history data point into SQL.
             userlog.add_entry(user.nickname, user.server)
-            #Save data into SQL 'cache_user_data'.
-            timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-            action = usercache(timestamp = timestamp, account_id=user.account_id, nickname=user.nickname, server=user.server, player_data=pickle.dumps(user.player_data))
-            db.session.add(action)
-            db.session.commit()
-            #Adding history data point into SQL.
+            user.save_to_cache()
             userdata_history.add_or_update(user.nickname, user.server, user.account_id, pickle.dumps(user.player_data))
-        #If recent data found in SQL 'cache_user_data'.
-        else:
-            user.player_data = pickle.loads(current_user.player_data)
-            user.nickname = current_user.nickname
-            user.account_id = current_user.account_id
 
-        #Deleting expired.
+    #If recent data found in SQL 'cache_user_data'.
+    if current_user != None and return_empty == False:
+        user.player_data = pickle.loads(current_user.player_data)
+        user.nickname = current_user.nickname
+        user.account_id = current_user.account_id
+
+    #Deleting expired.
+    if return_empty == False:
         usersessions.delete_expired()
 
-        #Calling all 'userdata_history' datapoints to show in the form.
+    #Calling all 'userdata_history' datapoints to show in the form.
+    if user.nickname != '':
         search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server).all()
         if len(search) > 0:
             for row in search:
@@ -983,195 +932,197 @@ def session_tracker():
                 if 8 > timedelta.days > 0:
                     history_checkpoints[int(timedelta.days)-1] = [timedelta.days, str(timedelta.days) + 'd', row.timestamp]
 
-        #Session controls.
+    #Placeholders.
+    session_tanks = []
+    if return_empty == False:
+        user.snapshot_data = []
         session_tanks = []
-        proceed = True
-        message = 'Must be an error. Please reload the page.'
-        if user.request == 'create' or user.request == 'delete':
-            #Deleting all previous records.
-            usersessions.delete_previous_records(user.nickname, user.server)
-            message = 'Deleted custom snapshot for <b>'+str(user.nickname)+'</b>'
+        button = 'Must be an error. Please reload the page.'
 
-            if user.request == 'create':
-                #Adding new entry.
-                timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-                action = usersessions(timestamp=timestamp, account_id=user.account_id, nickname=user.nickname, server=user.server, player_data=pickle.dumps(user.player_data))
-                db.session.add(action)
-                db.session.commit()
-                #Message.
-                message = 'Created custom snapshot for <b>'+str(user.nickname)+'</b> &nbsp; Come back to check your stats after the game!'
+    #Request to delete.
+    if return_empty == False and user.request == 'delete':
+        #Deleting all previous records.
+        usersessions.delete_previous_records(user.nickname, user.server)
+        button = 'Deleted custom snapshot for <b>'+str(user.nickname)+'</b>'
+        return_empty = True
 
-            submit_button = template.single_submit_button(message)
-            return render_template("session-tracker.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer,
-                                                           nickname=form.nickname, server=form.server, submit_button=submit_button,
-                                                           history_checkpoints=history_checkpoints)
+    #Request to create.
+    if return_empty == False and user.request == 'create':
+        #Adding new entry.
+        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
+        action = usersessions(timestamp=timestamp, account_id=user.account_id, nickname=user.nickname, server=user.server, player_data=pickle.dumps(user.player_data))
+        db.session.add(action)
+        db.session.commit()
+        #Message.
+        button = 'Created custom snapshot for <b>'+str(user.nickname)+'</b> &nbsp; Come back to check your stats after the game!'
+        return_empty = True
 
-        #If reques is diffent from custom, searching for entries in history.
-        if user.request != 'custom':
-            timestamp_to_search = None
-            for row in  history_checkpoints:
-                if user.request == str(row[0]):
-                    timestamp_to_search = row[2]
+    #Request to compare with history point.
+    if return_empty == False and user.request not in ['custom', 'delete', 'create']:
+        timestamp_to_search = None
+        for row in  history_checkpoints:
+            if user.request == str(row[0]):
+                timestamp_to_search = row[2]
 
-            if timestamp_to_search == None:
-                message = 'No such checkpoint exist.'
-                proceed = False
-            else:
-                search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server, timestamp=timestamp_to_search).first()
-                user.snapshot_data = pickle.loads(search.player_data)
-                message = 'Viewing last ' + str(user.request) + ' day(s) as the session.'
+        if timestamp_to_search == None:
+            button = 'No such checkpoint exist.'
+            proceed = False
+        else:
+            search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server, timestamp=timestamp_to_search).first()
+            user.snapshot_data = pickle.loads(search.player_data)
+            button = 'Viewing last ' + str(user.request) + ' day(s) as the session.'
 
-        elif user.request == 'custom':
-            search = usersessions.query.filter_by(nickname=user.nickname, server=user.server).first()
-            if search == None:
-                message = 'No snapshots found for selected user.'
-                proceed = False
-            elif pickle.loads(search.player_data) == user.player_data:
-                message = 'There is a snapshot for <b>'+str(user.nickname)+'</b> But no changes were found!'
-                proceed = False
-            else:
-                user.snapshot_data = pickle.loads(search.player_data)
-                message = 'Viewing custom snapshot for <b>'+str(user.nickname)+'</b> !'
+    #Request to compare with custom snapshot.
+    if return_empty == False and user.request == 'custom':
+        search = usersessions.query.filter_by(nickname=user.nickname, server=user.server).first()
+        if search == None:
+            button = 'No custom snapshot found for selected user.'
+            return_empty == True
+        elif pickle.loads(search.player_data) == user.player_data:
+            button = 'There is a custom snapshot for <b>'+str(user.nickname)+'</b> But no changes were found!'
+            return_empty == True
+        else:
+            user.snapshot_data = pickle.loads(search.player_data)
+            button = 'Viewing custom snapshot for <b>'+str(user.nickname)+'</b> !'
 
+    #Calculations.
+    if return_empty == False:
+        #Deleteting tanks from 'snapshot_data' that were not played.
+        for tank in user.player_data:
+            for s, snapshot_tank in enumerate(user.snapshot_data):
+                if tank['tank_id'] == snapshot_tank['tank_id'] and tank['battles'] == snapshot_tank['battles']:
+                    user.snapshot_data.pop(s)
 
-        if proceed == True:
-            #Deleteting tanks from 'snapshot_data' that were not played.
+        #Deleting tanks from 'player_data' that aren't in filtered 'snapshot_data'.
+        snapshot_tank_ids = [tank['tank_id'] for tank in user.snapshot_data]
+        temp_list = []
+        for tank_id in snapshot_tank_ids:
             for tank in user.player_data:
-                for s, snapshot_tank in enumerate(user.snapshot_data):
-                    if tank['tank_id'] == snapshot_tank['tank_id'] and tank['battles'] == snapshot_tank['battles']:
-                        user.snapshot_data.pop(s)
+                if tank['tank_id'] == tank_id:
+                    temp_list.append(tank)
+        user.player_data = temp_list
 
-            #Deleting tanks from 'player_data' that aren't in filtered 'snapshot_data'.
-            snapshot_tank_ids = [tank['tank_id'] for tank in user.snapshot_data]
-            temp_list = []
-            for tank_id in snapshot_tank_ids:
-                for tank in user.player_data:
-                    if tank['tank_id'] == tank_id:
-                        temp_list.append(tank)
-            user.player_data = temp_list
+        #Finding difference.
+        for s_tank in user.snapshot_data:
+            for c_tank in user.player_data:
+                if s_tank['tank_id'] == c_tank['tank_id']:
+                    for key, value in c_tank.items():
+                        s_tank[key] = value - s_tank[key]
+                    s_tank['tank_id'] = c_tank['tank_id']
 
-            #Finding difference.
-            for s_tank in user.snapshot_data:
-                for c_tank in user.player_data:
-                    if s_tank['tank_id'] == c_tank['tank_id']:
-                        for key, value in c_tank.items():
-                            s_tank[key] = value - s_tank[key]
-                        s_tank['tank_id'] = c_tank['tank_id']
+        #List for output.
+        session_tanks = []
+        #Calculating data.
+        for s_tank in user.snapshot_data:
+            for a_tank in user.player_data:
+                if s_tank['tank_id'] == a_tank['tank_id']:
 
-            #List for output.
-            session_tanks = []
-            #Calculating data.
-            for s_tank in user.snapshot_data:
-                for a_tank in user.player_data:
-                    if s_tank['tank_id'] == a_tank['tank_id']:
+                    #Creating a dictionary.
+                    temp_dict = {}
 
-                        #Creating a dictionary.
-                        temp_dict = {}
+                    #For 'radar_all'.
+                    temp_dict['dmgc_all'] = a_tank['damage_dealt'] / a_tank['battles']
+                    temp_dict['exp_all'] = a_tank['xp'] / a_tank['battles']
+                    temp_dict['rass_all'] = a_tank['damage_assisted_radio'] / a_tank['battles']
+                    temp_dict['dmgr_all'] = a_tank['damage_received'] / a_tank['battles']
+                    if a_tank['shots'] > 0:
+                        temp_dict['acc_all'] = a_tank['hits'] / a_tank['shots'] * 100
+                    else:
+                        temp_dict['acc_all'] = 0.0
 
-                        #For 'radar_all'.
-                        temp_dict['dmgc_all'] = a_tank['damage_dealt'] / a_tank['battles']
-                        temp_dict['exp_all'] = a_tank['xp'] / a_tank['battles']
-                        temp_dict['rass_all'] = a_tank['damage_assisted_radio'] / a_tank['battles']
-                        temp_dict['dmgr_all'] = a_tank['damage_received'] / a_tank['battles']
-                        if a_tank['shots'] > 0:
-                            temp_dict['acc_all'] = a_tank['hits'] / a_tank['shots'] * 100
-                        else:
-                            temp_dict['acc_all'] = 0.0
+                    dmgc_perc, exp_perc, rass_perc, dmgr_perc, acc_perc = (0.0 for i in range(5))
+                    dmgc_perc = user.percentile_calculator('dmgc', a_tank['tank_id'], temp_dict['dmgc_all'])
+                    exp_perc = user.percentile_calculator('exp', a_tank['tank_id'], temp_dict['exp_all'])
+                    rass_perc = user.percentile_calculator('rass', a_tank['tank_id'], temp_dict['rass_all'])
+                    dmgr_perc = user.percentile_calculator('dmgr', a_tank['tank_id'], temp_dict['dmgr_all'])
+                    acc_perc = user.percentile_calculator('acc', a_tank['tank_id'], temp_dict['acc_all'])
 
-                        dmgc_perc, exp_perc, rass_perc, dmgr_perc, acc_perc = (0.0 for i in range(5))
-                        dmgc_perc = user.percentile_calculator('dmgc', a_tank['tank_id'], temp_dict['dmgc_all'])
-                        exp_perc = user.percentile_calculator('exp', a_tank['tank_id'], temp_dict['exp_all'])
-                        rass_perc = user.percentile_calculator('rass', a_tank['tank_id'], temp_dict['rass_all'])
-                        dmgr_perc = user.percentile_calculator('dmgr', a_tank['tank_id'], temp_dict['dmgr_all'])
-                        acc_perc = user.percentile_calculator('acc', a_tank['tank_id'], temp_dict['acc_all'])
+                    temp_dict['radar_all'] = json.dumps([round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
+                                                         round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)])
 
-                        temp_dict['radar_all'] = json.dumps([round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
+                    #For 'radar_session'.
+                    temp_dict['dmgc_session'] = s_tank['damage_dealt'] / s_tank['battles']
+                    temp_dict['exp_session'] = s_tank['xp'] / s_tank['battles']
+                    temp_dict['rass_session'] = s_tank['damage_assisted_radio'] / s_tank['battles']
+                    temp_dict['dmgr_session'] = s_tank['damage_received'] / s_tank['battles']
+                    if s_tank['shots'] > 0:
+                        temp_dict['acc_session'] = s_tank['hits'] / s_tank['shots'] * 100
+                    else:
+                        temp_dict['acc_session'] = 0.0
+
+                    dmgc_perc, exp_perc, rass_perc, dmgr_perc, acc_perc = (0.0 for i in range(5))
+                    dmgc_perc = user.percentile_calculator('dmgc', s_tank['tank_id'], temp_dict['dmgc_session'])
+                    exp_perc = user.percentile_calculator('exp', s_tank['tank_id'], temp_dict['exp_session'])
+                    rass_perc = user.percentile_calculator('rass', s_tank['tank_id'], temp_dict['rass_session'])
+                    dmgr_perc = user.percentile_calculator('dmgr', s_tank['tank_id'], temp_dict['dmgr_session'])
+                    acc_perc = user.percentile_calculator('acc', s_tank['tank_id'], temp_dict['acc_session'])
+
+                    temp_dict['radar_session'] = json.dumps([round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
                                                              round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)])
 
-                        #For 'radar_session'.
-                        temp_dict['dmgc_session'] = s_tank['damage_dealt'] / s_tank['battles']
-                        temp_dict['exp_session'] = s_tank['xp'] / s_tank['battles']
-                        temp_dict['rass_session'] = s_tank['damage_assisted_radio'] / s_tank['battles']
-                        temp_dict['dmgr_session'] = s_tank['damage_received'] / s_tank['battles']
-                        if s_tank['shots'] > 0:
-                            temp_dict['acc_session'] = s_tank['hits'] / s_tank['shots'] * 100
+                    #Other values.
+                    temp_dict['tank_id'] = a_tank['tank_id']
+                    if str(temp_dict['tank_id']) in tanks_dict:
+                        temp_dict['tank_name'] = tanks_dict[str(temp_dict['tank_id'])]
+                    else:
+                        temp_dict['tank_name'] = 'Unknown'
+                    temp_dict['battles_session'] = s_tank['battles']
+                    temp_dict['wins_session'] = s_tank['wins']
+
+                    def convert_seconds_to_str(seconds):
+                        if seconds >= 60:
+                            m = int(seconds/60)
+                            s = int(seconds - m * 60)
                         else:
-                            temp_dict['acc_session'] = 0.0
+                            return(str(int(s)) + 's')
+                        return(str(m) + 'm ' + str(s) + 's')
 
-                        dmgc_perc, exp_perc, rass_perc, dmgr_perc, acc_perc = (0.0 for i in range(5))
-                        dmgc_perc = user.percentile_calculator('dmgc', s_tank['tank_id'], temp_dict['dmgc_session'])
-                        exp_perc = user.percentile_calculator('exp', s_tank['tank_id'], temp_dict['exp_session'])
-                        rass_perc = user.percentile_calculator('rass', s_tank['tank_id'], temp_dict['rass_session'])
-                        dmgr_perc = user.percentile_calculator('dmgr', s_tank['tank_id'], temp_dict['dmgr_session'])
-                        acc_perc = user.percentile_calculator('acc', s_tank['tank_id'], temp_dict['acc_session'])
-
-                        temp_dict['radar_session'] = json.dumps([round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
-                                                                 round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)])
-
-                        #Other values.
-                        temp_dict['tank_id'] = a_tank['tank_id']
-                        if str(temp_dict['tank_id']) in tanks_dict:
-                            temp_dict['tank_name'] = tanks_dict[str(temp_dict['tank_id'])]
-                        else:
-                            temp_dict['tank_name'] = 'Unknown'
-                        temp_dict['battles_session'] = s_tank['battles']
-                        temp_dict['wins_session'] = s_tank['wins']
-
-                        def convert_seconds_to_str(seconds):
-                            if seconds >= 60:
-                                m = int(seconds/60)
-                                s = int(seconds - m * 60)
-                            else:
-                                return(str(int(s)) + 's')
-                            return(str(m) + 'm ' + str(s) + 's')
-
-                        temp_dict['lifetime_session'] = convert_seconds_to_str(s_tank['battle_life_time']/s_tank['battles'])
-                        temp_dict['lifetime_all'] = convert_seconds_to_str(a_tank['battle_life_time']/a_tank['battles'])
+                    temp_dict['lifetime_session'] = convert_seconds_to_str(s_tank['battle_life_time']/s_tank['battles'])
+                    temp_dict['lifetime_all'] = convert_seconds_to_str(a_tank['battle_life_time']/a_tank['battles'])
 
 
-                        temp_dict['dpm_session'] = s_tank['damage_dealt'] / s_tank['battle_life_time']*60
-                        temp_dict['dpm_all'] = a_tank['damage_dealt'] / a_tank['battle_life_time']*60
+                    temp_dict['dpm_session'] = s_tank['damage_dealt'] / s_tank['battle_life_time']*60
+                    temp_dict['dpm_all'] = a_tank['damage_dealt'] / a_tank['battle_life_time']*60
 
 
 
-                        #Appending dictionary.
-                        session_tanks.append(temp_dict)
+                    #Appending dictionary.
+                    session_tanks.append(temp_dict)
 
-            #If data didn't change.
-            if len(session_tanks) < 1:
-                message = 'No tanks were played.'
+        #If data didn't change.
+        if len(session_tanks) < 1:
+            button = 'No tanks were played.'
 
-        radar_names = ['Accuracy', 'Damage Caused', 'Radio Assist', 'Experience', 'Damage Received (inv)']
+    radar_names = ['Accuracy', 'Damage Caused', 'Radio Assist', 'Experience', 'Damage Received (inv)']
 
 
-        #Generating output.
-        form.nickname = user.nickname
-        submit_button = template.single_submit_button(message)
-
-        #Making response & assigning cookies.
-        response = make_response(render_template("session-tracker.html", title=title, top_panel=template.top_panel, header=header,
-                                                                         footer=template.footer, submit_button=submit_button,
-                                                                         nickname=form.nickname, server=form.server,
-                                                                         session_tanks=session_tanks,
-                                                                         radar_names=radar_names,
-                                                                         history_checkpoints=history_checkpoints))
-
+    #Generating output.
+    form.nickname, form.server = user.nickname, user.server
+    response = make_response(render_template("session-tracker.html", title=title, top_panel=form.top_panel, header=header,
+                                                                     footer=form.footer, button=button,
+                                                                     nickname=form.nickname, server=form.server,
+                                                                     session_tanks=session_tanks,
+                                                                     radar_names=radar_names,
+                                                                     history_checkpoints=history_checkpoints))
+    #Assigning cookies.
+    if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
         response.set_cookie('nickname', form.nickname, expires=expire_date)
         response.set_cookie('server', form.server, expires=expire_date)
-        return response
-    return redirect(url_for('session_tracker'))
+    return response
 
 @app.route('/faq')
 def faq():
 
     title = 'FAQ'
-    header = template.generate_header(3)
+
+    form = form_data()
+    header = form.generate_header(3)
 
     with open('references/faq.txt', 'r') as myfile:
         faq = myfile.read()
 
-    #Cutting text in piesces.
+    #Cutting text.
     text = ''
     counter = 0
     for line in faq.split('\n'):
@@ -1187,7 +1138,8 @@ def faq():
         else:
             text = text + line
 
-    return render_template("text_page.html", title=title, top_panel=template.top_panel, header=header, footer=template.footer, text=text)
+    return render_template("text-page.html", title=title, top_panel=form.top_panel,
+                                             header=header, footer=form.footer, text=text)
 
 
 if __name__ == '__main__':
