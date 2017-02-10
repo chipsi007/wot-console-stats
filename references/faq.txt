@@ -34,11 +34,11 @@ Line charts in 'Player Performance' follow totals for all player data for each l
 
 Line charts in 'Player Performance' show change in tiers or classes I didn't play, is that a bug?
 
-Most likely it's something related to WG changing player data, like it was on FEB 3 2017 when WG removed MLTS Blitzen from player records (on that day). That caused significant change in Tier 3 for many players.
+Most likely it's something related to WG changing player data.
 
 How long does the website keep the data?
 
-8 days for automatic snapshots and 24 hours for sessions. The numbers might change if I start running out of storage.
+I haven't figured out this one yet. Currently no more than number of fields in 'Session Tracker'.
 
 Something doesn't seem to work properly and I feel helpful.
 

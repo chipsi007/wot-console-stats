@@ -1,89 +1,26 @@
 {% extends "index.html" %} {% block content %}
 
-<style>
-    /* Style the list */
-    ul.tab {
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        border: 1px solid #ccc;
-        background-color: #F2F2F2;
-    }
-    /* Float the list items side by side */
-    ul.tab li {
-        float: left;
-    }
-    /* Style the links inside the list items */
-    ul.tab li a {
-        display: inline-block;
-        color: #555;
-        text-align: center;
-        padding: 10px 10px;
-        text-decoration: none;
-        transition: 0.3s;
-        font-size: 17px;
-    }
-    /* Change background color of links on hover */
-    ul.tab li a:hover {
-        background-color: #ddd;
-    }
-    /* Create an active/current tablink class */
-    ul.tab li a:focus, .active {
-        background-color: #ccc;
-    }
-    /* Style the tab content */
-    .tabcontent {
-        display: none;
-        padding: 6px 12px;
-        border: 1px solid #ccc;
-        border-top: none;
-    }
-    
-    .minitable  {
-        margin: 0 auto;
-        font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
-        color: #555;
-        font-size: 13px;
-        table-layout: fixed;
-        line-height: 25px;
-        width: 75%;
-    }
-    .minitable th  {
-        background: #cee0e6;
-    }
-    .minitable td  {
-        background: #F2F2F2;
-    }
-    .minitable td:hover, .minitable th:hover {
-        color: #8caab4;
-        background: #e6eff2;
-        text-decoration: none
-    }
-
-</style>
-<script src="{{ url_for('static',filename='Chart.js') }}"></script>
 <script type="text/javascript">
-    function openCity(evt, cityName) {
-        // Declare all variables
-        var i, tabcontent, tablinks;
+    function openTab(evt, tabName) {
+            // Declare all variables
+            var i, tabcontent, tablinks;
 
-        // Get all elements with class="tabcontent" and hide them
-        tabcontent = document.getElementsByClassName("tabcontent");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
+            // Get all elements with class="tabcontent" and hide them
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+
+            // Get all elements with class="tablinks" and remove the class "active"
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+
+            // Show the current tab, and add an "active" class to the link that opened the tab
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
         }
-
-        // Get all elements with class="tablinks" and remove the class "active"
-        tablinks = document.getElementsByClassName("tablinks");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-        }
-
-        // Show the current tab, and add an "active" class to the link that opened the tab
-        document.getElementById(cityName).style.display = "block";
-        evt.currentTarget.className += " active";
-    }
 </script>
 
 <form action="." method="POST">
@@ -94,8 +31,14 @@
                 <td>
                     <table>
                         <tr>
+                            <td style="padding-left: 5px;">
+                                Playername:
+                            </td>
                             <td>
                                 <input name="nickname" type="text" value="{{ nickname }}" placeholder="Enter your nickname" />
+                            </td>
+                            <td style="padding-left: 5px;">
+                                Server:
                             </td>
                             <td>
                                 <input type="radio" name="server" id="xbox" class="button-box" value="xbox" {{ 'checked' if server=='xbox' }}/>
@@ -111,29 +54,16 @@
                 <td>
                     <table>
                         <tr>
+                            <td style="padding-left: 5px;">
+                                Select time period:
+                            </td>
                             {% for checkpoint in history_checkpoints %}
                             <td>
                                 <input type="radio" name="checkpoints" id="{{ checkpoint[0] }}" class="button-box" value="{{ checkpoint[0] }}" />
                                 <label for="{{ checkpoint[0] }}">{{ checkpoint[1] }}</label>
                             </td>
-                            {% endfor %}
-                            <td>
-                                <input type="radio" name="checkpoints" id="custom_snapshot" class="button-box" value="custom" checked/>
-                                <label for="custom_snapshot">Custom snapshot</label>
-                            </td>    
+                            {% endfor %}   
                         </tr>
-                    </table>
-                </td>
-                <td>
-                    <table>
-                        <td>  
-                            <input type="radio" name="checkpoints" id="create" class="button-box" value="create" />
-                            <label for="create">Create custom</label>
-                        </td>
-                        <td>      
-                            <input type="radio" name="checkpoints" id="delete" class="button-box" value="delete" />
-                            <label for="delete">Delete custom</label>
-                        </td>
                     </table>
                 </td>
             </tr>
@@ -156,107 +86,38 @@
     {% if session_tanks|length > 0 %}
     
     <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">
-        <div style="padding-left: 40px; padding-right: 40px;">
-            <div>
-                <!--barchart 1-->
-                <canvas id="BarChart_dmgc" width="900" height="250"></canvas>
-            </div>
-            <div>
-                <!--barchart 2-->
-                <canvas id="BarChart_exp" width="900" height="250"></canvas>
-            </div> 
-        </div>
-        <script>
-            new Chart(document.getElementById("BarChart_dmgc"), { 
-                type: 'bar', 
-                data: {
-                    labels: [{% for tank in session_tanks %}"{{ tank['tank_name']|safe }}",{% endfor %}], 
-                    datasets: [{
-                        label: "Session",
-                        backgroundColor: 'hsla(195, 25%, 63%, 0.4)', 
-                        borderColor: 'hsl(195, 25%, 63%)', 
-                        borderWidth: 1,
-                        data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['dmgc_session']) }},{% endfor %}]
-                    },  
-                    {
-                        label: "All time", 
-                        backgroundColor: 'hsla(0, 0%, 80%, 0.4)', 
-                        borderColor: 'hsl(0, 0%, 80%)', 
-                        borderWidth: 1, 
-                        data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['dmgc_all']) }},{% endfor %}], 
-                    }] 
-                },
-                options:  {
-                    stacked: true,
-                    legend: {
-                        display: false
-                    },
-                    title: {
-                        display: true,
-                        text: "Average Damage"
-                    }
-                }
-            });
-            new Chart(document.getElementById("BarChart_exp"), { 
-                type: 'bar', 
-                data: {
-                    labels: [{% for tank in session_tanks %}"{{ tank['tank_name']|safe }}",{% endfor %}], 
-                    datasets: [{
-                        label: "Session",
-                        backgroundColor: 'hsla(195, 25%, 63%, 0.4)', 
-                        borderColor: 'hsl(195, 25%, 63%)', 
-                        borderWidth: 1,
-                        data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['exp_session']) }},{% endfor %}]
-                    },  
-                    {
-                        label: "All time", 
-                        backgroundColor: 'hsla(0, 0%, 80%, 0.4)', 
-                        borderColor: 'hsl(0, 0%, 80%)', 
-                        borderWidth: 1, 
-                        data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['exp_all']) }},{% endfor %}], 
-                    }] 
-                },
-                options:  {
-                    stacked: true,
-                    legend: {
-                        display: false
-                    },
-                    title: {
-                        display: true,
-                        text: "Average Experience"
-                    }
-                }
-            });
-        </script>
-    </section>
-    
-    {% endif %}
-    
-    <br>
-    
-    <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">
-        <div style="padding-left: 40px; padding-right: 40px;">
-            <ul class="tab">
+        <div style="padding-left: 40px; padding-right: 40px; display: flex;">
+            <nav class="sidenav">
+                <div>
+                    <h4 style="text-align: center; padding: 10px;">Tanks</h4>
+                </div>
+                    
+                <a href="javascript:void(0)" class="tablinks" onclick="openTab(event, 'overview'); ChartOverview();">Overview</a>
+                    
                 {% for tank in session_tanks %}
                 {% set id = tank['tank_id'] %}
-                <li>
-                    <a href="javascript:void(0)" class="tablinks" onclick="openCity(event, '{{ id }}'); Chart{{ id }}();">
-                        {{ tank['tank_name']|safe }}
-                    </a>
-                </li>
+                <a href="javascript:void(0)" class="tablinks" onclick="openTab(event, '{{ id }}'); Chart{{ id }}();">
+                {{ tank['tank_name']|safe }}
+                </a>
                 {% endfor %}
-            </ul>
-            
-            {% for tank in session_tanks %}
-            {% set id = tank['tank_id'] %}
-            <div id="{{ id }}" class="tabcontent">
-                <h3>{{ tank['tank_name'] }} Battles: {{ tank['battles_session'] }} Wins: {{ tank['wins_session'] }}</h3>
-                <div style="display: flex; justify-content: center; align-items: center;">
-                    <div style="width: 50%">
-                        <canvas id="canvas{{ id }}" width="200" height="200"></canvas>
-                    </div>
-                    <div style="width: 50%">
-                        <table class="minitable">
+                    
+            </nav>
+                
+                <div id="overview" class="tabcontent" style="display:none">
+                    <h2>Overview</h2>
+                    <canvas id="BarChart_dmgc" width="500" height="200"></canvas>
+                </div>
+                
+                {% for tank in session_tanks %}
+                {% set id = tank['tank_id'] %}
+                <div id="{{ id }}" class="tabcontent" style="display:none">
+                    <h2>{{ tank['tank_name'] }} Battles: {{ tank['battles_session'] }} Wins: {{ tank['wins_session'] }}</h2>
+                    <div style="display: flex; justify-content: center; align-items: center;">
+                        <div style="width: 50%">
+                            <canvas id="canvas{{ id }}" width="200" height="200"></canvas>
+                        </div>
+                        <div style="width: 50%">
+                            <table class="minitable">
                             <tr>
                                 <th></th>
                                 <th>Session</th>
@@ -298,12 +159,49 @@
                                 <td>{{ '{:0.0f}'.format(tank['dpm_all']) }}</td>
                             </tr>
                         </table>
+                        </div>
                     </div>
                 </div>
-            </div>
-            {% endfor %}
+                {% endfor %}
+            
         </div>
+        
+            
         <script>
+            
+            function ChartOverview()  {
+                new Chart(document.getElementById("BarChart_dmgc"), { 
+                    type: 'bar', 
+                    data: {
+                        labels: [{% for tank in session_tanks %}"{{ tank['tank_name']|safe }}",{% endfor %}], 
+                        datasets: [{
+                            label: "Session",
+                            backgroundColor: 'hsla(195, 25%, 63%, 0.4)', 
+                            borderColor: 'hsl(195, 25%, 63%)', 
+                            borderWidth: 1,
+                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['dmgc_session']) }},{% endfor %}]
+                        },  
+                        {
+                            label: "All time", 
+                            backgroundColor: 'hsla(0, 0%, 80%, 0.4)', 
+                            borderColor: 'hsl(0, 0%, 80%)', 
+                            borderWidth: 1, 
+                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['dmgc_all']) }},{% endfor %}], 
+                        }] 
+                    },
+                    options:  {
+                        stacked: true,
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: "Average Damage"
+                        }
+                    }
+                })
+            };
+            
             {% for tank in session_tanks %}
             {% set id = tank['tank_id'] %}
             function Chart{{ id }}() { 
@@ -312,7 +210,7 @@
                     data: { 
                         labels: {{ radar_names|safe }}, 
                         datasets: [ { 
-                            label: "Session",
+                            label: "Selected period",
                             backgroundColor: "hsla(0, 35%, 63%, 0.2)", 
                             borderColor: "hsl(0, 35%, 63%)", 
                             pointBackgroundColor: "hsl(0, 35%, 63%)", 
@@ -341,9 +239,13 @@
                 })
             };
             {% endfor %}
+            
         </script>
+    
     </section>
-
+    
+    {% endif %}
+    
     <br> 
     
 </form>

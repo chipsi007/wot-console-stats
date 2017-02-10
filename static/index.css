@@ -188,6 +188,29 @@ header > div > ul > li > .current   {
 }
 
 
+/*minitables*/
+.minitable  {
+    margin: 0 auto;
+    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+    color: #555;
+    font-size: 13px;
+    table-layout: fixed;
+    line-height: 25px;
+    width: 75%;
+}
+.minitable th  {
+    background: #cee0e6;
+}
+.minitable td  {
+    background: #F2F2F2;
+}
+.minitable td:hover, .minitable th:hover {
+    color: #8caab4;
+    background: #e6eff2;
+    text-decoration: none
+}
+
+
 /*form-table*/
 .form-table {
     max-width: 1164px; 
@@ -236,6 +259,39 @@ header > div > ul > li > .current   {
 }
 input:checked + label, input:checked + label:hover {
   background-color: #cee0e6;
+}
+
+
+/*side navigation*/
+.sidenav  {
+    height: 100%;
+    width: 16%;
+    background-color: #fff;
+    overflow: auto;
+    color: #000;
+    background-color: #f1f1f1;
+}
+.sidenav a  {
+    display:block;
+    color: #555; 
+    padding: 10px;
+    padding-left: 15px;
+}
+.sidenav a:hover  {
+    text-decoration: none;
+    background: #e6eff2;
+    color: #8caab4;
+}
+.sidenav .active  {
+    background: #cee0e6;
+    color: #8caab4;
+}
+.sidenav .active:hover  {
+    background: #cee0e6;
+}  
+.tabcontent {
+    width: 80%;
+    padding: 13px;
 }
 
 

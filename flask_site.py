@@ -94,7 +94,7 @@ class userdata_history(db.Model):
     @classmethod
     def delete_expired(cls):
         #Setting the period.
-        period = 8 * 24 * 60 * 60
+        period = 11 * 24 * 60 * 60
         #Calling timestamp.
         timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
         #Searching for all entries which are older than 'period'.
@@ -157,39 +157,6 @@ class usercache(db.Model):
         db.session.commit()
         return
 usercache.delete_all_cache()
-class usersessions(db.Model):
-    __tablename__ = "sessions"
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.Integer)
-    account_id = db.Column(db.Integer)
-    nickname = db.Column(db.String(100))
-    server = db.Column(db.String(20))
-    player_data = db.Column(db.PickleType)
-
-    @classmethod
-    def delete_expired(cls):
-        #Setting the period.
-        period = 24 * 60 * 60
-        #Calling timestamp.
-        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-        #Searching for all entries which are older than 'period'.
-        search = cls.query.filter(cls.timestamp <= timestamp-period).all()
-        #If found anything, delete all.
-        if len(search) > 0:
-            for row in search:
-                db.session.delete(row)
-            db.session.commit()
-        return
-
-    @classmethod
-    def delete_previous_records(cls, nickname, server):
-        search = cls.query.filter_by(nickname=nickname, server=server).all()
-        if len(search) > 0:
-            for row in search:
-                db.session.delete(row)
-            db.session.commit()
-        return
-usersessions.delete_expired()
 #Class to handle user data.
 class user_data:
     def __init__(self, server, nickname):
@@ -878,12 +845,15 @@ def session_tracker():
     #Setting defaults.
     return_empty = True
     button = '<strong>Submit</strong>'
-    history_checkpoints =  [['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0],
-                            ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0]]
+    history_checkpoints =  [['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0],
+                            ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0]]
 
     if request.method == "POST":
+        form.server, form.nickname = request.form["server"], request.form["nickname"]
+        form.request = request.form['checkpoints'] if 'checkpoints' in request.form else ''
         return_empty = False
-        form.server, form.nickname, form.request = request.form["server"], request.form["nickname"], request.form["checkpoints"]
+
+
 
     #Initiating 'session_tr'.
     user = session_tr(form.server, form.nickname, form.request)
@@ -902,7 +872,7 @@ def session_tracker():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to <b>submit</b> again.'
+            button = user.message + ' Click here to <b>resubmit</b>.'
         #SQL operations if all conditions passed.
         if user.status == 'ok':
             #Delete all expired records from SQL 'cache_user_data'.
@@ -918,9 +888,6 @@ def session_tracker():
         user.nickname = current_user.nickname
         user.account_id = current_user.account_id
 
-    #Deleting expired.
-    if return_empty == False:
-        usersessions.delete_expired()
 
     #Calling all 'userdata_history' datapoints to show in the form.
     if user.nickname != '':
@@ -929,8 +896,14 @@ def session_tracker():
             for row in search:
                 timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
                 #Passing data points that are older than today.
-                if 8 > timedelta.days > 0:
+                if 11 > timedelta.days > 0:
                     history_checkpoints[int(timedelta.days)-1] = [timedelta.days, str(timedelta.days) + 'd', row.timestamp]
+
+    #If user is found, but the checkpoint is not selected.
+    if return_empty == False and user.request == '':
+        return_empty = True
+        button = 'Found data for <b>' + user.nickname + '</b>, please select the checkpoint. If no chekpoints available, come tomorrow to see you statistics.'
+
 
     #Placeholders.
     session_tanks = []
@@ -939,26 +912,8 @@ def session_tracker():
         session_tanks = []
         button = 'Must be an error. Please reload the page.'
 
-    #Request to delete.
-    if return_empty == False and user.request == 'delete':
-        #Deleting all previous records.
-        usersessions.delete_previous_records(user.nickname, user.server)
-        button = 'Deleted custom snapshot for <b>'+str(user.nickname)+'</b>'
-        return_empty = True
-
-    #Request to create.
-    if return_empty == False and user.request == 'create':
-        #Adding new entry.
-        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-        action = usersessions(timestamp=timestamp, account_id=user.account_id, nickname=user.nickname, server=user.server, player_data=pickle.dumps(user.player_data))
-        db.session.add(action)
-        db.session.commit()
-        #Message.
-        button = 'Created custom snapshot for <b>'+str(user.nickname)+'</b> &nbsp; Come back to check your stats after the game!'
-        return_empty = True
-
     #Request to compare with history point.
-    if return_empty == False and user.request not in ['custom', 'delete', 'create']:
+    if return_empty == False:
         timestamp_to_search = None
         for row in  history_checkpoints:
             if user.request == str(row[0]):
@@ -970,20 +925,7 @@ def session_tracker():
         else:
             search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server, timestamp=timestamp_to_search).first()
             user.snapshot_data = pickle.loads(search.player_data)
-            button = 'Viewing last ' + str(user.request) + ' day(s) as the session.'
-
-    #Request to compare with custom snapshot.
-    if return_empty == False and user.request == 'custom':
-        search = usersessions.query.filter_by(nickname=user.nickname, server=user.server).first()
-        if search == None:
-            button = 'No custom snapshot found for selected user.'
-            return_empty == True
-        elif pickle.loads(search.player_data) == user.player_data:
-            button = 'There is a custom snapshot for <b>'+str(user.nickname)+'</b> But no changes were found!'
-            return_empty == True
-        else:
-            user.snapshot_data = pickle.loads(search.player_data)
-            button = 'Viewing custom snapshot for <b>'+str(user.nickname)+'</b> !'
+            button = 'Viewing last ' + str(user.request) + ' day(s) of player statistics.'
 
     #Calculations.
     if return_empty == False:
@@ -1083,8 +1025,6 @@ def session_tracker():
 
                     temp_dict['dpm_session'] = s_tank['damage_dealt'] / s_tank['battle_life_time']*60
                     temp_dict['dpm_all'] = a_tank['damage_dealt'] / a_tank['battle_life_time']*60
-
-
 
                     #Appending dictionary.
                     session_tanks.append(temp_dict)
