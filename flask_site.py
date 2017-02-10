@@ -14,6 +14,8 @@ with open('references/percentiles.json','r') as infile:
     percentiles = json.load(infile)
 with open('references/percentiles_generic.json','r') as infile:
     percentiles_generic = json.load(infile)
+with open('references/wn8pc.json','r') as infile:
+    WN8_dict = json.load(infile)
 
 
 app = Flask(__name__)
@@ -94,7 +96,7 @@ class userdata_history(db.Model):
     @classmethod
     def delete_expired(cls):
         #Setting the period.
-        period = 11 * 24 * 60 * 60
+        period = 8 * 24 * 60 * 60
         #Calling timestamp.
         timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
         #Searching for all entries which are older than 'period'.
@@ -272,6 +274,43 @@ class user_data:
                            server=self.server, player_data=pickle.dumps(self.player_data))
         db.session.add(action)
         db.session.commit()
+
+    def calculate_wn8(self, tank_data, WN8_dict):
+        #Loading expected values
+        exp_values = {}
+        for item in WN8_dict['data']:
+            if tank_data['tank_id'] == item['IDNum']:
+                exp_values = item
+
+        #If there are no expected values in the table, return 0
+        if len(exp_values) == 0:
+            WN8 = 0
+            return(WN8)
+
+        #step 0 - assigning the variables
+        expDmg      = exp_values['expDamage']
+        expSpot     = exp_values['expSpot']
+        expFrag     = exp_values['expFrag']
+        expDef      = exp_values['expDef']
+        expWinRate  = exp_values['expWinRate']
+
+        #step 1
+        rDAMAGE = tank_data['damage_dealt']             /   tank_data['battles']     / expDmg
+        rSPOT   = tank_data['spotted']                  /   tank_data['battles']     / expSpot
+        rFRAG   = tank_data['frags']                    /   tank_data['battles']     / expFrag
+        rDEF    = tank_data['dropped_capture_points']   /   tank_data['battles']     / expDef
+        rWIN    = tank_data['wins']                     /   tank_data['battles']*100 / expWinRate
+
+        #step 2
+        rWINc    = max(0,                     (rWIN    - 0.71) / (1 - 0.71) )
+        rDAMAGEc = max(0,                     (rDAMAGE - 0.22) / (1 - 0.22) )
+        rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG   - 0.12) / (1 - 0.12)))
+        rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT   - 0.38) / (1 - 0.38)))
+        rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF    - 0.10) / (1 - 0.10)))
+
+        #step 3
+        WN8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
+        return(WN8)
 
     def extract_needed_data(self, checkboxes, checkbox_input):
         extracted_data = []
@@ -833,6 +872,14 @@ def session_tracker():
             user_data.__init__(self, server, nickname)
             self.request = selected_radio
 
+        def convert_seconds_to_str(self, seconds):
+            if seconds >= 60:
+                m = int(seconds/60)
+                s = int(seconds - m * 60)
+            else:
+                return(str(int(s)) + 's')
+            return(str(m) + 'm ' + str(s) + 's')
+
     title = 'Session tracker'
 
     #Requesting cookies.
@@ -845,8 +892,7 @@ def session_tracker():
     #Setting defaults.
     return_empty = True
     button = '<strong>Submit</strong>'
-    history_checkpoints =  [['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0],
-                            ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0]]
+    history_checkpoints =  [['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0]]
 
     if request.method == "POST":
         form.server, form.nickname = request.form["server"], request.form["nickname"]
@@ -854,15 +900,14 @@ def session_tracker():
         return_empty = False
 
 
-
     #Initiating 'session_tr'.
     user = session_tr(form.server, form.nickname, form.request)
+
 
     #Checking if user in SQL 'cache_user_data'.
     current_user = None
     if return_empty == False:
         current_user = usercache.request_cache(user.nickname, user.server)
-
     #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
     if current_user == None and return_empty == False:
         user.search_by_nickname()
@@ -881,7 +926,6 @@ def session_tracker():
             userlog.add_entry(user.nickname, user.server)
             user.save_to_cache()
             userdata_history.add_or_update(user.nickname, user.server, user.account_id, pickle.dumps(user.player_data))
-
     #If recent data found in SQL 'cache_user_data'.
     if current_user != None and return_empty == False:
         user.player_data = pickle.loads(current_user.player_data)
@@ -896,13 +940,13 @@ def session_tracker():
             for row in search:
                 timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
                 #Passing data points that are older than today.
-                if 11 > timedelta.days > 0:
+                if 8 > timedelta.days > 0:
                     history_checkpoints[int(timedelta.days)-1] = [timedelta.days, str(timedelta.days) + 'd', row.timestamp]
 
     #If user is found, but the checkpoint is not selected.
     if return_empty == False and user.request == '':
         return_empty = True
-        button = 'Found data for <b>' + user.nickname + '</b>, please select the checkpoint. If no chekpoints available, come tomorrow to see you statistics.'
+        button = 'Found data for <b>' + user.nickname + '</b>, please select the checkpoint. If no checkpoints available, come tomorrow to see your statistics.'
 
 
     #Placeholders.
@@ -1008,23 +1052,18 @@ def session_tracker():
                         temp_dict['tank_name'] = tanks_dict[str(temp_dict['tank_id'])]
                     else:
                         temp_dict['tank_name'] = 'Unknown'
+
                     temp_dict['battles_session'] = s_tank['battles']
                     temp_dict['wins_session'] = s_tank['wins']
 
-                    def convert_seconds_to_str(seconds):
-                        if seconds >= 60:
-                            m = int(seconds/60)
-                            s = int(seconds - m * 60)
-                        else:
-                            return(str(int(s)) + 's')
-                        return(str(m) + 'm ' + str(s) + 's')
-
-                    temp_dict['lifetime_session'] = convert_seconds_to_str(s_tank['battle_life_time']/s_tank['battles'])
-                    temp_dict['lifetime_all'] = convert_seconds_to_str(a_tank['battle_life_time']/a_tank['battles'])
-
+                    temp_dict['lifetime_session'] = user.convert_seconds_to_str(s_tank['battle_life_time']/s_tank['battles'])
+                    temp_dict['lifetime_all'] = user.convert_seconds_to_str(a_tank['battle_life_time']/a_tank['battles'])
 
                     temp_dict['dpm_session'] = s_tank['damage_dealt'] / s_tank['battle_life_time']*60
                     temp_dict['dpm_all'] = a_tank['damage_dealt'] / a_tank['battle_life_time']*60
+
+                    temp_dict['wn8_session'] = user.calculate_wn8(s_tank, WN8_dict)
+                    temp_dict['wn8_all'] = user.calculate_wn8(a_tank, WN8_dict)
 
                     #Appending dictionary.
                     session_tanks.append(temp_dict)

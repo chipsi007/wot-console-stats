@@ -36,9 +36,13 @@ Line charts in 'Player Performance' show change in tiers or classes I didn't pla
 
 Most likely it's something related to WG changing player data.
 
+A few of my tanks show 0 WN8.
+
+That's okay for console-only tanks. WNeffeciency.net doesn't provide expected stats for consoles.
+
 How long does the website keep the data?
 
-I haven't figured out this one yet. Currently no more than number of fields in 'Session Tracker'.
+I haven't figured out this one yet. Currently no more days than number of fields in 'Session Tracker'.
 
 Something doesn't seem to work properly and I feel helpful.
 

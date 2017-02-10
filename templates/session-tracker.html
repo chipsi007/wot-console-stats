@@ -92,7 +92,7 @@
                     <h4 style="text-align: center; padding: 10px;">Tanks</h4>
                 </div>
                     
-                <a href="javascript:void(0)" class="tablinks" onclick="openTab(event, 'overview'); ChartOverview();">Overview</a>
+                <a href="javascript:void(0)" class="tablinks" onclick="openTab(event, 'overview'); ChartOverview(); ChartOverview2();">Overview</a>
                     
                 {% for tank in session_tanks %}
                 {% set id = tank['tank_id'] %}
@@ -104,69 +104,78 @@
             </nav>
                 
                 <div id="overview" class="tabcontent" style="display:none">
-                    <h2>Overview</h2>
-                    <canvas id="BarChart_dmgc" width="500" height="200"></canvas>
+                    <canvas id="BarChart_dmgc" width="500" height="150"></canvas>
+                    <canvas id="BarChart_wn8" width="500" height="150"></canvas>
                 </div>
                 
                 {% for tank in session_tanks %}
                 {% set id = tank['tank_id'] %}
                 <div id="{{ id }}" class="tabcontent" style="display:none">
-                    <h2>{{ tank['tank_name'] }} Battles: {{ tank['battles_session'] }} Wins: {{ tank['wins_session'] }}</h2>
                     <div style="display: flex; justify-content: center; align-items: center;">
-                        <div style="width: 50%">
+                        
+                        <div style="width: 60%; padding: 15px;">
                             <canvas id="canvas{{ id }}" width="200" height="200"></canvas>
                         </div>
-                        <div style="width: 50%">
-                            <table class="minitable">
-                            <tr>
-                                <th></th>
-                                <th>Session</th>
-                                <th>All time</th>
-                            </tr>
-                            <tr>
-                                <td>Accuracy</td>
-                                <td>{{ '{:0.0f} %'.format(tank['acc_session']) }}</td>
-                                <td>{{ '{:0.0f} %'.format(tank['acc_all']) }}</td>
-                            </tr>
-                            <tr>
-                                <td>Damage Caused</td>
-                                <td>{{ '{:0.0f}'.format(tank['dmgc_session']) }}</td>
-                                <td>{{ '{:0.0f}'.format(tank['dmgc_all']) }}</td>
-                            </tr>
-                            <tr>
-                                <td>Radio Assist</td>
-                                <td>{{ '{:0.0f}'.format(tank['rass_session']) }}</td>
-                                <td>{{ '{:0.0f}'.format(tank['rass_all']) }}</td>
-                            </tr>
-                            <tr>
-                                <td>Experience</td>
-                                <td>{{ '{:0.0f}'.format(tank['exp_session']) }}</td>
-                                <td>{{ '{:0.0f}'.format(tank['exp_all']) }}</td>
-                            </tr>
-                            <tr>
-                                <td>Damage Received</td>
-                                <td>{{ '{:0.0f}'.format(tank['dmgr_session']) }}</td>
-                                <td>{{ '{:0.0f}'.format(tank['dmgr_all']) }}</td>
-                            </tr>
-                            <tr>
-                                <td>Average Lifetime</td>
-                                <td>{{ tank['lifetime_session'] }}</td>
-                                <td>{{ tank['lifetime_all'] }}</td>
-                            </tr>
-                            <tr>
-                                <td>Average DPM</td>
-                                <td>{{ '{:0.0f}'.format(tank['dpm_session']) }}</td>
-                                <td>{{ '{:0.0f}'.format(tank['dpm_all']) }}</td>
-                            </tr>
-                        </table>
-                        </div>
+                        <div style="width: 40%;">
+                            <table class="minitable" cellpadding="10">
+                                <tr>
+                                    <td colspan="3" style="background: #cee0e6">
+                                        {{ tank['tank_name'] }} Battles: {{ tank['battles_session'] }}  Wins: {{ tank['wins_session'] }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Averages</td>
+                                    <td>Session</td>
+                                    <td>All time</td>
+                                </tr>
+                                <tr>
+                                    <td>Accuracy</td>
+                                    <td>{{ '{:0.0f} %'.format(tank['acc_session']) }}</td>
+                                    <td>{{ '{:0.0f} %'.format(tank['acc_all']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Damage Caused</td>
+                                    <td>{{ '{:0.0f}'.format(tank['dmgc_session']) }}</td>
+                                    <td>{{ '{:0.0f}'.format(tank['dmgc_all']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Radio Assist</td>
+                                    <td>{{ '{:0.0f}'.format(tank['rass_session']) }}</td>
+                                    <td>{{ '{:0.0f}'.format(tank['rass_all']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Experience</td>
+                                    <td>{{ '{:0.0f}'.format(tank['exp_session']) }}</td>
+                                    <td>{{ '{:0.0f}'.format(tank['exp_all']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Damage Received</td>
+                                    <td>{{ '{:0.0f}'.format(tank['dmgr_session']) }}</td>
+                                    <td>{{ '{:0.0f}'.format(tank['dmgr_all']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Lifetime</td>
+                                    <td>{{ tank['lifetime_session'] }}</td>
+                                    <td>{{ tank['lifetime_all'] }}</td>
+                                </tr>
+                                <tr>
+                                    <td>DPM</td>
+                                    <td>{{ '{:0.0f}'.format(tank['dpm_session']) }}</td>
+                                    <td>{{ '{:0.0f}'.format(tank['dpm_all']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td>WN8</td>
+                                    <td>{{ '{:0.0f}'.format(tank['wn8_session']) }}</td>
+                                    <td>{{ '{:0.0f}'.format(tank['wn8_all']) }}</td>
+                                </tr>
+                            </table>
+                        </div>  
                     </div>
                 </div>
                 {% endfor %}
             
         </div>
-        
-            
+          
         <script>
             
             function ChartOverview()  {
@@ -201,7 +210,39 @@
                     }
                 })
             };
-            
+            function ChartOverview2()  {
+                new Chart(document.getElementById("BarChart_wn8"), { 
+                    type: 'bar', 
+                    data: {
+                        labels: [{% for tank in session_tanks %}"{{ tank['tank_name']|safe }}",{% endfor %}], 
+                        datasets: [{
+                            label: "Selected Period",
+                            backgroundColor: 'hsla(195, 25%, 63%, 0.4)', 
+                            borderColor: 'hsl(195, 25%, 63%)', 
+                            borderWidth: 1,
+                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['wn8_session']) }},{% endfor %}]
+                        },  
+                        {
+                            label: "All time", 
+                            backgroundColor: 'hsla(0, 0%, 80%, 0.4)', 
+                            borderColor: 'hsl(0, 0%, 80%)', 
+                            borderWidth: 1, 
+                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['wn8_all']) }},{% endfor %}], 
+                        }] 
+                    },
+                    options:  {
+                        stacked: true,
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: "WN8"
+                        }
+                    }
+                })
+            };
+          
             {% for tank in session_tanks %}
             {% set id = tank['tank_id'] %}
             function Chart{{ id }}() { 
@@ -239,6 +280,12 @@
                 })
             };
             {% endfor %}
+            
+            window.onload = function() {
+                openTab(event, 'overview');
+                ChartOverview();
+                ChartOverview2();
+            };
             
         </script>
     
