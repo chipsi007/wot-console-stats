@@ -1,0 +1,321 @@
+{% extends "index.html" %} {% block content %}
+
+<form action="." method="POST">
+
+    <section class="form-table">
+        <table class="wrapper">
+            <tr>
+                <td>
+                    <table>
+                        <tr>
+                            <td colspan="2">
+                                <input name="nickname" type="text" value="{{ nickname }}" style="width:95%;" placeholder="Enter your nickname" />
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="xbox" class="button-box" value="xbox" {{ 'checked' if server=='xbox' }}/>
+                                <label for="xbox">XBOX</label>
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="ps4" class="button-box" value="ps4" {{ 'checked' if server=='ps4' }}/>
+                                <label for="ps4">PS4</label>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table>
+                        <tr>
+                            {% for i in range(0,15) %}
+                            <td>
+                                <input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" class="button-box" value="{{ checkboxes_filter[i][1] }}" {{ ' checked' if checkboxes_filter[i][2]=='checked' }} />
+                                <label for="{{ checkboxes_filter[i][1] }}">{{ checkboxes_filter[i][0] }}</label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+        </table>
+    </section>
+
+    <br> 
+    
+    <section class="tabs">
+        <div>
+            <ul>
+                <li><button type="submit" class="current"> {{ button|safe }} </button></li>
+            </ul>
+        </div>
+    </section>
+    
+    <br>
+    
+    {% if RadCh|length > 0 %}
+    <section style="max-width: 1164px; min-width: 1024px; margin: 0 auto;">
+        <div style="padding-left: 40px; padding-right: 40px; ">
+            
+            <!--navigation bar -->
+            <div class="top-nav">
+                <a href="javascript:void(0)" class="top-nav-link" onclick="topMenu(event, 'total_percentiles'); RadChF(); TotPerc(); TotWN8();">
+                  Total Percentiles
+                </a>
+                <a href="javascript:void(0)" class="top-nav-link" onclick="topMenu(event, 'day_to_day_percentiles'); dtdPerc();">
+                  Day-to-day percentiles
+                </a>
+                <a href="javascript:void(0)" class="top-nav-link" onclick="topMenu(event, 'wn8'); WN8Ch();">
+                  WN8
+                </a>
+            </div>
+            
+            <div id="total_percentiles" class="top-nav-content" style="display:none">
+                <div style="display: flex; justify-content: top;">
+                    <div style="width: 50%;">
+                        <canvas id="RadarChart" width="100" height="85"></canvas>
+                    </div>
+                    <div style="width: 50%;">
+                        <canvas id="total_percentile" width="200" height="80"></canvas>
+                        <canvas id="total_wn8" width="200" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="day_to_day_percentiles" class="top-nav-content" style="display:none">
+                <canvas id="day_to_day_perc_chart" width="400" height="150"></canvas>
+            </div>
+
+            <div id="wn8" class="top-nav-content" style="display:none">
+                <canvas id="wn8_chart" width="400" height="150"></canvas>
+            </div>
+                            
+        </div>
+        
+        <script>
+            function RadChF() {
+                new Chart(document.getElementById("RadarChart"), {
+                    type: 'radar',
+                    data:  {
+                        labels: ['Accuracy', 'Damage Caused', 'Radio Assist', 'WinRate', 'Damage Received (inv)'],
+                        datasets: [{
+                            label: 'Last snapshot',
+                            fill: false,
+                            backgroundColor: "hsla(235, 25%, 63%, 0.1)", 
+                            borderColor: "hsl(235, 25%, 63%)", 
+                            pointBackgroundColor: "hsl(235, 25%, 63%)", 
+                            pointBorderColor: "#ffffff", 
+                            pointHoverBackgroundColor: "#ffffff", 
+                            pointHoverBorderColor: "hsl(235, 25%, 63%)", 
+                            data: [{{RadCh['acc']}}, {{RadCh['dmgc']}}, {{RadCh['rass']}}, {{RadCh['wr']}}, {{RadCh['dmgr']}}],
+                        }]
+                    },
+                    options: {
+                        title: {
+                             display: true,
+                             text: 'Player Profile'     
+                        },
+                        scale: {
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        },
+                        legend:  {
+                             display: false
+                        }
+                    }
+                })
+            };
+            function TotPerc() {
+                new Chart(document.getElementById("total_percentile"), {
+                    type: 'line',
+                    data:  {
+                        labels: {{ x_labels|safe }},
+                        datasets: [{
+                            label: 'Total Percentile',
+                            fill: true,
+                            backgroundColor: "hsla(130, 25%, 63%, 0.1)", 
+                            borderColor: "hsl(130, 25%, 63%)", 
+                            pointBackgroundColor: "hsl(130, 25%, 63%)", 
+                            pointBorderColor: "#ffffff", 
+                            pointHoverBackgroundColor: "#ffffff", 
+                            pointHoverBorderColor: "hsl(130, 25%, 63%)", 
+                            data: {{ percentiles_totals }},
+                        }],
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: 'Total Percentile'
+                        },
+                        legend: {
+                            display: false,
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    callback: function(label, index, labels) {
+                                        return Math.round(label*100)/100;
+                                    }
+                                },
+                            }],
+                        },
+                    },
+                })
+            };
+            function TotWN8() {
+                new Chart(document.getElementById("total_wn8"), {
+                    type: 'line',
+                    data:  {
+                        labels: {{ x_labels|safe }},
+                        datasets: [{
+                            label: 'WN8',
+                            fill: true,
+                            backgroundColor: "hsla(200, 25%, 63%, 0.1)", 
+                            borderColor: "hsl(200, 25%, 63%)", 
+                            pointBackgroundColor: "hsl(200, 25%, 63%)", 
+                            pointBorderColor: "#ffffff", 
+                            pointHoverBackgroundColor: "#ffffff", 
+                            pointHoverBorderColor: "hsl(200, 25%, 63%)", 
+                            data: {{ wn8_totals_all }},
+                        }]
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: 'Total WN8'
+                        },
+                        legend: {
+                            display: false
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    callback: function(label, index, labels) {
+                                        return Math.round(label);
+                                    }
+                                }
+                            }]
+                        }
+                    }
+                })
+            };
+            
+            function dtdPerc() {
+                new Chart(document.getElementById("day_to_day_perc_chart"), {
+                    type: 'line',
+                    data:  {
+                        labels: {{ wn8_labels|safe }},
+                        datasets: [{
+                            label: 'Accuracy',
+                            fill: false,
+                            borderColor: 'hsl(0, 25%, 63%)',
+                            backgroundColor: 'hsla(0, 25%, 63%, 0.2)',
+                            pointBorderColor: 'hsl(0, 25%, 63%)',
+                            pointBackgroundColor: 'hsl(0, 25%, 63%)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: [{% for item in percentiles_change %}"{{ item['acc']|safe }}",{% endfor %}],
+                        },{ 
+                            label: 'Damage Caused',
+                            fill: false,
+                            borderColor: 'hsl(228, 25%, 63%)',
+                            backgroundColor: 'hsla(228, 25%, 63%, 0.2)',
+                            pointBorderColor: 'hsl(228, 25%, 63%)',
+                            pointBackgroundColor: 'hsl(228, 25%, 63%)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: [{% for item in percentiles_change %}"{{ item['dmgc']|safe }}",{% endfor %}],
+                        },{ 
+                            label: 'Radio Assist',
+                            fill: false,
+                            borderColor: 'hsl(197, 25%, 63%)',
+                            backgroundColor: 'hsla(197, 25%, 63%, 0.2)',
+                            pointBorderColor: 'hsl(197, 25%, 63%)',
+                            pointBackgroundColor: 'hsl(197, 25%, 63%)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: [{% for item in percentiles_change %}"{{ item['rass']|safe }}",{% endfor %}],
+                        },{ 
+                            label: 'WinRate',
+                            fill: false,
+                            borderColor: 'hsl(127, 25%, 63%)',
+                            backgroundColor: 'hsla(127, 25%, 63%, 0.2)',
+                            pointBorderColor: 'hsl(127, 25%, 63%)',
+                            pointBackgroundColor: 'hsl(127, 25%, 63%)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: [{% for item in percentiles_change %}"{{ item['wr']|safe }}",{% endfor %}],
+                        },{ 
+                            label: 'Damage Received (inv)',
+                            fill: false,
+                            borderColor: 'hsl(60, 25%, 63%)',
+                            backgroundColor: 'hsla(60, 25%, 63%, 0.2)',
+                            pointBorderColor: 'hsl(60, 25%, 63%)',
+                            pointBackgroundColor: 'hsl(60, 25%, 63%)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            data: [{% for item in percentiles_change %}"{{ item['dmgr']|safe }}",{% endfor %}],
+                        }],
+                    },
+                    options: {
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    callback: function(label, index, labels) {
+                                        return label+'%';
+                                    }
+                                },
+                            }],
+                        }
+                    }
+                })
+            };
+            
+            function WN8Ch() {
+                new Chart(document.getElementById("wn8_chart"), {
+                    type: 'line',
+                    data: {
+                        labels: {{ wn8_labels|safe }},
+                        datasets: [
+                            {
+                                label: "WN8 Total",
+                                fill: true,
+                                backgroundColor: "hsla(195, 20%, 63%, 0.1)", 
+                                borderColor: "hsl(195, 20%, 63%)", 
+                                pointBackgroundColor: "hsl(195, 20%, 63%)", 
+                                pointBorderColor: "#ffffff", 
+                                pointHoverBackgroundColor: "#ffffff", 
+                                pointHoverBorderColor: "hsl(195, 20%, 63%)", 
+                                data: {{ wn8_totals }},
+                            },
+                            {
+                                label: "WN8 Daily",
+                                fill: false,
+                                backgroundColor: "hsla(0, 35%, 63%, 0.2)", 
+                                borderColor: "hsl(0, 35%, 63%)", 
+                                pointBackgroundColor: "hsl(0, 35%, 63%)", 
+                                pointBorderColor: "#ffffff", 
+                                pointHoverBackgroundColor: "#ffffff", 
+                                pointHoverBorderColor: "hsl(0, 35%, 63%)", 
+                                data: {{ wn8_change }},
+                            }
+                        ]
+                    },
+                    options: {},
+                })
+            };
+            
+            window.onload = function() {
+                topMenu(event, 'total_percentiles');
+                RadChF();
+                TotPerc();
+                TotWN8();
+            };
+        
+        </script>
+        
+    </section>
+    {% endif %}
+    
+</form>
+
+{% endblock %}
