@@ -14,8 +14,10 @@ with open('references/percentiles.json','r') as infile:
     percentiles = json.load(infile)
 with open('references/percentiles_generic.json','r') as infile:
     percentiles_generic = json.load(infile)
-with open('references/wn8pc.json','r') as infile:
+with open('references/wn8console.json','r') as infile:
     WN8_dict = json.load(infile)
+with open('references/wn8pc_adj.json','r') as infile:
+    wn8pc = json.load(infile)
 
 
 app = Flask(__name__)
@@ -279,7 +281,7 @@ class user_data:
         #Loading expected values
         exp_values = {}
         for item in WN8_dict['data']:
-            if tank_data['tank_id'] == item['IDNum']:
+            if len(item) > 0 and tank_data['tank_id'] == item['IDNum']:
                 exp_values = item
 
         #If there are no expected values in the table, return 0
@@ -333,8 +335,10 @@ class user_data:
                 temp_list.append(vehicle['wins']/vehicle['battles'])
             if 'battles' in checkbox_input:
                 temp_list.append(vehicle['battles'])
-            if 'survived' in checkbox_input:
-                temp_list.append(vehicle['survived_battles']/vehicle['battles'])
+            if 'wn8' in checkbox_input:
+                temp_list.append(self.calculate_wn8(vehicle, WN8_dict))
+            #if 'survived' in checkbox_input:
+            #    temp_list.append(vehicle['survived_battles']/vehicle['battles'])
             if 'avg_dmg' in checkbox_input:
                 temp_list.append(vehicle['damage_dealt']/vehicle['battles'])
             if 'avg_frags' in checkbox_input:
@@ -378,11 +382,13 @@ class user_data:
                     temp_list.append(vehicle['no_damage_direct_hits_received'] / vehicle['direct_hits_received'])
                 else:
                     temp_list.append(0)
-            if 'he_received' in checkbox_input:
-                if vehicle['direct_hits_received'] > 0:
-                    temp_list.append(vehicle['explosion_hits_received'] / vehicle['direct_hits_received'])
-                else:
-                    temp_list.append(0)
+            if 'wn8pc' in checkbox_input:
+                temp_list.append(self.calculate_wn8(vehicle, wn8pc))
+            #if 'he_received' in checkbox_input:
+            #    if vehicle['direct_hits_received'] > 0:
+            #        temp_list.append(vehicle['explosion_hits_received'] / vehicle['direct_hits_received'])
+            #    else:
+            #        temp_list.append(0)
             if 'total_time' in checkbox_input:
                 temp_list.append(vehicle['battle_life_time'] / 60)
             if 'avg_lifetime' in checkbox_input:
@@ -488,6 +494,26 @@ class user_data:
                         temp_list.append(str(int(round(hours, 0)))+'h ago')
                     else:
                         temp_list.append(str(int(round(minutes, 0)))+'min ago')
+            #WN8
+            elif column[0] == 'wn8' or column[0] == 'wn8pc':
+                color_scale = [[-999, 299, 'DARKRED'],
+                             [300,449, 'ORANGERED'],
+                             [450,649, 'DARKORANGE'],
+                             [650,899, 'GOLD'],
+                             [900,1199, 'YELLOWGREEN'],
+                             [1200,1599, 'LIME'],
+                             [1600,1999, 'DEEPSKYBLUE'],
+                             [2000,2449, 'DODGERBLUE'],
+                             [2450,2899, 'MEDIUMSLATEBLUE'],
+                             [2900,99999, 'REBECCAPURPLE']]
+                for item in column[1:]:
+                    wn8 = int(round(item, 0))
+                    color = 'BLACK'
+                    for value in color_scale:
+                        if value[0] <= item < value[1]:
+                            color = value[2]
+                    string = "%04d" % (wn8,) + ' ' + '<font color=\'' + color + '\'>&#9679;</font>'
+                    temp_list.append(string)
             #If not processed above, return without changes.
             else:
                 for item in column[1:]:
@@ -539,28 +565,30 @@ class form_data:
         self.checkboxes_input = ['wr', 'exp_perc', 'avg_lifetime']
         self.filter_input = []
         self.checkboxes = [['WinRate', 'wr', ''],
-                          ['Battles', 'battles', ''],
-                          ['Survived', 'survived', ''],
+                           ['Battles', 'battles', ''],
+                           ['WN8', 'wn8', ''],
+                           #['Survived', 'survived', ''],
 
-                          ['Avg Dmg', 'avg_dmg', ''],
-                          ['Avg Frags', 'avg_frags', ''],
-                          ['Avg Exp', 'avg_exp', ''],
+                           ['Avg Dmg', 'avg_dmg', ''],
+                           ['Avg Frags', 'avg_frags', ''],
+                           ['Avg Exp', 'avg_exp', ''],
 
-                          ['Avg DPM', 'avg_dpm', ''],
-                          ['Avg FPM', 'avg_fpm', ''],
-                          ['Avg EPM', 'avg_epm', ''],
+                           ['Avg DPM', 'avg_dpm', ''],
+                           ['Avg FPM', 'avg_fpm', ''],
+                           ['Avg EPM', 'avg_epm', ''],
 
-                          ['Dmg Percentile', 'dmg_perc', ''],
-                          ['WR Percentile', 'wr_perc', ''],
-                          ['Exp Percentile', 'exp_perc', ''],
+                           ['Dmg Percentile', 'dmg_perc', ''],
+                           ['WR Percentile', 'wr_perc', ''],
+                           ['Exp Percentile', 'exp_perc', ''],
 
-                          ['Penetrated/Hits caused', 'pen_hits_ratio', ''],
-                          ['Bounced/Hits received', 'bounced_hits_r', ''],
-                          ['HE hits/Hits received', 'he_received', ''],
+                           ['Penetrated/Hits caused', 'pen_hits_ratio', ''],
+                           ['Bounced/Hits received', 'bounced_hits_r', ''],
+                           ['WN8 PC', 'wn8pc', ''],
+                           #['HE hits/Hits received', 'he_received', ''],
 
-                          ['Total Lifetime', 'total_time', ''],
-                          ['Average Lifetime', 'avg_lifetime', ''],
-                          ['Last battle time', 'last_time', '']]
+                           ['Total Lifetime', 'total_time', ''],
+                           ['Average Lifetime', 'avg_lifetime', ''],
+                           ['Last battle time', 'last_time', '']]
         self.checkboxes_filter = [['T7', '7', ''],
                                   ['T4', '4', ''],
                                   ['T1', '1', ''],

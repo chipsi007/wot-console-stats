@@ -90,7 +90,7 @@
                     <tr>
                         <td style="width: {{ col_len }} %; font-weight: bold; text-align: left;">&nbsp{{ row[0] }}</td>
                         {% for cell in row[1:] %}
-                        <td>{{ cell }}</td>
+                        <td>{{ cell|safe }}</td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
