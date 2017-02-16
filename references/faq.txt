@@ -1,10 +1,7 @@
-What's the point of using percentiles instead of WN8 or other ratings?
+How were WN8  and percentiles calculated?
 
-WN8 rating is based on PC expected statistics table. Most of the sites visualizing worldoftanks statistics for consoles use PC table even though WTE100, BatChat and many other tanks are different from the PC version of the game. Additionally WN8 formula was build on the data from the game where it is easier to use aiming capabilities of the tank. All these differences make WN8 rating hardly useful when evaluating console players.
-
-How percentiles were calculated?
-
-The data of 50,000 random WoT Console profiles was collected. To be a piece of valid data, the player must have had at least 2500 battles on the account. Then ratios were calculated for each tank of every player. To be included in the final rating, Tier 6+ vehicles had to have more than 100 battles, 20 battles for Tier 3+ and 10 battles for Tier 4-. After assembling all player ratios, the percentiles for each tank were calculated using a math module. More information about percentile can be found in <a href="https://en.wikipedia.org/wiki/Percentile">Wikipedia</a>.
+The data of around 50,000 random WoT Console profiles was collected. To be a piece of valid data, a player must have had at least 2500 battles on the account. Then ratios were calculated for each tank of every player. To be included in the final rating, Tier 6+ vehicles had to have more than 100 battles, 20 battles for Tier 3+ and 10 battles for Tier 4-. After assembling all player ratios, the percentiles for each tank were calculated using a math module. More information about percentile can be found in <a href="https://en.wikipedia.org/wiki/Percentile">Wikipedia</a>.
+As about WN8, the same data was used to find median values for each expected WN8 number. Then values were scaled up so the distribution curve matches the current one as <a href="https://raw.githubusercontent.com/IDDT/wot-console-playerbase-analysis/master/wn8_results/avg80-70comparison.png">shown here</a>. (blue for WN8 PC, red for Consoles)
 
 What exactly do all these selectors in the tanks' table mean?
 
@@ -18,7 +15,7 @@ Avg DPM: The actual Damage Per Minute that player achieved on the tank.
 Avg FPM: Average frags per minute.
 Avg EPM: Average experience per minute.
 Dmg Percentile: Shows the percent of players that have lower average damage per battle number.
-WR Percentile: Shows the percent of players that have lower average winning rate.
+WR Percentile: Shows the percent of players that have a lower average winning rate.
 Exp Percentile: Shows the percent of players that have lower average experience per battle.
 Penetrated/Hits caused: Percentage of player\'s penetrating hits out of all hits, excluding misses.
 Bounced/Hits received: Percent of all non-damage hits that hit the player.
@@ -26,24 +23,12 @@ HE hits/Hits received: Percent of how many of all shells were High Explosives th
 Total Lifetime: Total number of minutes spent driving the tank. ***
 Average Lifetime: Average lifetime. ***
 Last battle time: How many (min, h, d, m, y) ago the tank was driven.
-*** Only the time between the actual start of the battle (15:00 on battle timer) and player death is included.
-
-Line charts in 'Player Performance' don't seem to move much. What exactly do they show?
-
-Line charts in 'Player Performance' follow totals for all player data for each logged day. It's different from day-to-day change. To see noticeable difference, deselect other lines by clicking labels in the legend.
-
-Line charts in 'Player Performance' show change in tiers or classes I didn't play, is that a bug?
-
-Most likely it's something related to WG changing player data.
-
-A few of my tanks show 0 WN8.
-
-That's okay for console-only tanks. WNeffeciency.net doesn't provide expected stats for consoles.
+*** Only the time between the actual start of the battle (15:00 on a battle timer) and player death is included.
 
 How long does the website keep the data?
 
-I haven't figured out this one yet. Currently no more days than number of fields in 'Session Tracker'.
+So far it is 8 days, so there will be enough data to show daily changes for the last 7 days.
 
 Something doesn't seem to work properly and I feel helpful.
 
-Follow the GitHub link in the footer and submit a bug report.
+Send a private message to <a href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">my profile</a> on World of Tanks forum.
