@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, make_response
+from flask import Flask, render_template, request, redirect, url_for, make_response, Response
 from flask_sqlalchemy import SQLAlchemy
 import requests
 import json
@@ -213,7 +213,7 @@ class form_data:
                                   ['MT', 'mediumTank', ''],
                                   ['LT', 'lightTank', '']]
         self.top_panel = []
-        self.footer = [['GitHub', 'https://github.com/IDDT/wot-console-stats']]
+        self.footer = [['GitHub', 'https://github.com/IDDT/wot-console-stats'], ['Changelog', 'https://github.com/IDDT/wot-console-stats/commits/master']]
 
     def generate_header(self, index_of_current_page):
         header = [['Statistics table', '/', 'not_current'], ['Time Series', '/time-series/', 'not_current'], ['Session Tracker', '/session-tracker/', 'not_current'], ['FAQ', '/faq', 'not_current']]
@@ -259,6 +259,7 @@ class user_data:
         self.server = server
         self.nickname = nickname
 
+    #Search by nickname and server and get account_id.
     def search_by_nickname(self):
         url = 'https://api-' + self.server + '-console.worldoftanks.com/wotx/account/list/?application_id=' + self.app_id + '&search='
         url = url + self.nickname
@@ -278,6 +279,7 @@ class user_data:
             self.status = 'error'
             self.message = 'ERROR: ' + str(search_data['error']['message'])
 
+    #Request player data when account_id is known.
     def request_vehicles(self):
         url = 'https://api-' + self.server + '-console.worldoftanks.com/wotx/tanks/stats/?application_id='
         url = url + self.app_id + '&account_id=' + str(self.account_id)
@@ -306,6 +308,43 @@ class user_data:
                 temp_dict['tank_id'] = vehicle['tank_id']
                 temp_dict['trees_cut'] = vehicle['trees_cut']
                 self.player_data.append(temp_dict)
+
+    #Save user data into SQL 'usercache'.
+    def save_to_cache(self):
+        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
+        action = usercache(timestamp = timestamp, account_id=self.account_id, nickname=self.nickname,
+                           server=self.server, player_data=pickle.dumps(self.player_data))
+        db.session.add(action)
+        db.session.commit()
+
+    #Function to eiter find cached player data or to request and save in cache.
+    def request_or_find_cached(self):
+        #Using 'usercache' db model classmethod.
+        current_user = usercache.request_cache(self.nickname, self.server)
+        #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
+        if current_user == None:
+            self.search_by_nickname()
+            #Request vehicle data only if the status is 'ok'.
+            if self.status == 'ok':
+                self.request_vehicles()
+            #Return error If status not 'ok'.
+            if self.status != 'ok':
+                return
+            #SQL operations if all conditions passed.
+            if self.status == 'ok':
+                #Delete all expired records from SQL 'cache_user_data'.
+                usercache.delete_expired_cache()
+                #Logging and caching and adding history data point into SQL.
+                userlog.add_entry(self.nickname, self.server)
+                self.save_to_cache()
+                userdata_history.add_or_update(self.nickname, self.server, self.account_id, pickle.dumps(self.player_data))
+        #If recent data found in SQL 'cache_user_data'.
+        if current_user != None:
+            self.status = 'ok'
+            self.player_data = pickle.loads(current_user.player_data)
+            self.nickname = current_user.nickname
+            self.account_id = current_user.account_id
+        return
 
     def filter_data(self, filter_by_50, filter_input, tankopedia):
         #Either 'checked' or 'unchecked'
@@ -361,14 +400,6 @@ class user_data:
 
         return(index)
 
-    #Save user data into SQL 'usercache'.
-    def save_to_cache(self):
-        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-        action = usercache(timestamp = timestamp, account_id=self.account_id, nickname=self.nickname,
-                           server=self.server, player_data=pickle.dumps(self.player_data))
-        db.session.add(action)
-        db.session.commit()
-
     def wn8_calculator(self, tank_data, WN8_dict):
         #Loading expected values
         exp_values = {}
@@ -404,6 +435,39 @@ class user_data:
         WN8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
 
         return(WN8)
+
+    #Function substracts old_data from new_data.
+    def find_difference(self, old_data, new_data):
+        #Deleting tanks from 'old_data' that were not played.
+        for new_tank in new_data:
+            for s, old_tank in enumerate(old_data):
+                if new_tank['tank_id'] == old_tank['tank_id'] and new_tank['battles'] == old_tank['battles']:
+                    old_data.pop(s)
+
+        #Deleting tanks from 'new_data' that aren't in filtered 'old_data'.
+        old_tank_ids = [tank['tank_id'] for tank in old_data]
+        temp_list = []
+        for tank_id in old_tank_ids:
+            for new_tank in new_data:
+                if new_tank['tank_id'] == tank_id:
+                    temp_list.append(new_tank)
+        new_data = temp_list
+
+        #Substracting difference.
+        slice_data = []
+        for old_tank in old_data:
+            for new_tank in new_data:
+                if old_tank['tank_id'] == new_tank['tank_id']:
+                    #Iterating through tank dictionary.
+                    temp_dict = {}
+                    for key, value in new_tank.items():
+                        temp_dict[key] = new_tank[key] - old_tank[key]
+                    #Preserving 'tank_id'
+                    temp_dict['tank_id'] = new_tank['tank_id']
+                    #Appending to output list.
+                    slice_data.append(temp_dict)
+
+        return(slice_data)
 
 @app.route('/', methods=["GET", "POST"])
 def index():
@@ -673,35 +737,14 @@ def index():
     #Initiating 'tanks_table_cls'.
     user = tanks_table_cls(form.server, form.nickname)
 
-    #Checking if user in SQL 'cache_user_data'.
+    #Eiter find cached player data or request from API and save into 'usercache'.
     current_user = None
     if return_empty == False:
-        current_user = usercache.request_cache(user.nickname, user.server)
-
-    #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
-    if current_user == None and return_empty == False:
-        user.search_by_nickname()
-        #Request vehicle data only if the status is 'ok'.
-        if user.status == 'ok':
-            user.request_vehicles()
+        user.request_or_find_cached()
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
             button = user.message + ' Click here to <b>submit</b> again.'
-        #SQL operations if all conditions passed.
-        if user.status == 'ok':
-            #Delete all expired records from SQL 'cache_user_data'.
-            usercache.delete_expired_cache()
-            #Logging and caching and adding history data point into SQL.
-            userlog.add_entry(user.nickname, user.server)
-            user.save_to_cache()
-            userdata_history.add_or_update(user.nickname, user.server, user.account_id, pickle.dumps(user.player_data))
-
-    #If recent data found in SQL 'cache_user_data'.
-    if current_user != None and return_empty == False:
-        user.player_data = pickle.loads(current_user.player_data)
-        user.nickname = current_user.nickname
-        user.account_id = current_user.account_id
 
     #Placeholders.
     tank_table = []
@@ -748,39 +791,6 @@ def time_series():
     class time_series_cls(user_data):
         def __init__(self, server, nickname):
             user_data.__init__(self, server, nickname)
-
-        #Function substracts old_data from new_data.
-        def find_difference(self, old_data, new_data):
-            #Deleting tanks from 'old_data' that were not played.
-            for new_tank in new_data:
-                for s, old_tank in enumerate(old_data):
-                    if new_tank['tank_id'] == old_tank['tank_id'] and new_tank['battles'] == old_tank['battles']:
-                        old_data.pop(s)
-
-            #Deleting tanks from 'new_data' that aren't in filtered 'old_data'.
-            old_tank_ids = [tank['tank_id'] for tank in old_data]
-            temp_list = []
-            for tank_id in old_tank_ids:
-                for new_tank in new_data:
-                    if new_tank['tank_id'] == tank_id:
-                        temp_list.append(new_tank)
-            new_data = temp_list
-
-            #Substracting difference.
-            slice_data = []
-            for old_tank in old_data:
-                for new_tank in new_data:
-                    if old_tank['tank_id'] == new_tank['tank_id']:
-                        #Iterating through tank dictionary.
-                        temp_dict = {}
-                        for key, value in new_tank.items():
-                            temp_dict[key] = new_tank[key] - old_tank[key]
-                        #Preserving 'tank_id'
-                        temp_dict['tank_id'] = new_tank['tank_id']
-                        #Appending to output list.
-                        slice_data.append(temp_dict)
-
-            return(slice_data)
 
         def calculate_percentiles_for_all_tanks(self, userdata):
             dmgc_temp, wr_temp, rass_temp, dmgr_temp, acc_temp = ([] for i in range(5))
@@ -899,35 +909,14 @@ def time_series():
     #Initiating 'time_series_cls'.
     user = time_series_cls(form.server, form.nickname)
 
-    #Checking if user in SQL 'cache_user_data'.
+    #Eiter find cached player data or request from API and save into 'usercache'.
     current_user = None
     if return_empty == False:
-        current_user = usercache.request_cache(user.nickname, user.server)
-
-    #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
-    if current_user == None and return_empty == False:
-        user.search_by_nickname()
-        #Request vehicle data only if the status is 'ok'.
-        if user.status == 'ok':
-            user.request_vehicles()
+        user.request_or_find_cached()
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
             button = user.message + ' Click here to <b>submit</b> again.'
-        #SQL operations if all conditions passed.
-        if user.status == 'ok':
-            #Delete all expired records from SQL 'cache_user_data'.
-            usercache.delete_expired_cache()
-            #Logging and caching and adding history data point into SQL.
-            userlog.add_entry(user.nickname, user.server)
-            user.save_to_cache()
-            userdata_history.add_or_update(user.nickname, user.server, user.account_id, pickle.dumps(user.player_data))
-
-    #If recent data found in SQL 'cache_user_data'.
-    if current_user != None and return_empty == False:
-        user.player_data = pickle.loads(current_user.player_data)
-        user.nickname = current_user.nickname
-        user.account_id = current_user.account_id
 
     #Placeholders.
     RadCh, percentiles_totals, wn8_totals_all, percentiles_change, x_labels = ([] for i in range(5))
@@ -1019,33 +1008,14 @@ def session_tracker():
     user = session_tracker_cls(form.server, form.nickname, form.request)
 
 
-    #Checking if user in SQL 'cache_user_data'.
+    #Eiter find cached player data or request from API and save into 'usercache'.
     current_user = None
     if return_empty == False:
-        current_user = usercache.request_cache(user.nickname, user.server)
-    #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
-    if current_user == None and return_empty == False:
-        user.search_by_nickname()
-        #Request vehicle data only if the status is 'ok'.
-        if user.status == 'ok':
-            user.request_vehicles()
+        user.request_or_find_cached()
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to <b>resubmit</b>.'
-        #SQL operations if all conditions passed.
-        if user.status == 'ok':
-            #Delete all expired records from SQL 'cache_user_data'.
-            usercache.delete_expired_cache()
-            #Logging and caching and adding history data point into SQL.
-            userlog.add_entry(user.nickname, user.server)
-            user.save_to_cache()
-            userdata_history.add_or_update(user.nickname, user.server, user.account_id, pickle.dumps(user.player_data))
-    #If recent data found in SQL 'cache_user_data'.
-    if current_user != None and return_empty == False:
-        user.player_data = pickle.loads(current_user.player_data)
-        user.nickname = current_user.nickname
-        user.account_id = current_user.account_id
+            button = user.message + ' Click here to <b>submit</b> again.'
 
 
     #Calling all 'userdata_history' datapoints to show in the form.
@@ -1080,7 +1050,7 @@ def session_tracker():
 
         if timestamp_to_search == None:
             button = 'No such checkpoint exist.'
-            proceed = False
+            return_empty = True
         else:
             search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server, timestamp=timestamp_to_search).first()
             user.snapshot_data = pickle.loads(search.player_data)
@@ -1237,6 +1207,208 @@ def faq():
 
     return render_template("text-page.html", title=title, top_panel=form.top_panel,
                                              header=header, footer=form.footer, text=text)
+
+@app.route('/export/<export_type>/<server>/<nickname>/')
+def export(export_type, server, nickname):
+
+    if server in ['xbox', 'ps4'] and export_type in ['csv', 'json']:
+        return_empty = False
+    else:
+        return_empty = True
+        message = 'Wrong server or export type.'
+
+    class export_table_cls(user_data):
+        def __init__(self, server, nickname):
+            user_data.__init__(self, server, nickname)
+            self.checkboxes = [['tier', 'tier', ''],
+                               ['class', 'class', ''],
+                               ['winrate', 'wr', ''],
+                               ['battles', 'battles', ''],
+                               ['wn8console', 'wn8', ''],
+                               ['wn8pc', 'wn8pc', ''],
+
+                               ['Average Damage per battle', 'avg_dmg', ''],
+                               ['Avg Frags per battle', 'avg_frags', ''],
+                               ['Avg Experience per battle', 'avg_exp', ''],
+
+                               ['Avg Damage Per Minute', 'avg_dpm', ''],
+                               ['Avg Frags Per Minute', 'avg_fpm', ''],
+                               ['Avg Experience Per Minute', 'avg_epm', ''],
+
+                               ['Damage Percentile', 'dmg_perc', ''],
+                               ['Winrate Percentile', 'wr_perc', ''],
+                               ['Experience per battle Percentile', 'exp_perc', ''],
+
+                               ['Penetrated Hits caused Ratio', 'pen_hits_ratio', ''],
+                               ['Bounced Hits received Ratio', 'bounced_hits_r', ''],
+                               ['Survived', 'survived', ''],
+
+                               ['Total Lifetime minutes', 'total_time', ''],
+                               ['Average Lifetime seconds', 'avg_lifetime', ''],
+                               ['Last battle time (UNIX timestamp)', 'last_time', '']]
+
+
+        def extract_needed_data(self):
+            extracted_data = []
+            #Asembling the header.
+            header = ['tank_id']
+            #Control order of columns.
+            header_elements = [row[1] for row in self.checkboxes]
+            checkbox_input = header_elements
+            for element in header_elements:
+                for item in checkbox_input:
+                    if element == item:
+                        header.append(item)
+            extracted_data.append(header)
+            #Extracting the data.
+            for vehicle in self.player_data:
+                #creating a row
+                temp_list = []
+                #appending default data
+                temp_list.append(vehicle['tank_id'])
+                #requesting items from checkbox_input
+                if 'tier' in checkbox_input:
+                    tier = 0
+                    for row in tankopedia:
+                        if row[0] == vehicle['tank_id']:
+                            tier = row[2]
+                    temp_list.append(tier)
+                if 'class' in checkbox_input:
+                    v_class = 'unknown'
+                    for row in tankopedia:
+                        if row[0] == vehicle['tank_id']:
+                            v_class = row[3]
+                    temp_list.append(v_class)
+                if 'wr' in checkbox_input:
+                    temp_list.append(vehicle['wins']/vehicle['battles'])
+                if 'battles' in checkbox_input:
+                    temp_list.append(vehicle['battles'])
+                if 'wn8' in checkbox_input:
+                    temp_list.append(self.wn8_calculator(vehicle, WN8_dict))
+                if 'wn8pc' in checkbox_input:
+                    temp_list.append(self.wn8_calculator(vehicle, wn8pc))
+                if 'avg_dmg' in checkbox_input:
+                    temp_list.append(vehicle['damage_dealt']/vehicle['battles'])
+                if 'avg_frags' in checkbox_input:
+                    temp_list.append(vehicle['frags']/vehicle['battles'])
+                if 'avg_exp' in checkbox_input:
+                    temp_list.append(vehicle['xp']/vehicle['battles'])
+                if 'avg_dpm' in checkbox_input:
+                    if vehicle['battle_life_time'] > 0:
+                        temp_list.append(vehicle['damage_dealt'] / vehicle['battle_life_time'] * 60)
+                    else:
+                        temp_list.append(0)
+                if 'avg_fpm' in checkbox_input:
+                    if vehicle['battle_life_time'] > 0:
+                        temp_list.append(vehicle['frags'] / vehicle['battle_life_time'] * 60)
+                    else:
+                        temp_list.append(0)
+                if 'avg_epm' in checkbox_input:
+                    if vehicle['battle_life_time'] > 0:
+                        temp_list.append(vehicle['xp'] / vehicle['battle_life_time'] * 60)
+                    else:
+                        temp_list.append(0)
+                if 'dmg_perc' in checkbox_input:
+                    value = vehicle['damage_dealt']/vehicle['battles']
+                    perc = self.percentile_calculator('dmgc', vehicle['tank_id'], value)
+                    temp_list.append(perc)
+                if 'wr_perc' in checkbox_input:
+                    value = vehicle['wins']/vehicle['battles']*100
+                    perc = self.percentile_calculator('wr', vehicle['tank_id'], value)
+                    temp_list.append(perc)
+                if 'exp_perc' in checkbox_input:
+                    value = vehicle['xp']/vehicle['battles']
+                    perc = self.percentile_calculator('exp', vehicle['tank_id'], value)
+                    temp_list.append(perc)
+                if 'pen_hits_ratio' in checkbox_input:
+                    if vehicle['hits'] > 0:
+                        temp_list.append(vehicle['piercings'] / vehicle['hits'])
+                    else:
+                        temp_list.append(0)
+                if 'bounced_hits_r' in checkbox_input:
+                    if vehicle['direct_hits_received'] > 0:
+                        temp_list.append(vehicle['no_damage_direct_hits_received'] / vehicle['direct_hits_received'])
+                    else:
+                        temp_list.append(0)
+                if 'survived' in checkbox_input:
+                    temp_list.append(vehicle['survived_battles']/vehicle['battles'])
+                if 'total_time' in checkbox_input:
+                    temp_list.append(vehicle['battle_life_time'] / 60)
+                if 'avg_lifetime' in checkbox_input:
+                    temp_list.append(vehicle['battle_life_time'] / vehicle['battles'])
+                if 'last_time' in checkbox_input:
+                    temp_list.append(vehicle['last_battle_time'])
+
+                #appending row (temp_list) to data
+                extracted_data.append(temp_list)
+            self.player_data = extracted_data
+
+        def name_headers(self):
+            new_headers = []
+            for header in self.player_data[0]:
+                if header == 'tank_id':
+                    header = 'Tank'
+
+                for item in self.checkboxes:
+                    if header == item[1]:
+                        header = item[0]
+                new_headers.append(header)
+            self.player_data[0] = new_headers
+
+        def name_tanks(self, tanks_dict):
+            #Headers.
+            new_data = [self.player_data[0]]
+            #Data.
+            for row in self.player_data[1:]:
+                temp_list = []
+                #Checking if the name is in the dict.
+                if str(row[0]) in tanks_dict:
+                    name = tanks_dict[str(row[0])]
+                else:
+                    name = 'Unknown'
+                #Appending name.
+                temp_list.append(name)
+                #Appending what's left.
+                [temp_list.append(item) for item in row[1:]]
+                #Adding to the rest of the data.
+                new_data.append(temp_list)
+            self.player_data = new_data
+
+        def convert_to_csv(self):
+            text = ''
+            for row in self.player_data:
+                for cell in row:
+                    text = text + str(cell) + ', '
+                text = text + '\n'
+            return(text)
+
+    #Initiating 'tanks_table_cls'.
+    if return_empty == False:
+        user = export_table_cls(server, nickname)
+
+    #Either find cached player data or request from API and save into 'usercache'.
+    if return_empty == False:
+        user.request_or_find_cached()
+        #Return error If status not 'ok'.
+        if user.status != 'ok':
+            return_empty = True
+            message = user.message
+
+    #Calculations.
+    if return_empty == False:
+        #Loading WN8 Pc dictionary.
+        with open('references/wn8pc.json','r') as infile:
+            wn8pc = json.load(infile)
+        user.extract_needed_data()
+        user.name_headers()
+        user.name_tanks(tanks_dict)
+
+    if export_type == 'csv' and return_empty == False:
+        return Response(user.convert_to_csv(), mimetype='text/csv')
+    if export_type == 'json' and return_empty == False:
+        return Response(json.dumps(user.player_data), mimetype='application/json')
+    else:
+        return(message)
 
 
 if __name__ == '__main__':

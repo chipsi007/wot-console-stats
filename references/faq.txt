@@ -25,10 +25,14 @@ Average Lifetime: Average lifetime. ***
 Last battle time: How many (min, h, d, m, y) ago the tank was driven.
 *** Only the time between the actual start of the battle (15:00 on a battle timer) and player death is included.
 
+Is it possible to export the data into excel for my own analysis?
+
+Use following URL "wot.pythonanywhere.com/export/{type}/{server}/{username}/" where type: (csv or json), server: (xbox or ps4), and username is your gamertag or PSN. For example, to export my statistics the URL would be "wot.pythonanywhere.com/export/csv/ps4/turboparrot666/". Then in the browser click File > Save As. Data is updated once every 5 minutes.
+
 How long does the website keep the data?
 
 So far it is 8 days, so there will be enough data to show daily changes for the last 7 days.
 
 Something doesn't seem to work properly and I feel helpful.
 
-Send a private message to <a href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">my profile</a> on World of Tanks forum.
+Send a private message to <a href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">my profile</a> on World of Tanks forum. Or (better) follow the GitHub link in the footer and submit a bug report.

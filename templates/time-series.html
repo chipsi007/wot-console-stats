@@ -57,7 +57,7 @@
             
             <!--navigation bar -->
             <div class="top-nav">
-                <a href="javascript:void(0)" class="top-nav-link" onclick="topMenu(event, 'total_percentiles'); RadChF(); TotPerc(); TotWN8();">
+                <a href="javascript:void(0)" class="top-nav-link" id="defaultOpen" onclick="topMenu(event, 'total_percentiles'); RadChF(); TotPerc(); TotWN8();">
                   Total Percentiles
                 </a>
                 <a href="javascript:void(0)" class="top-nav-link" onclick="topMenu(event, 'day_to_day_percentiles'); dtdPerc();">
@@ -304,16 +304,7 @@
                 })
             };
             
-            window.onload = function() {
-                topMenu(event, 'total_percentiles');
-                RadChF();
-                TotPerc();
-                TotWN8();
-                // Paint the default tab
-                var tablinks;
-                tablinks = document.getElementsByClassName("top-nav-link");
-                tablinks[0].className += " border-paint";
-            };
+            document.getElementById("defaultOpen").click();
         </script>
         
     </section>

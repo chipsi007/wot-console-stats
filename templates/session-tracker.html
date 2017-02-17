@@ -69,7 +69,7 @@
                     <h4 style="text-align: center; padding: 10px;">Tanks</h4>
                 </div>
                     
-                <a href="javascript:void(0)" class="tablinks" onclick="sideMenu(event, 'overview'); ChartOverview(); ChartOverview2();">Overview</a>
+                <a href="javascript:void(0)" class="tablinks" id="defaultOpen" onclick="sideMenu(event, 'overview'); ChartOverview(); ChartOverview2();">Overview</a>
                     
                 {% for tank in session_tanks %}
                 {% set id = tank['tank_id'] %}
@@ -258,16 +258,7 @@
             };
             {% endfor %}
             
-            window.onload = function() {
-                sideMenu(event, 'overview');
-                ChartOverview();
-                ChartOverview2();
-                // Paint the default tab
-                var tablinks;
-                tablinks = document.getElementsByClassName("tablinks");
-                tablinks[0].className += " active";
-            };
-            
+            document.getElementById("defaultOpen").click();
         </script>
     
     </section>
