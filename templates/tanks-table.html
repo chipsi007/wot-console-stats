@@ -66,19 +66,17 @@
         
         <br>
         
-        <section class="tabs">
+        <section class="center">
             <div>
-                <ul>
-                    <li><button type="submit" class="current"> {{ button|safe }} </button></li>
-                </ul>
+                <button type="submit" class="big-button"> {{ button|safe }} </button>
             </div>
         </section>
         
         {% if tank_table|length > 0 %}
         {% set col_len = 100/tank_table[0]|length %}
-        <section class="table">
+        <section class="center">
             <div>
-                <table>
+                <table class="tanks-table">
                     <tr>
                         {% for header in tank_table[0] %}
                         <td style="width: {{ col_len }} %;">

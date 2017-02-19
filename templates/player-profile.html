@@ -1,0 +1,300 @@
+{% extends "index.html" %} {% block content %}
+
+<form action="." method="POST">
+    
+    <section class="form-table">
+        <table class="wrapper">
+            <tr>
+                <td>
+                    <table>
+                        <tr>
+                            <td colspan="2">
+                                <input name="nickname" type="text" value="{{ nickname }}" style="width:95%;" placeholder="Enter your nickname" />
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="xbox" class="button-box" value="xbox" {{ 'checked' if server=='xbox' }}/>
+                                <label for="xbox">XBOX</label>
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="ps4" class="button-box" value="ps4" {{ 'checked' if server=='ps4' }}/>
+                                <label for="ps4">PS4</label>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table>
+                        <tr>
+                            {% for i in range(0,15) %}
+                            <td>
+                                <input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" class="button-box" value="{{ checkboxes_filter[i][1] }}" {{ ' checked' if checkboxes_filter[i][2]=='checked' }} />
+                                <label for="{{ checkboxes_filter[i][1] }}">{{ checkboxes_filter[i][0] }}</label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </section>
+    
+    <br> 
+    
+    <section class="center">
+        <div>
+            <button type="submit" class="big-button"> {{ button|safe }} </button>
+        </div>
+    </section>
+    
+    <br>
+    
+    
+    {% if wn8_totals|length > 0 %}
+    <section class="center">
+        <div>
+            
+            <div class="top-nav" style="text-align: center">
+                <a href="javascript:void(0)" class="top-nav-link" id="OpenTab0" onclick="topMenu(event, 'Tab0'); OpenWN8Ch(); OpenPercCh(); RadCh.destroy();">
+                  Dashboard
+                </a>
+                <a href="javascript:void(0)" class="top-nav-link" id="OpenTab1" onclick="topMenu(event, 'Tab1'); OpenRadCh(); WN8Ch.destroy(); PercCh.destroy();">
+                  In detail
+                </a>
+            </div>
+            
+            <div id="Tab0" class="top-nav-content" style="display:none">
+                <div class="stat-card-container">
+                    <div class="stat-card">
+                        <p>
+                            {{ all_time['wr'] }} % &nbsp;{{ difference['wr']|safe }}
+                        </p>    
+                        <p style="font-size: 20px;">
+                            Win Rate
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p>
+                            {{ all_time['wn8'] }} &nbsp;{{ difference['wn8']|safe }}
+                        </p> 
+                        <p style="font-size: 20px;">
+                            WN8 {{ all_time['wn8_color']|safe }}
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p>
+                            {{ all_time['total_perc'] }} % &nbsp;{{ difference['total_perc']|safe }}
+                        </p> 
+                        <p style="font-size: 20px;">
+                            Percentile
+                        </p>
+                    </div> 
+                </div>
+                <div style="display: flex; justify-content: top;">
+                    <div style="width: 50%">
+                        <canvas id="WN8Canvas" width="100" height="40"></canvas>
+                    </div>
+                    <div style="width: 50%">
+                        <canvas id="PercCanvas" width="100" height="40"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="Tab1" class="top-nav-content" style="display:none">
+                <div style="display: flex; justify-content: top;">
+                    <div style="width: 50%;">
+                        <canvas id="RadChCanvas" width="100" height="75"></canvas>
+                    </div>
+                    <div style="width: 50%;">
+                        <table class="minitable" cellpadding="10">
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td>All time</td>
+                                <td>Recent</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['wr']|safe }}</td>
+                                <td>Win Rate</td>
+                                <td>{{ all_time['wr'] }} %</td>
+                                <td>{{ recent['wr'] }} %</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['wn8']|safe }}</td>
+                                <td>WN8</td>
+                                <td>{{ all_time['wn8'] }}</td>
+                                <td>{{ recent['wn8'] }}</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['total_perc']|safe }}</td>
+                                <td>Total Percentile</td>
+                                <td>{{ all_time['total_perc'] }} %</td>
+                                <td>{{ recent['total_perc'] }} %</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['acc']|safe }}</td>
+                                <td>Accuracy</td>
+                                <td>{{ all_time['acc'] }} %</td>
+                                <td>{{ recent['acc'] }} %</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['dmgc']|safe }}</td>
+                                <td>Damage Caused</td>
+                                <td>{{ all_time['dmgc'] }}</td>
+                                <td>{{ recent['dmgc'] }}</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['rass']|safe }}</td>
+                                <td>Radio Assist</td>
+                                <td>{{ all_time['rass'] }}</td>
+                                <td>{{ recent['rass'] }}</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['dmgr']|safe }}</td>
+                                <td>Damage Received</td>
+                                <td>{{ all_time['dmgr'] }}</td>
+                                <td>{{ recent['dmgr'] }}</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['k_d']|safe }}</td>
+                                <td>Kills / Deaths</td>
+                                <td>{{ all_time['k_d'] }}</td>
+                                <td>{{ recent['k_d'] }}</td>
+                            </tr>
+                            <tr>
+                                <td>{{ difference['dmgc_dmgr']|safe }}</td>
+                                <td>Damage Caused / Received</td>
+                                <td>{{ all_time['dmgc_dmgr'] }}</td>
+                                <td>{{ recent['dmgc_dmgr'] }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            
+        </div>
+        
+        <script>
+            function OpenWN8Ch() {
+                WN8Ch = new Chart(document.getElementById("WN8Canvas"), {
+                    type: 'line',
+                    data:  {
+                        labels: {{ xlabels|safe }},
+                        datasets: [{
+                            label: 'WN8',
+                            fill: true,
+                            backgroundColor: "hsla(200, 25%, 63%, 0.1)", 
+                            borderColor: "hsl(200, 25%, 63%)", 
+                            pointBackgroundColor: "hsl(200, 25%, 63%)", 
+                            pointBorderColor: "#ffffff", 
+                            pointHoverBackgroundColor: "#ffffff", 
+                            pointHoverBorderColor: "hsl(200, 25%, 63%)", 
+                            data: [{% for item in wn8_totals %}{{item}},{% endfor %}],
+                        }]
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: 'Total WN8'
+                        },
+                        legend: {
+                            display: false
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    callback: function(label, index, labels) {
+                                        return Math.round(label);
+                                    }
+                                }
+                            }]
+                        }
+                    }
+                })
+            };
+            
+            function OpenPercCh() {
+                PercCh = new Chart(document.getElementById("PercCanvas"), {
+                    type: 'line',
+                    data:  {
+                        labels: {{ xlabels|safe }},
+                        datasets: [{
+                            label: 'Total Percentile',
+                            fill: true,
+                            backgroundColor: "hsla(130, 25%, 63%, 0.1)", 
+                            borderColor: "hsl(130, 25%, 63%)", 
+                            pointBackgroundColor: "hsl(130, 25%, 63%)", 
+                            pointBorderColor: "#ffffff", 
+                            pointHoverBackgroundColor: "#ffffff", 
+                            pointHoverBorderColor: "hsl(130, 25%, 63%)", 
+                            data: {{ percentiles_totals }},
+                        }],
+                    },
+                    options: {
+                        title: {
+                            display: true,
+                            text: 'Total Percentile'
+                        },
+                        legend: {
+                            display: false,
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    callback: function(label, index, labels) {
+                                        return Math.round(label*100)/100;
+                                    }
+                                },
+                            }],
+                        },
+                    },
+                })
+            };
+            
+            function OpenRadCh() {
+                RadCh = new Chart(document.getElementById("RadChCanvas"), {
+                    type: 'radar',
+                    data:  {
+                        labels: ['Accuracy', 'Damage Caused', 'Radio Assist', 'WinRate', 'Damage Received (inv)'],
+                        datasets: [{
+                            label: 'Recent Percentiles',
+                            fill: true,
+                            backgroundColor: "hsla(0, 35%, 63%, 0.2)", 
+                            borderColor: "hsl(0, 35%, 63%)", 
+                            pointBackgroundColor: "hsl(0, 35%, 63%)", 
+                            pointBorderColor: "#ffffff", 
+                            pointHoverBackgroundColor: "#ffffff", 
+                            pointHoverBorderColor: "hsl(0, 35%, 63%)", 
+                            data: [{{recent['percentiles']['acc']}}, {{recent['percentiles']['dmgc']}}, {{recent['percentiles']['rass']}}, {{recent['percentiles']['wr']}}, {{recent['percentiles']['dmgr']}}],
+                        },
+                        {   
+                            label: 'All Time Percentiles',
+                            fill: true,
+                            backgroundColor: "hsla(200, 25%, 63%, 0.1)", 
+                            borderColor: "hsl(200, 25%, 63%)", 
+                            pointBackgroundColor: "hsl(200, 25%, 63%)", 
+                            pointBorderColor: "#ffffff", 
+                            pointHoverBackgroundColor: "#ffffff", 
+                            pointHoverBorderColor: "hsl(200, 25%, 63%)", 
+                            data: [{{all_time['percentiles']['acc']}}, {{all_time['percentiles']['dmgc']}}, {{all_time['percentiles']['rass']}}, {{all_time['percentiles']['wr']}}, {{all_time['percentiles']['dmgr']}}],          
+                        }]
+                    },
+                    options: {
+                        scale: {
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                })
+            };
+            
+            document.getElementById("OpenTab0").click();
+        </script>
+        
+    </section>
+    {% endif %}
+    
+</form>
+
+{% endblock %}
