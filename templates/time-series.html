@@ -2,8 +2,8 @@
 
 <form action="." method="POST">
 
-    <section class="form-table">
-        <table class="wrapper">
+    <section class="center">
+        <table class="form">
             <tr>
                 <td>
                     <table>
@@ -12,22 +12,22 @@
                                 <input name="nickname" type="text" value="{{ nickname }}" style="width:95%;" placeholder="Enter your nickname" />
                             </td>
                             <td>
-                                <input type="radio" name="server" id="xbox" class="button-box" value="xbox" {{ 'checked' if server=='xbox' }}/>
+                                <input type="radio" name="server" id="xbox" value="xbox" {{ 'checked' if server=='xbox' }}/>
                                 <label for="xbox">XBOX</label>
                             </td>
                             <td>
-                                <input type="radio" name="server" id="ps4" class="button-box" value="ps4" {{ 'checked' if server=='ps4' }}/>
+                                <input type="radio" name="server" id="ps4" value="ps4" {{ 'checked' if server=='ps4' }}/>
                                 <label for="ps4">PS4</label>
                             </td>
                         </tr>
                     </table>
                 </td>
                 <td>
-                    <table>
+                    <table class="center-label">
                         <tr>
                             {% for i in range(0,15) %}
                             <td>
-                                <input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" class="button-box" value="{{ checkboxes_filter[i][1] }}" {{ ' checked' if checkboxes_filter[i][2]=='checked' }} />
+                                <input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" value="{{ checkboxes_filter[i][1] }}" {{ ' checked' if checkboxes_filter[i][2]=='checked' }} />
                                 <label for="{{ checkboxes_filter[i][1] }}">{{ checkboxes_filter[i][0] }}</label>
                             </td>
                             {% endfor %}
@@ -35,10 +35,9 @@
                     </table>
                 </td>
             </tr>
-
         </table>
     </section>
-
+    
     <br> 
     
     <section class="center">

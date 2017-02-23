@@ -2,27 +2,21 @@
 
 <form action="." method="POST">
     
-    <section class="form-table">
-        <table class="wrapper">
+    <section class="center">
+        <table class="form">
             <tr>
                 <td>
                     <table>
                         <tr>
-                            <td style="padding-left: 5px;">
-                                Playername:
-                            </td>
                             <td>
                                 <input name="nickname" type="text" value="{{ nickname }}" placeholder="Enter your nickname" />
                             </td>
-                            <td style="padding-left: 5px;">
-                                Server:
-                            </td>
                             <td>
-                                <input type="radio" name="server" id="xbox" class="button-box" value="xbox" {{ 'checked' if server=='xbox' }}/>
+                                <input type="radio" name="server" id="xbox" value="xbox" {{ 'checked' if server=='xbox' }}/>
                                 <label for="xbox">XBOX</label>
                             </td>
                             <td>
-                                <input type="radio" name="server" id="ps4" class="button-box" value="ps4" {{ 'checked' if server=='ps4' }}/>
+                                <input type="radio" name="server" id="ps4" value="ps4" {{ 'checked' if server=='ps4' }}/>
                                 <label for="ps4">PS4</label>
                             </td>
                         </tr>
@@ -36,7 +30,7 @@
                             </td>
                             {% for checkpoint in history_checkpoints %}
                             <td>
-                                <input type="radio" name="checkpoints" id="{{ checkpoint[0] }}" class="button-box" value="{{ checkpoint[0] }}" />
+                                <input type="radio" name="checkpoints" id="{{ checkpoint[0] }}" value="{{ checkpoint[0] }}" />
                                 <label for="{{ checkpoint[0] }}">{{ checkpoint[1] }}</label>
                             </td>
                             {% endfor %}   

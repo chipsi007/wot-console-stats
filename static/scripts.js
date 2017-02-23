@@ -86,7 +86,7 @@ function formatCell(y, x) {
     var headersDict = {
         "tank_id": "Tank",
 
-        "wr": "Winrate", 
+        "wr": "WinRate", 
         "battles": "Battles",
         "wn8": "WN8",
 
@@ -102,13 +102,13 @@ function formatCell(y, x) {
         "wr_perc": "WR Perc",
         "exp_perc": "EXP Perc",
 
-        "pen_hits_ratio": "Pen/Hits caused",
-        "bounced_hits_r": "Bounced/Hits received",
+        "pen_hits_ratio": "Pen/Hits",
+        "bounced_hits_r": "Bounced/Hits",
         "survived": "Survived",
 
         "total_time": "Total Lifetime",
         "avg_lifetime": "Avg Lifetime",
-        "last_time": "Last battle"
+        "last_time": "Last Battle"
     };
 
     // If header.
@@ -117,16 +117,14 @@ function formatCell(y, x) {
     }
     // If cell.
     else {
-        // Looking for header name
-        var hName = data_array[0][x];
-
-        switch (hName) {
+        // Looking for header name.
+        switch (data_array[0][x]) {
             // Percent with two decimals.
             case "wr":
             case "pen_hits_ratio":
             case "bounced_hits_r":
             case "survived":
-                output = Math.round(data_array[y][x]*10000)/100 + " %";
+                output = Math.round(data_array[y][x]*1000)/10 + " %";
                 break;
             // Integer.
             case "wn8":
@@ -134,13 +132,16 @@ function formatCell(y, x) {
             case "avg_exp":
             case "avg_dpm":
             case "avg_epm":
-            case "total_time":
                 output = Math.round(data_array[y][x]);
                 break;
             // Float with two decimals.
             case "avg_frags":
             case "avg_fpm":
                 output = Math.round(data_array[y][x]*100)/100;
+                break;
+            // Minutes.
+            case "total_time":
+                output = String(Math.round(data_array[y][x])) + "m"
                 break;
             // Minutes and seconds.
             case "avg_lifetime":
@@ -151,23 +152,7 @@ function formatCell(y, x) {
             // Last battle time.
             case "last_time":
                 var time = new Date(data_array[y][x]*1000);
-                var now = new Date();
-
-                // Same year.
-                if (time.getFullYear() == now.getFullYear()) {
-                    // Same month and day.
-                    if ((time.getMonth() == now.getMonth()) && (time.getDate() == now.getDate())) {
-                        var output = String(time.getHours()) + ":" + String(time.getMinutes());
-                    }
-                    // Same year.
-                    else {
-                        var output = monthsDict[String(time.getMonth()+1)] + " " + String(time.getDate());
-                    };
-                }
-                // Different year.
-                else {
-                    var output = time.getFullYear(); 
-                };
+                var output = monthsDict[String(time.getMonth()+1)] + " " + String(time.getDate());
                 break;
             // Default.
             default:
@@ -258,7 +243,7 @@ function generate_table(parent_id, data_array) {
         // Special formatting for the first cell.
         var cell = document.createElement("td");
         var cellText = document.createTextNode(data_array[r][0]);
-        cell.setAttribute("style", "font-weight: bold; text-align: left; padding-left: 5px;");
+        cell.setAttribute("style", "font-weight: bold; font-size: 12px;");
         cell.appendChild(cellText);
         row.appendChild(cell);
 
