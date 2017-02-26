@@ -15,7 +15,6 @@ Main dashboard                       |  In-depth
 
 ###### Statistics Table
 
-
 Main page                              |
 ---------------------------------------|-----------------------------------
 ![](screenshots/statistics-table1.png) | Very handy to view different vehicles and how they compare to each other. Filtering and sorting options available.
@@ -23,6 +22,7 @@ Main page                              |
 
 ###### Time Series
 
+Charts to show day-to-day difference in performance and the recent trend.
 
 Day-to-day percentiles            | WN8 Day-to-day + Total
 ----------------------------------|----------------------------------
@@ -31,6 +31,7 @@ Day-to-day percentiles            | WN8 Day-to-day + Total
 
 ###### Session Tracker
 
+Allows to analyze vehicle-by-vehicle performance in various periods (from 1 to 7) days.
 
 Overview                              | Vehicle view
 --------------------------------------|-------------------------------------

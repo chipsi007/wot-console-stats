@@ -307,6 +307,44 @@ input:checked + label, input:checked + label:hover {
 }
 
 
+/* wn8 table */
+.wn8-table {
+    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+    color: #555;
+    width: 100%;
+    line-height: 30px;
+    font-size: 13px;
+}
+.wn8-table td {
+    padding: 0;
+    white-space: nowrap;
+    overflow: hidden;  
+    text-align: left;
+    padding-left: 4px;
+}
+.wn8-table tbody tr {
+    background: #F2F2F2;
+}
+.wn8-table thead tr {
+    background: hsl(0, 0%, 90%);
+}
+.wn8-table thead button {
+    border:none;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    line-height: 35px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    background-color: #cee0e6;
+}
+.wn8-table tbody tr:hover, .tanks-table button:hover {
+    background: #e6eff2; 
+}
+
+
+
 /*top navigation*/
 .top-nav  {
     display: flex;    

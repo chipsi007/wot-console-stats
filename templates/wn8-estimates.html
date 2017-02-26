@@ -1,0 +1,124 @@
+{% extends "index.html" %}
+{% block content %}
+
+<form action="." method="POST">
+    
+    <section class="center">
+        <table class="form">
+            <tr>
+                <td>
+                    <table class="center-label">
+                        <tr>
+                            <td colspan="2">
+                                <input name="nickname" type="text" value="{{ nickname }}" style="width:95%;" placeholder="Enter your nickname" />
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="xbox" value="xbox" {{ 'checked' if server=='xbox' }}/>
+                                <label for="xbox">XBOX</label>
+                            </td>
+                            <td>
+                                <input type="radio" name="server" id="ps4" value="ps4" {{ 'checked' if server=='ps4' }}/>
+                                <label for="ps4">PS4</label>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table class="center-label">
+                        <tr>
+                            {% for i in range(0,15) %}
+                            <td>
+                                <input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" value="{{ checkboxes_filter[i][1] }}" {{ ' checked' if checkboxes_filter[i][2]=='checked' }} />
+                                <label for="{{ checkboxes_filter[i][1] }}">{{ checkboxes_filter[i][0] }}</label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </section>
+
+    <br>
+    
+    <section class="center">
+        <div>
+            <button type="submit" class="big-button"> {{ button|safe }} </button>
+        </div>
+    </section>
+
+    {% if output_list|length > 0 %}
+    {% set colors = [[300, "ORANGERED"],
+                     [450, "DARKORANGE"],
+                     [650, "GOLD"],
+                     [900, "YELLOWGREEN"],
+                     [1200, "LIME"],
+                     [1600, "DEEPSKYBLUE"],
+                     [2000, "DODGERBLUE"],
+                     [2450, "MEDIUMSLATEBLUE"],
+                     [2900, "REBECCAPURPLE"]] %}
+    <section class="center">
+        <div id="TableParent">
+            <table class="wn8-table">
+                <thead>
+                    <tr>
+                        <td>Name</td>
+                        <td>Tier</td>
+                        <td>expWR</td>
+                        <td>WR</td>
+                        <td>expFrag</td>
+                        <td>Frag</td>
+                        <td>expSpot</td>
+                        <td>Spot</td>
+                        <td>expDef</td>
+                        <td>Def</td>
+                        <td>expDmg</td>
+                        <td>Dmg</td>
+                        {% for i in range(9) %}
+                        <td>
+                            <span style="color: {{ colors[i][1] }}">{{ colors[i][0] }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tank in output_list %}
+                    <tr>
+                        <td>{{ tank['short_name'] }}</td>
+                        <td>{{ tank['tier'] }}</td>
+                        <td>{{ tank['expWinRate'] }}</td>
+                        <td>{{ tank['WinRate']|round(2) }}</td>
+                        <td>{{ tank['expFrag'] }}</td>
+                        <td>{{ tank['Frag']|round(2) }}</td>
+                        <td>{{ tank['expSpot'] }}</td>
+                        <td>{{ tank['Spot']|round(2) }}</td>
+                        <td>{{ tank['expDef'] }}</td>
+                        <td>{{ tank['Def']|round(2) }}</td>
+                        <td>{{ tank['expDamage']|int }}</td>
+                        <td>{{ tank['Damage']|int }}</td>
+                        {% for item in tank['dmgTargets'] %}
+                        <td>
+                            {{ item }}
+                        </td>
+                        {% endfor %}
+                    
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </section>
+
+    <script type="text/javascript">
+
+        // var data = {{ output_list|safe }}
+
+
+    </script>
+    {% endif %}
+
+
+</form>
+
+{% endblock %}

@@ -35,7 +35,14 @@
             <br>Last battle time: How many (min, h, d, m, y) ago the tank was driven.
             <br>*** Only the time between the actual start of the battle (15:00 on a battle timer) and player death is included.</p>
             <br>
-
+            
+            
+            <h3>How filtering works</h3>
+            
+            <p>Even though classes and tiers are crumbled inside one box, these two filters work independently. To select all vehicles on the account, a player needs to mark all the selectors or none at all. For example: to select Heavy tanks, it's enough to select HT, leaving everything else blank. In this case, because none of the vehicle tiers selected, the tiers are treated like they are all selected.</p>
+            <br>
+    
+            
             <h3>Export functionality</h3>
 
             <p>Currently, as an experimental feature, it's possible to export clean data straight into CSV for own analysis in Excel or Tableau. Use following URL: "wot.pythonanywhere.com/export/{type}/{server}/{username}/" where type is either 'csv' or 'json', server: 'xbox' or 'ps4', and username is either your Xbox Gamertag or PSN. Then in the browser click File > Save As. For example, to export my statistics the URL would be "wot.pythonanywhere.com/export/csv/ps4/turboparrot666/".</p>

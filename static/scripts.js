@@ -102,8 +102,8 @@ function formatCell(y, x) {
         "wr_perc": "WR Perc",
         "exp_perc": "EXP Perc",
 
-        "pen_hits_ratio": "Pen/Hits",
-        "bounced_hits_r": "Bounced/Hits",
+        "pen_hits_ratio": "Penned",
+        "bounced_hits_r": "Bounced",
         "survived": "Survived",
 
         "total_time": "Total Lifetime",

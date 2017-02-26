@@ -7,8 +7,6 @@ import datetime
 
 
 #Importing necessary files.
-with open('references/tanks_dict.json','r') as infile:
-    tanks_dict = json.load(infile)
 with open('references/tankopedia.json','r') as infile:
     tankopedia = json.load(infile)
 with open('references/percentiles.json','r') as infile:
@@ -218,6 +216,7 @@ class form_data:
                        ['Statistics table', '/statistics-table/', 'not_current'],
                        ['Time Series', '/time-series/', 'not_current'],
                        ['Session Tracker', '/session-tracker/', 'not_current'],
+                       ['WN8 Target Damage', '/wn8-estimates/', 'not_current'],
                        ['About', '/about', 'not_current']]
         #Generating header. Using 'index_of_current_page' for highlighting.
         for i, item in enumerate(self.header):
@@ -348,8 +347,8 @@ class user_data:
             self.account_id = current_user.account_id
         return
 
-    def filter_data(self, filter_by_50, filter_input, tankopedia):
-        #Either 'checked' or 'unchecked'
+    #Either 'checked' or 'unchecked'
+    def filter_by_50(self, filter_by_50):
         filtered_player_data = []
         if filter_by_50 == 'checked':
             for tank in self.player_data:
@@ -357,28 +356,28 @@ class user_data:
                     filtered_player_data.append(tank)
             self.player_data = filtered_player_data
 
+    def filter_data(self, filter_input, tankopedia):
         #Processing 'filter_input'.
-        filtered_player_data = []
         if 15 > len(filter_input) > 0:
-            #Conditions to filter.
+
+            #Setting filtering conditions.
             filter_by_tiers = any(i in filter_input for i in ['1','2','3','4','5','6','7','8','9','10'])
             filter_by_classes = any(i in filter_input for i in ['AT-SPG', 'SPG', 'heavyTank', 'mediumTank', 'lightTank'])
             if filter_by_tiers == False:
                 filter_input = filter_input + ['1','2','3','4','5','6','7','8','9','10']
             if filter_by_classes == False:
                 filter_input = filter_input + ['AT-SPG', 'SPG', 'heavyTank', 'mediumTank', 'lightTank']
-            #Iterating through tankopedia.
-            for row in tankopedia:
-                #Iterating through player data.
-                for tank in self.player_data:
-                    #If 'tank_id' matches.
-                    if tank['tank_id'] == row[0]:
-                        #Filtering
-                        if row[3] in filter_input and str(row[2]) in filter_input:
-                            filtered_player_data.append(tank)
+
+            #Iterating through tanks.
+            filtered_player_data = []
+            for tank in self.player_data:
+                #Calling tankopedia tank dictionary.
+                if str(tank['tank_id']) in tankopedia:
+                    tp_dict = tankopedia[str(tank['tank_id'])]
+                    #Filtering.
+                    if tp_dict['type'] in filter_input and str(tp_dict['tier']) in filter_input:
+                        filtered_player_data.append(tank)
             self.player_data = filtered_player_data
-        else:
-            return
 
     def percentile_calculator(self, kind, tank_id, value):
         #If tank is in the pre-calculated table.
@@ -650,7 +649,7 @@ def player_profile():
     #Calculations.
     if return_empty == False:
 
-        user.filter_data('unchecked', form.filter_input, tankopedia)
+        user.filter_data(form.filter_input, tankopedia)
         all_time = user.calculate_general_account_stats(user.player_data)
         all_time['wn8'] = user.calculate_wn8_for_all_tanks(user.player_data)
         all_time['percentiles'] = user.calculate_percentiles_for_all_tanks(user.player_data)
@@ -661,7 +660,7 @@ def player_profile():
         if len(user_history_search) > 0:
             user.player_data = user.find_difference(pickle.loads(user_history_search[0].player_data), user.player_data)
 
-        user.filter_data('unchecked', form.filter_input, tankopedia)
+        user.filter_data(form.filter_input, tankopedia)
         recent = user.calculate_general_account_stats(user.player_data)
         recent['wn8'] = user.calculate_wn8_for_all_tanks(user.player_data)
         recent['percentiles'] = user.calculate_percentiles_for_all_tanks(user.player_data)
@@ -686,7 +685,7 @@ def player_profile():
             #Loading and filtering player data.
             user.player_data = pickle.loads(row.player_data)
             #Filtering data using function of the same class.
-            user.filter_data('unchecked', form.filter_input, tankopedia)
+            user.filter_data(form.filter_input, tankopedia)
             #Calculating Percentile totals.
             percentiles_totals.append(user.calculate_percentiles_for_all_tanks(user.player_data))
             #Calculating WN8 totals.
@@ -810,31 +809,18 @@ def statistics_table():
                 extracted_data.append(temp_list)
             self.player_data = extracted_data
 
-        def name_headers(self, checkboxes):
-            new_headers = []
-            for header in self.player_data[0]:
-                if header == 'tank_id':
-                    header = 'Tank'
-
-                for item in checkboxes:
-                    if header == item[1]:
-                        header = item[0]
-                new_headers.append(header)
-            self.player_data[0] = new_headers
-
-        def name_tanks(self, tanks_dict):
+        def name_tanks(self, tankopedia):
             #Headers.
             new_data = [self.player_data[0]]
             #Data.
             for row in self.player_data[1:]:
                 temp_list = []
-                #Checking if the name is in the dict.
-                if str(row[0]) in tanks_dict:
-                    name = tanks_dict[str(row[0])]
+                tank_id = row[0]
+                #Checking if the name is in the dict and appending to the temp list.
+                if str(tank_id) in tankopedia:
+                    temp_list.append(tankopedia[str(tank_id)]['short_name'])
                 else:
-                    name = 'Unknown'
-                #Appending name.
-                temp_list.append(name)
+                    temp_list.append('Unknown')
                 #Appending what's left.
                 [temp_list.append(item) for item in row[1:]]
                 #Adding to the rest of the data.
@@ -875,10 +861,11 @@ def statistics_table():
     table_array = ''
     if return_empty == False:
         #Filtering and extracting data based on checkbox_input.
-        user.filter_data(form.filter_by_50, form.filter_input, tankopedia)
+        user.filter_by_50(form.filter_by_50)
+        user.filter_data(form.filter_input, tankopedia)
         user.extract_needed_data(form.checkboxes, form.checkboxes_input)
         #Naming headers and tanks.
-        user.name_tanks(tanks_dict)
+        user.name_tanks(tankopedia)
         #Generating output.
         table_array = json.dumps(user.player_data)
         button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b> or any of the headers to sort by column'
@@ -979,7 +966,7 @@ def time_series():
                 #Loading and filtering player data.
                 self.player_data = pickle.loads(row.player_data)
                 #Filtering data using function of the same class.
-                self.filter_data('unchecked', filter_input, tankopedia)
+                self.filter_data(filter_input, tankopedia)
                 #Calculating Percentile totals.
                 self.percentiles_totals.append(self.calculate_percentiles_for_all_tanks(self.player_data))
                 #Calculating WN8 totals.
@@ -1240,8 +1227,8 @@ def session_tracker():
 
                     #Other values.
                     temp_dict['tank_id'] = a_tank['tank_id']
-                    if str(temp_dict['tank_id']) in tanks_dict:
-                        temp_dict['tank_name'] = tanks_dict[str(temp_dict['tank_id'])]
+                    if str(temp_dict['tank_id']) in tankopedia:
+                        temp_dict['tank_name'] = tankopedia[str(temp_dict['tank_id'])]['name']
                     else:
                         temp_dict['tank_name'] = 'Unknown'
 
@@ -1282,10 +1269,182 @@ def session_tracker():
         response.set_cookie('server', form.server, expires=expire_date)
     return response
 
+@app.route('/wn8-estimates/', methods=["GET", "POST"])
+def wn8_estimates():
+
+    #Class to handle 'statistics_table' page.
+    class wn8_estimates_cls(user_data):
+        def __init__(self, server, nickname):
+            user_data.__init__(self, server, nickname)
+            self.title = 'WN8 Estimate Values'
+
+        def calculate_wn8_damage_targets(self, tank_data, WN8_dict):
+            wn8_scale = [[300, "ORANGERED"],
+                         [450, "DARKORANGE"],
+                         [650, "GOLD"],
+                         [900, "YELLOWGREEN"],
+                         [1200, "LIME"],
+                         [1600, "DEEPSKYBLUE"],
+                         [2000, "DODGERBLUE"],
+                         [2450, "MEDIUMSLATEBLUE"],
+                         [2900, "REBECCAPURPLE"]]
+
+            #Loading expected values
+            exp_values = {}
+            for item in WN8_dict['data']:
+                if len(item) > 0 and tank_data['tank_id'] == item['IDNum']:
+                    exp_values = item
+
+            #If there are no expected values in the table, return 0
+            if len(exp_values) == 0:
+                return(0)
+            #step 0 - assigning the variables
+            expDmg      = exp_values['expDamage']
+            expSpot     = exp_values['expSpot']
+            expFrag     = exp_values['expFrag']
+            expDef      = exp_values['expDef']
+            expWinRate  = exp_values['expWinRate']
+
+            #step 1
+            #rDAMAGE = tank_data['damage_dealt']             /   tank_data['battles']     / expDmg
+            rSPOT   = tank_data['spotted']                  /   tank_data['battles']     / expSpot
+            rFRAG   = tank_data['frags']                    /   tank_data['battles']     / expFrag
+            rDEF    = tank_data['dropped_capture_points']   /   tank_data['battles']     / expDef
+            rWIN    = tank_data['wins']                     /   tank_data['battles']*100 / expWinRate
+
+            def wn8_last_step(AvgDamage, expDmg, rSPOT, rFRAG, rDEF, rWIN):
+
+                rDAMAGE = AvgDamage / expDmg
+
+                rWINc    = max(0,                     (rWIN    - 0.71) / (1 - 0.71) )
+                rDAMAGEc = max(0,                     (rDAMAGE - 0.22) / (1 - 0.22) )
+                rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG   - 0.12) / (1 - 0.12)))
+                rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT   - 0.38) / (1 - 0.38)))
+                rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF    - 0.10) / (1 - 0.10)))
+
+                WN8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
+
+                return(WN8)
+
+
+            #Iterating.
+            result_list = []
+            count = 0
+            for i in range(20, 7000):
+                temp_score = wn8_last_step(i, expDmg, rSPOT, rFRAG, rDEF, rWIN)
+                if int(temp_score) > wn8_scale[count][0]:
+                    result_list.append(i)
+                    count += 1
+                    if count >= len(wn8_scale):
+                        break
+
+            return(result_list)
+
+        def extract_data_for_wn8(self, WN8_dict, tankopedia_dict):
+            extracted_data = []
+            #Extracting the data.
+            for vehicle in self.player_data:
+                tank_id = vehicle['tank_id']
+                tank_dict = {}
+                #Check if item on both sources.
+                in_wn8, in_tankopedia = False, False
+                #Iterating through WN8 dictionary.
+                for wn8_item in WN8_dict['data']:
+                    if 'IDNum' in wn8_item and wn8_item['IDNum'] == tank_id and vehicle['battles'] > 0:
+                        #If match, adding all the expected values from WN8.
+                        in_wn8 = True
+                        for key, value in wn8_item.items():
+                            tank_dict[key] = value
+                        #Adding values from tankopedia if item in tankopedia.
+                        if str(tank_id) in tankopedia_dict:
+                            in_tankopedia = True
+                            for key, value in tankopedia_dict[str(tank_id)].items():
+                                tank_dict[key] = value
+                        #Quitting 'WN8_dict' loop.
+                        break
+
+                #Continue only if tank both in 'WN8_dict' and 'tankopedia_dict'.
+                if in_wn8 == True and in_tankopedia == True:
+                    tank_dict['Damage']     = vehicle['damage_dealt']/vehicle['battles']
+                    tank_dict['Def']        = vehicle['dropped_capture_points']/vehicle['battles']
+                    tank_dict['Frag']       = vehicle['frags']/vehicle['battles']
+                    tank_dict['Spot']       = vehicle['spotted']//vehicle['battles']
+                    tank_dict['WinRate']    = vehicle['wins']/vehicle['battles']*100
+
+                    #Calculating damage targets.
+                    tank_dict['dmgTargets'] = self.calculate_wn8_damage_targets(vehicle, WN8_dict)
+
+                #Appending row (temp_list) to data.
+                extracted_data.append(tank_dict)
+            self.player_data = extracted_data
+
+    #Initializing 'form_data'.
+    form = form_data(4)
+    #Custom checkboxes layout for filter area.
+    form.checkboxes_filter = [['T1', '1', ''], ['T2', '2', ''], ['T3', '3', ''],
+                              ['T4', '4', ''], ['T5', '5', ''], ['T6', '6', ''],
+                              ['T7', '7', ''], ['T8', '8', ''], ['T9', '9', ''],
+                              ['T10', '10', ''], ['HT', 'heavyTank', ''], ['MT', 'mediumTank', ''],
+                              ['LT', 'lightTank', ''], ['AT', 'AT-SPG', ''], ['SPG', 'SPG', '']]
+    #Requesting cookies.
+    form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
+                         request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
+
+    #Setting defaults.
+    return_empty = True
+    button = 'Enter the details above and click here to <b>Submit</b>'
+
+    if request.method == "POST":
+        return_empty = False
+        #Collecting form items.
+        form.server, form.nickname = request.form['server'], request.form['nickname']
+        form.filter_input = request.form.getlist('filter_input')
+
+    #Initiating 'statistics_table_cls'.
+    user = wn8_estimates_cls(form.server, form.nickname)
+
+    #Eiter find cached player data or request from API and save into 'usercache'.
+    current_user = None
+    if return_empty == False:
+        user.request_or_find_cached()
+        #Return error If status not 'ok'.
+        if user.status != 'ok':
+            return_empty = True
+            button = user.message + ' Click here to <b>submit</b> again.'
+
+    #Calculations.
+    output_list = ''
+    if return_empty == False:
+        #Filtering and extracting data.
+        user.filter_data(form.filter_input, tankopedia)
+        user.extract_data_for_wn8(WN8_dict, tankopedia)
+        #Generating output.
+        #output_list = json.dumps(user.player_data)
+        output_list = user.player_data
+
+        button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b> or any of the headers to sort by column'
+
+    #Generating output.
+    form.nickname = user.nickname
+    form.generate_checkboxes()
+    response = make_response(render_template("wn8-estimates.html", title=user.title, top_panel=form.top_panel, header=form.header,
+                                                                      nickname=form.nickname, server=form.server,
+                                                                      checkboxes_filter=form.checkboxes_filter,
+                                                                      button=button, output_list=output_list))
+
+    #Assigning cookies.
+    if return_empty == False:
+        expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+        response.set_cookie('nickname', form.nickname, expires=expire_date)
+        response.set_cookie('server', form.server, expires=expire_date)
+        response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
+
+    return response
+
 @app.route('/about')
 def about():
 
-    form = form_data(4)
+    form = form_data(5)
 
     return render_template("about.html", title='About', top_panel=form.top_panel, header=form.header)
 
@@ -1342,17 +1501,15 @@ def export(export_type, server, nickname):
                 temp_list.append(vehicle['tank_id'])
                 #requesting items from checkbox_input
                 if 'tier' in checkbox_input:
-                    tier = 0
-                    for row in tankopedia:
-                        if row[0] == vehicle['tank_id']:
-                            tier = row[2]
-                    temp_list.append(tier)
+                    if str(vehicle['tank_id']) in tankopedia:
+                        temp_list.append(tankopedia[str(vehicle['tank_id'])]['tier'])
+                    else:
+                        temp_list.append(0)
                 if 'class' in checkbox_input:
-                    v_class = 'unknown'
-                    for row in tankopedia:
-                        if row[0] == vehicle['tank_id']:
-                            v_class = row[3]
-                    temp_list.append(v_class)
+                    if str(vehicle['tank_id']) in tankopedia:
+                        temp_list.append(tankopedia[str(vehicle['tank_id'])]['type'])
+                    else:
+                        temp_list.append('unknown')
                 if 'wr' in checkbox_input:
                     temp_list.append(vehicle['wins']/vehicle['battles'])
                 if 'battles' in checkbox_input:
@@ -1429,19 +1586,18 @@ def export(export_type, server, nickname):
                 new_headers.append(header)
             self.player_data[0] = new_headers
 
-        def name_tanks(self, tanks_dict):
+        def name_tanks(self, tankopedia):
             #Headers.
             new_data = [self.player_data[0]]
             #Data.
             for row in self.player_data[1:]:
                 temp_list = []
-                #Checking if the name is in the dict.
-                if str(row[0]) in tanks_dict:
-                    name = tanks_dict[str(row[0])].replace(',','')
+                tank_id = row[0]
+                #Checking if the name is in the dict and appending to the temp list.
+                if str(tank_id) in tankopedia:
+                    temp_list.append(tankopedia[str(tank_id)]['short_name'])
                 else:
-                    name = 'Unknown'
-                #Appending name.
-                temp_list.append(name)
+                    temp_list.append('Unknown')
                 #Appending what's left.
                 [temp_list.append(item) for item in row[1:]]
                 #Adding to the rest of the data.
@@ -1455,23 +1611,6 @@ def export(export_type, server, nickname):
                     text = text + str(cell) + ', '
                 text = text + '\n'
             return(text)
-
-    #If request is to export WN8 table.
-    if export_type == 'wn8':
-        user = export_table_cls(None, None)
-        wn8_list = []
-        wn8_list.append(['Name', 'Tier', 'Class', 'Nation', 'expDamage', 'expDef', 'expFrag', 'expSpot', 'expWinRate'])
-        for tank in WN8_dict['data']:
-            if len(tank) > 0:
-                for row in tankopedia:
-                    if row[0] == tank['IDNum']:
-                        wn8_row = [row[1].replace(',',''), row[2], row[3], row[4],
-                                   tank['expDamage'], tank['expDef'], tank['expFrag'], tank['expSpot'], tank['expWinRate']]
-                        wn8_list.append(wn8_row)
-                        break
-
-        user.player_data = wn8_list
-        return Response(user.convert_to_csv(), mimetype='text/csv')
 
     #Validation.
     if server in ['xbox', 'ps4'] and export_type in ['csv', 'json']:
@@ -1498,7 +1637,7 @@ def export(export_type, server, nickname):
             wn8pc = json.load(infile)
         user.extract_needed_data()
         user.name_headers()
-        user.name_tanks(tanks_dict)
+        user.name_tanks(tankopedia)
 
     #Generating response.
     if export_type == 'csv' and return_empty == False:

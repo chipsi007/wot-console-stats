@@ -8,22 +8,17 @@ url = 'https://api-'+server+'-console.worldoftanks.com/wotx/encyclopedia/vehicle
 request = requests.get(url)
 vehicles = request.json()
 
-tanks_dict = {}
-tankopedia = []
+tankopedia = {}
 for key, value in vehicles['data'].items():
-    tank_id = value['tank_id']
-    name = value['name']
-    tank_type = value['type']
-    tier = value['tier']
-    nation = value['nation']
-    tankopedia.append([tank_id, name, tier, tank_type, nation])
-
-    if tank_id not in tanks_dict:
-        tanks_dict[tank_id] = name
+    tank_dict = {'name': value['name'],
+                 'short_name': value['short_name'],
+                 'type': value['type'],
+                 'tier': value['tier'],
+                 'nation': value['nation'],
+                 'is_premium': value['is_premium']
+                }
+    tankopedia[str(value['tank_id'])] = tank_dict
 
 #Saving tankopedia data
-with open('../references/tankopedia.json','w') as myfile:
+with open('../references/new_tankopedia.json','w') as myfile:
     json.dump(tankopedia, myfile)
-
-with open('../references/tanks_dict.json','w') as myfile:
-    json.dump(tanks_dict, myfile)
