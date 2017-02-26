@@ -1,111 +1,171 @@
 {% extends "index.html" %} {% block content %}
 
-<form action="." method="POST">
-    
-    <section class="center">
-        <table class="form">
-            <tr>
-                <td>
-                    <table>
-                        <tr>
-                            <td colspan="2">
-                                <input name="nickname" type="text" value="{{ nickname }}" style="width:95%;" placeholder="Enter your nickname" />
-                            </td>
-                            <td>
-                                <input type="radio" name="server" id="xbox" value="xbox" {{ 'checked' if server=='xbox' }}/>
-                                <label for="xbox">XBOX</label>
-                            </td>
-                            <td>
-                                <input type="radio" name="server" id="ps4" value="ps4" {{ 'checked' if server=='ps4' }}/>
-                                <label for="ps4">PS4</label>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="center-label">
-                        <tr>
-                            {% for i in range(0,15) %}
-                            <td>
-                                <input type="checkbox" id="{{ checkboxes_filter[i][1] }}" name="filter_input" value="{{ checkboxes_filter[i][1] }}" {{ ' checked' if checkboxes_filter[i][2]=='checked' }} />
-                                <label for="{{ checkboxes_filter[i][1] }}">{{ checkboxes_filter[i][0] }}</label>
-                            </td>
-                            {% endfor %}
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </section>
-    
-    <br> 
-    
-    <section class="center">
-        <div>
-            <button type="submit" class="big-button"> {{ button|safe }} </button>
+<section class="section">
+    <div class="container">
+
+        <div class="control is-grouped">
+            <p class="control is-expanded">
+                <input type="text" class="input" id="nickname" placeholder="Playername">
+            </p>
+            <p class="control has-addons">
+                <a class="button" id="xbox" onclick="form.serverToggle('xbox')">XBOX</a>
+                <a class="button" id="ps4" onclick="form.serverToggle('ps4')">PLAYSTATION</a>
+            </p>
         </div>
-    </section>
-    
-    <br>
-    
-    
-    {% if wn8_totals|length > 0 %}
-    <section class="center">
-        <div>
-            
-            <div class="top-nav" style="text-align: center">
-                <a href="javascript:void(0)" class="top-nav-link" id="OpenTab0" onclick="topMenu(event, 'Tab0'); OpenWN8Ch(); OpenPercCh(); RadCh.destroy();">
-                  Dashboard
-                </a>
-                <a href="javascript:void(0)" class="top-nav-link" id="OpenTab1" onclick="topMenu(event, 'Tab1'); OpenRadCh(); WN8Ch.destroy(); PercCh.destroy();">
-                  In detail
-                </a>
+
+        <div class="columns">
+
+            <div class="column">
+                <p class="control">
+                    <a id="1" class="button is-light is-fullwidth" onclick="form.filtersToggle('1')">Tier 1</a>
+                </p>
+                <p class="control">
+                    <a id="2" class="button is-light is-fullwidth" onclick="form.filtersToggle('2')">Tier 2</a>
+                </p>
             </div>
+
+            <div class="column">
+                <p class="control">
+                    <a id="3" class="button is-light is-fullwidth" onclick="form.filtersToggle('3')">Tier 3</a>
+                </p>
+                <p class="control">
+                    <a id="4" class="button is-light is-fullwidth" onclick="form.filtersToggle('4')">Tier 4</a>
+                </p>
+            </div>
+            <div class="column">
+                <p class="control">
+                    <a id="5" class="button is-light is-fullwidth" onclick="form.filtersToggle('5')">Tier 5</a>
+                </p>
+                <p class="control">
+                    <a id="6" class="button is-light is-fullwidth" onclick="form.filtersToggle('6')">Tier 6</a>
+                </p>
+            </div>
+            <div class="column">
+                <p class="control">
+                    <a id="7" class="button is-light is-fullwidth" onclick="form.filtersToggle('7')">Tier 7</a>
+                </p>
+                <p class="control">
+                    <a id="8" class="button is-light is-fullwidth" onclick="form.filtersToggle('8')">Tier 8</a>
+                </p>
+            </div>
+            <div class="column">
+                <p class="control">
+                    <a id="9" class="button is-light is-fullwidth" onclick="form.filtersToggle('9')">Tier 9</a>
+                </p>
+                <p class="control">
+                    <a id="10" class="button is-light is-fullwidth" onclick="form.filtersToggle('10')">Tier 10</a>
+                </p>
+            </div>
+            <div class="column">
+                <p class="control">
+                    <a id="lightTank" class="button is-light is-fullwidth" onclick="form.filtersToggle('lightTank')">Light Tanks</a>
+                </p>
+                <p class="control">
+                    <a id="mediumTank" class="button is-light is-fullwidth" onclick="form.filtersToggle('mediumTank')">Medium Tanks</a>
+                </p>
+            </div>
+            <div class="column">
+                <p class="control">
+                    <a id="heavyTank" class="button is-light is-fullwidth" onclick="form.filtersToggle('heavyTank')">Heavy Tanks</a>
+                </p>
+                <p class="control">
+                    <a id="AT-SPG" class="button is-light is-fullwidth" onclick="form.filtersToggle('AT-SPG')">AT-SPG</a>
+                </p>
+            </div>
+            <div class="column">
+                <p class="control">
+                    <a id="SPG" class="button is-light is-fullwidth" onclick="form.filtersToggle('SPG')">SPG</a>
+                </p>
+                <p class="control">
+                    <a class="button is-warning is-fullwidth" onclick="form.resetFilters();">Reset Filters</a>
+                </p>
+            </div>
+        </div>
+
+        <p class="control">
+            <a class="button is-primary is-fullwidth" onclick="form.submit()">{{ button }}</a>
+        </p>
+        
+        <form name="theForm" action="." method="POST">
+            <input type=hidden name="form_data">
+        </form>
             
-            <div id="Tab0" class="top-nav-content" style="display:none">
-                <div class="stat-card-container">
-                    <div class="stat-card">
-                        <p>
-                            {{ all_time['wr'] }} % &nbsp;{{ difference['wr']|safe }}
-                        </p>    
-                        <p style="font-size: 20px;">
-                            Win Rate
-                        </p>
+        <script>
+            
+            var formData = {{ form_data|safe }};
+            
+            // Calling the form function.
+            var form = new formClass(formData);
+            
+            // Intiating the form.
+            form.initBasics();
+            form.initFilters();
+        
+        </script>
+
+        
+        
+        {% if wn8_totals|length > 0 %}
+
+        <div class="tabs is-medium is-centered">
+            <ul>
+                <li class="tablinks" onclick="page.switchTab(event, 'dashboard');">
+                    <a>Dashboard</a>
+                </li>
+                <li class="tablinks" onclick="page.switchTab(event, 'in-detail');">
+                    <a>In-detail</a>
+                </li>
+            </ul>
+        </div>
+
+        <div id="dashboard" class="tabcontent" style="display: none;">
+            <div class="tile is-ancestor">
+                <div class="tile is-parent">
+                    <div class="tile is-child box content custom-card">
+                        <p>{{ all_time['wr'] }} % &nbsp;{{ difference['wr']|safe }}</p>
+                        <p style="font-size: 25px;">WINRATE</p>
                     </div>
-                    <div class="stat-card">
-                        <p>
-                            {{ all_time['wn8'] }} &nbsp;{{ difference['wn8']|safe }}
-                        </p> 
-                        <p style="font-size: 20px;">
-                            WN8 {{ all_time['wn8_color']|safe }}
-                        </p>
-                    </div>
-                    <div class="stat-card">
-                        <p>
-                            {{ all_time['total_perc'] }} % &nbsp;{{ difference['total_perc']|safe }}
-                        </p> 
-                        <p style="font-size: 20px;">
-                            Percentile
-                        </p>
-                    </div> 
                 </div>
-                <div style="display: flex; justify-content: top;">
-                    <div style="width: 50%">
+                <div class="tile is-parent">
+                    <div class="tile is-child box content custom-card">
+                        <p>{{ all_time['wn8'] }} &nbsp;{{ difference['wn8']|safe }}</p>
+                        <p style="font-size: 25px;">WN8 {{ all_time['wn8_color']|safe }}</p>
+                    </div>
+                </div>
+                <div class="tile is-parent">
+                    <div class="tile is-child box content custom-card">
+                        <p>{{ all_time['total_perc'] }} % &nbsp;{{ difference['total_perc']|safe }}</p>
+                        <p style="font-size: 25px;">PERCENTILE</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tile is-ancestor">
+                <div class="tile is-parent is-6">
+                    <div class="tile is-child box is-12">
                         <canvas id="WN8Canvas" width="100" height="40"></canvas>
                     </div>
-                    <div style="width: 50%">
+                </div>
+                <div class="tile is-parent is-6">
+                    <div class="tile is-child box is-12">
                         <canvas id="PercCanvas" width="100" height="40"></canvas>
                     </div>
                 </div>
             </div>
-            
-            <div id="Tab1" class="top-nav-content" style="display:none">
-                <div style="display: flex; justify-content: top;">
-                    <div style="width: 50%;">
-                        <canvas id="RadChCanvas" width="100" height="75"></canvas>
+
+
+        </div>
+
+        <div id="in-detail" class="tabcontent" style="display: none;">
+            <div class="tile is-ancestor">
+                <div class="tile is-parent is-6">
+                    <div class="tile is-child box is-12">
+                        <canvas id="RadChCanvas" width="100" height="70"></canvas>
                     </div>
-                    <div style="width: 50%;">
-                        <table class="minitable" cellpadding="10">
+                </div>
+                <div class="tile is-parent is-6">
+                    <div class="tile is-child box is-12">
+                        <table class="table">
                             <tr>
                                 <td></td>
                                 <td></td>
@@ -170,131 +230,30 @@
                     </div>
                 </div>
             </div>
-            
-            
         </div>
-        
+
         <script>
-            function OpenWN8Ch() {
-                WN8Ch = new Chart(document.getElementById("WN8Canvas"), {
-                    type: 'line',
-                    data:  {
-                        labels: {{ xlabels|safe }},
-                        datasets: [{
-                            label: 'WN8',
-                            fill: true,
-                            backgroundColor: "hsla(200, 25%, 63%, 0.1)", 
-                            borderColor: "hsl(200, 25%, 63%)", 
-                            pointBackgroundColor: "hsl(200, 25%, 63%)", 
-                            pointBorderColor: "#ffffff", 
-                            pointHoverBackgroundColor: "#ffffff", 
-                            pointHoverBorderColor: "hsl(200, 25%, 63%)", 
-                            data: [{% for item in wn8_totals %}{{item}},{% endfor %}],
-                        }]
-                    },
-                    options: {
-                        title: {
-                            display: true,
-                            text: 'Total WN8'
-                        },
-                        legend: {
-                            display: false
-                        },
-                        scales: {
-                            yAxes: [{
-                                ticks: {
-                                    callback: function(label, index, labels) {
-                                        return Math.round(label);
-                                    }
-                                }
-                            }]
-                        }
-                    }
-                })
-            };
             
-            function OpenPercCh() {
-                PercCh = new Chart(document.getElementById("PercCanvas"), {
-                    type: 'line',
-                    data:  {
-                        labels: {{ xlabels|safe }},
-                        datasets: [{
-                            label: 'Total Percentile',
-                            fill: true,
-                            backgroundColor: "hsla(130, 25%, 63%, 0.1)", 
-                            borderColor: "hsl(130, 25%, 63%)", 
-                            pointBackgroundColor: "hsl(130, 25%, 63%)", 
-                            pointBorderColor: "#ffffff", 
-                            pointHoverBackgroundColor: "#ffffff", 
-                            pointHoverBorderColor: "hsl(130, 25%, 63%)", 
-                            data: {{ percentiles_totals }},
-                        }],
-                    },
-                    options: {
-                        title: {
-                            display: true,
-                            text: 'Total Percentile'
-                        },
-                        legend: {
-                            display: false,
-                        },
-                        scales: {
-                            yAxes: [{
-                                ticks: {
-                                    callback: function(label, index, labels) {
-                                        return Math.round(label*100)/100;
-                                    }
-                                },
-                            }],
-                        },
-                    },
-                })
-            };
+            var xLabels = {{ xlabels|tojson|safe }};
+            var wn8Totals = {{ wn8_totals|tojson|safe }};
+            var percentilesTotals = {{ percentiles_totals|tojson|safe }};
+            var recent = {{ recent|tojson|safe }};
+            var allTime = {{ all_time|tojson|safe }};
             
-            function OpenRadCh() {
-                RadCh = new Chart(document.getElementById("RadChCanvas"), {
-                    type: 'radar',
-                    data:  {
-                        labels: ['Accuracy', 'Damage Caused', 'Radio Assist', 'WinRate', 'Damage Received (inv)'],
-                        datasets: [{
-                            label: 'Recent Percentiles',
-                            fill: true,
-                            backgroundColor: "hsla(0, 35%, 63%, 0.2)", 
-                            borderColor: "hsl(0, 35%, 63%)", 
-                            pointBackgroundColor: "hsl(0, 35%, 63%)", 
-                            pointBorderColor: "#ffffff", 
-                            pointHoverBackgroundColor: "#ffffff", 
-                            pointHoverBorderColor: "hsl(0, 35%, 63%)", 
-                            data: [{{recent['percentiles']['acc']}}, {{recent['percentiles']['dmgc']}}, {{recent['percentiles']['rass']}}, {{recent['percentiles']['wr']}}, {{recent['percentiles']['dmgr']}}],
-                        },
-                        {   
-                            label: 'All Time Percentiles',
-                            fill: true,
-                            backgroundColor: "hsla(200, 25%, 63%, 0.1)", 
-                            borderColor: "hsl(200, 25%, 63%)", 
-                            pointBackgroundColor: "hsl(200, 25%, 63%)", 
-                            pointBorderColor: "#ffffff", 
-                            pointHoverBackgroundColor: "#ffffff", 
-                            pointHoverBorderColor: "hsl(200, 25%, 63%)", 
-                            data: [{{all_time['percentiles']['acc']}}, {{all_time['percentiles']['dmgc']}}, {{all_time['percentiles']['rass']}}, {{all_time['percentiles']['wr']}}, {{all_time['percentiles']['dmgr']}}],          
-                        }]
-                    },
-                    options: {
-                        scale: {
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                })
-            };
             
-            document.getElementById("OpenTab0").click();
+            // Calling the page function.
+            var page = new playerProfileClass(xLabels, wn8Totals, percentilesTotals, recent, allTime);
+            
+            // Open default tab.
+            document.getElementsByClassName("tablinks")[0].click();
+            
         </script>
         
-    </section>
-    {% endif %}
-    
-</form>
-
+        {% endif %}
+        
+        
+        
+    </div>
+</section>
+        
 {% endblock %}

@@ -1,0 +1,141 @@
+{% extends "index.html" %}
+{% block content %}
+
+    <section class="section">
+        
+        <div class="container">
+            
+            <div class="control is-grouped">
+                <p class="control has-addons is-expanded">
+                    <input type="text" class="input is-expanded" id="nickname" placeholder="Playername">
+                    <a class="button" id="xbox" onclick="form.serverToggle('xbox')">XBOX</a>
+                    <a class="button" id="ps4" onclick="form.serverToggle('ps4')">PLAYSTATION</a>
+                </p>
+                <p class="control">
+                    <a class="button" id="filter_by_50" onclick="form.filterBy50Toggle()">> 50</a>
+                </p>
+            </div>
+            
+            <div class="tile is-ancestor">
+                <div class="tile is-parent">
+                    <div class="tile is-child">
+                          
+                        <div class="columns is-gapless">
+                            <div class="column">
+                                {% for i in range(0,3) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(3,6) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(6,9) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(9,12) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(12,15) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(15,18) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                
+                <div class="tile is-parent is-4">
+                    <div class="tile is-child">
+                        <div class="columns is-gapless">
+                            <div class="column">
+                                {% for i in range(0,3) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(3,6) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(6,9) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(9,12) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                            <div class="column">
+                                {% for i in range(12,15) %}
+                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+             
+            <p class="control">
+                <a class="button is-primary is-fullwidth" onclick="form.submit()">{{ button }}</a>
+            </p>
+            
+        </div>
+        
+        <form name="theForm" action="." method="POST">
+            <input type=hidden name="form_data">
+        </form>
+        
+        <script type="text/javascript">
+            
+            var formData = {{ form_data|safe }};
+            
+            // Calling the form function.
+            var form = new formClass(formData);
+            
+            // Intiating the form.
+            form.initBasics();
+            form.initFilters();
+            form.initFilterBy50();
+            form.initDataSelectors();
+
+        </script>
+        
+    </section>
+
+    
+{% if table_array|length > 0 %}
+
+<div id="TableParent" class="container">
+</div>
+
+<script type="text/javascript">
+    
+    // Loading values.
+    var data = {{ table_array|safe }};
+
+    // Calling the page function.
+    var page = new vehiclesPage(data);
+    
+    // Drawing table.
+    page.sortedArray = page.unsortedArray;
+    page.generateTable();
+    
+</script>
+
+{% endif %}
+
+{% endblock %}

@@ -3,8 +3,12 @@ __pycache__/
 
 sql_database.db
 
-template_test/
-
 static/Chart.js
 
 scripts/
+
+static/bulma.css.map
+
+static/bulma.css
+
+test/

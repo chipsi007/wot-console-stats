@@ -1,14 +1,15 @@
 {% extends "index.html" %}
 {% block content %}
 
-    <section class="text">
-        <div>
+    <section class="section">
+        <div class="container content">
+            
             <h3>Percentiles</h3>
 
             <p>While WN8 rating is a good measure of overall player competency in one number, percentiles can be useful when it is necessary to assess the performance of a single tank. 50th percentile is same as median and represents an average player, 100th represents the best of the best.</p>
 
             <p>Percentiles were calculated as follows: The data of around 50,000 random WoT Console profiles was collected. To be a piece of valid data, a player must have had at least 2500 battles on the account. Then ratios were calculated for each tank of every player. To be included in the final rating, different tiers require different minimum numbers of battles. After assembling all player ratios, the percentiles for each tank were calculated using a math module. More information about percentile can be found on <a href="https://en.wikipedia.org/wiki/Percentile">Wikipedia</a>.</p>
-            <br>
+            
             
             <h3>WN8 calculation</h3>
 
@@ -21,8 +22,8 @@
             <p>Latest percentiles and WN8 table update: 19 FEB 2017
             <br>The <a href="https://github.com/IDDT/wot-console-playerbase-analysis">GitHub repo</a> for calculating percentiles and WN8
             <br>Download WN8 table in <a href="https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/wn8_results/wn8console.json">JSON</a>.</p>
-            <br>
 
+            
             <h3>Statistics  Table</h3>
 
             <p>Avg Damage, Avg Frags, Avg EXP - show average damage, frags and experience per battle.
@@ -34,21 +35,11 @@
             <br>Average Lifetime: Average lifetime. ***
             <br>Last battle time: How many (min, h, d, m, y) ago the tank was driven.
             <br>*** Only the time between the actual start of the battle (15:00 on a battle timer) and player death is included.</p>
-            <br>
-            
-            
-            <h3>How filtering works</h3>
-            
-            <p>Even though classes and tiers are crumbled inside one box, these two filters work independently. To select all vehicles on the account, a player needs to mark all the selectors or none at all. For example: to select Heavy tanks, it's enough to select HT, leaving everything else blank. In this case, because none of the vehicle tiers selected, the tiers are treated like they are all selected.</p>
-            <br>
-    
+
             
             <h3>Export functionality</h3>
 
             <p>Currently, as an experimental feature, it's possible to export clean data straight into CSV for own analysis in Excel or Tableau. Use following URL: "wot.pythonanywhere.com/export/{type}/{server}/{username}/" where type is either 'csv' or 'json', server: 'xbox' or 'ps4', and username is either your Xbox Gamertag or PSN. Then in the browser click File > Save As. For example, to export my statistics the URL would be "wot.pythonanywhere.com/export/csv/ps4/turboparrot666/".</p>
-
-            <p>The current WN8 table is also available for <a href="/export/wn8/x/x/">export in CSV</a>.</p>
-            <br>
 
 
             <h3>Data Collection</h3>
@@ -56,12 +47,22 @@
             <p>Every time user performs statistics look up, the site collects and stores the data point for caching and charting purposes. Daily snapshots are stored for a minimum of 8 days so users will be able to see daily changes in their stats for the last 7 days.</p>
 
             <p>Because the website performs charting and data calculations in real time, storing data for longer periods of time might be taxing not only on CPU but also on server storage. The advantage of this method is if the variables change (like WN8 table) old values are just recalculated as usual.</p>
-            <br>
+            
+            
+            <h3>WG API errors</h3>
+            
+            <p>This web site handles all WG API errors by showing the raw API error message right in the submit button. For example "ERROR: SOURCE_NOT_AVAILABLE" means that WOT API are down (partially or completely).
+            </p>
 
 
             <h3>Bugs and errors</h3>
+            
+            <p>This web site handles all WG API errors by showing API error message right in the submit button. For ex. 
+            </p>
 
-            <p>If something doesn't seem to work properly or as expected, please consider submitting an issue on <a href="https://github.com/IDDT/wot-console-stats/issues">GitHub</a>, or if you don't have GitHub account, send a message to <a href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">my profile</a> on World Of Tanks Console forum.</p>       
+            <p>If something doesn't seem to work properly or as expected, please consider submitting an issue on <a href="https://github.com/IDDT/wot-console-stats/issues">GitHub</a>, or if you don't have GitHub account, send a message to <a href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">my profile</a> on World Of Tanks Console forum.</p>
+            
+            
         </div>
     </section>
                     

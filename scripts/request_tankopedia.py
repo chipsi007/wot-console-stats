@@ -20,5 +20,5 @@ for key, value in vehicles['data'].items():
     tankopedia[str(value['tank_id'])] = tank_dict
 
 #Saving tankopedia data
-with open('../references/new_tankopedia.json','w') as myfile:
+with open('../references/tankopedia.json','w') as myfile:
     json.dump(tankopedia, myfile)

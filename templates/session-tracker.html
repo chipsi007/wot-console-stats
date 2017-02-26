@@ -1,263 +1,118 @@
-{% extends "index.html" %} {% block content %}
+{% extends "index.html" %}
+{% block content %}
 
-<form action="." method="POST">
-    
-    <section class="center">
-        <table class="form">
-            <tr>
-                <td>
-                    <table>
-                        <tr>
-                            <td>
-                                <input name="nickname" type="text" value="{{ nickname }}" placeholder="Enter your nickname" />
-                            </td>
-                            <td>
-                                <input type="radio" name="server" id="xbox" value="xbox" {{ 'checked' if server=='xbox' }}/>
-                                <label for="xbox">XBOX</label>
-                            </td>
-                            <td>
-                                <input type="radio" name="server" id="ps4" value="ps4" {{ 'checked' if server=='ps4' }}/>
-                                <label for="ps4">PS4</label>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table>
-                        <tr>
-                            <td style="padding-left: 5px;">
-                                Select time period:
-                            </td>
-                            {% for checkpoint in history_checkpoints %}
-                            <td>
-                                <input type="radio" name="checkpoints" id="{{ checkpoint[0] }}" value="{{ checkpoint[0] }}" />
-                                <label for="{{ checkpoint[0] }}">{{ checkpoint[1] }}</label>
-                            </td>
-                            {% endfor %}   
-                        </tr>
-                    </table>
-                </td>
-            </tr>
 
-        </table>
-    </section>
+<section class="section">    
     
-    <br>
-    
-    <section class="center">
-        <div>
-            <button type="submit" class="big-button">{{ button|safe }}</button>
+    <div class="container">
+        
+        <div class="control is-grouped">
+            <p class="control is-expanded">
+                <input type="text" class="input" id="nickname" placeholder="Playername">
+            </p>
+            <p class="control has-addons">
+                <a class="button" id="xbox" onclick="form.serverToggle('xbox')">XBOX</a>
+                <a class="button" id="ps4" onclick="form.serverToggle('ps4')">PLAYSTATION</a>
+            </p>
         </div>
-    </section>
+        
+        <p class="control">
+            <a class="button is-primary is-fullwidth" onclick="form.submit()">{{ button }}</a>
+        </p>
+        
+        <div class="columns">
+            
+            {% for checkpoint in history_checkpoints %}
+            <div class="column">
+                <p class="control">
+                    <a class="button is-light is-fullwidth" onclick="form.requestSession('{{ checkpoint[0] }}')">{{ checkpoint[1] }}</a>
+                </p>
+            </div>
+            {% endfor %}
+            
+        </div>
 
-    <br> 
+    </div>
+    
+    <form name="theForm" action="." method="POST">
+        <input type=hidden name="form_data">
+    </form>
+
+    <script type="text/javascript">
+
+        var formData = {{ form_data|safe }};
+            
+        // Calling the form function.
+        var form = new formClass(formData);
+
+        // Intiating the form.
+        form.initBasics();
+
+    </script>
+    
+    
     
     {% if session_tanks|length > 0 %}
     
-    <section class="center">
-        <div style="display: flex;">
-            <nav class="sidenav">
-                <div>
-                    <h4 style="text-align: center; padding: 10px;">Tanks</h4>
+    <div class="container">
+        
+        <div class="tile is-ancestor">
+            
+            <div class="tile is-parent is-2">
+                <div class="tile is-child box">
+                       
+                    <aside class="menu">
+                        <p class="menu-label">Tanks</p>
+                        <ul class="menu-list">
+                            {% for tank in session_tanks %}
+                            {% set id = tank['tank_id'] %}
+                            <li><a class="menulinks" id="{{ id }}" onclick="page.switchTank('{{ id }}');">{{ tank['tank_name']|safe }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </aside>
+            
                 </div>
+            </div>
+            
+            <div class="tile is-parent is-5">
+                <div class="tile is-child box is-12">
                     
-                <a href="javascript:void(0)" class="tablinks" id="defaultOpen" onclick="sideMenu(event, 'overview'); ChartOverview(); ChartOverview2();">Overview</a>
-                    
-                {% for tank in session_tanks %}
-                {% set id = tank['tank_id'] %}
-                <a href="javascript:void(0)" class="tablinks" onclick="sideMenu(event, '{{ id }}'); Chart{{ id }}();">
-                {{ tank['tank_name']|safe }}
-                </a>
-                {% endfor %}
-                    
-            </nav>
+                    <canvas id="RadChCanvas" width="100" height="100"></canvas>
                 
-                <div id="overview" class="tabcontent" style="display:none">
-                    <canvas id="BarChart_dmgc" width="100" height="27"></canvas>
-                    <canvas id="BarChart_wn8" width="100" height="27"></canvas>
                 </div>
+            </div>
+            
+            <div class="tile is-parent is-5">
+                <div id="TableParent" class="tile is-child box is-12">
+                    
+                    <table class="table">
+                        
+                    
+                    </table>
                 
-                {% for tank in session_tanks %}
-                {% set id = tank['tank_id'] %}
-                <div id="{{ id }}" class="tabcontent" style="display:none">
-                    <div style="display: flex; align-items: top;">
-                        <div style="width: 60%; padding: 10px;">
-                            <canvas id="canvas{{ id }}" width="100" height="80"></canvas>
-                        </div>
-                        <div style="width: 40%;">
-                            <table class="minitable" cellpadding="9">
-                                <tr>
-                                    <td colspan="3">
-                                        <h4>{{ tank['tank_name'] }} Battles: {{ tank['battles_session'] }}  Wins: {{ tank['wins_session'] }}</h4>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Averages</td>
-                                    <td>Session</td>
-                                    <td>All time</td>
-                                </tr>
-                                <tr>
-                                    <td>Accuracy</td>
-                                    <td>{{ '{:0.0f} %'.format(tank['acc_session']) }}</td>
-                                    <td>{{ '{:0.0f} %'.format(tank['acc_all']) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Damage Caused</td>
-                                    <td>{{ '{:0.0f}'.format(tank['dmgc_session']) }}</td>
-                                    <td>{{ '{:0.0f}'.format(tank['dmgc_all']) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Radio Assist</td>
-                                    <td>{{ '{:0.0f}'.format(tank['rass_session']) }}</td>
-                                    <td>{{ '{:0.0f}'.format(tank['rass_all']) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Experience</td>
-                                    <td>{{ '{:0.0f}'.format(tank['exp_session']) }}</td>
-                                    <td>{{ '{:0.0f}'.format(tank['exp_all']) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Damage Received</td>
-                                    <td>{{ '{:0.0f}'.format(tank['dmgr_session']) }}</td>
-                                    <td>{{ '{:0.0f}'.format(tank['dmgr_all']) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Lifetime</td>
-                                    <td>{{ tank['lifetime_session'] }}</td>
-                                    <td>{{ tank['lifetime_all'] }}</td>
-                                </tr>
-                                <tr>
-                                    <td>DPM</td>
-                                    <td>{{ '{:0.0f}'.format(tank['dpm_session']) }}</td>
-                                    <td>{{ '{:0.0f}'.format(tank['dpm_all']) }}</td>
-                                </tr>
-                                <tr>
-                                    <td>WN8</td>
-                                    <td>{{ '{:0.0f}'.format(tank['wn8_session']) }}</td>
-                                    <td>{{ '{:0.0f}'.format(tank['wn8_all']) }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
                 </div>
-                {% endfor %}
+            </div>
             
         </div>
-          
-        <script>
-            
-            function ChartOverview()  {
-                new Chart(document.getElementById("BarChart_dmgc"), { 
-                    type: 'bar', 
-                    data: {
-                        labels: [{% for tank in session_tanks %}"{{ tank['tank_name']|safe }}",{% endfor %}], 
-                        datasets: [{
-                            label: "Session",
-                            backgroundColor: 'hsla(195, 25%, 63%, 0.4)', 
-                            borderColor: 'hsl(195, 25%, 63%)', 
-                            borderWidth: 1,
-                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['dmgc_session']) }},{% endfor %}]
-                        },  
-                        {
-                            label: "All time", 
-                            backgroundColor: 'hsla(0, 0%, 80%, 0.4)', 
-                            borderColor: 'hsl(0, 0%, 80%)', 
-                            borderWidth: 1, 
-                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['dmgc_all']) }},{% endfor %}], 
-                        }] 
-                    },
-                    options:  {
-                        stacked: true,
-                        legend: {
-                            display: false
-                        },
-                        title: {
-                            display: true,
-                            text: "Average Damage"
-                        }
-                    }
-                })
-            };
-            function ChartOverview2()  {
-                new Chart(document.getElementById("BarChart_wn8"), { 
-                    type: 'bar', 
-                    data: {
-                        labels: [{% for tank in session_tanks %}"{{ tank['tank_name']|safe }}",{% endfor %}], 
-                        datasets: [{
-                            label: "Selected Period",
-                            backgroundColor: 'hsla(195, 25%, 63%, 0.4)', 
-                            borderColor: 'hsl(195, 25%, 63%)', 
-                            borderWidth: 1,
-                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['wn8_session']) }},{% endfor %}]
-                        },  
-                        {
-                            label: "All time", 
-                            backgroundColor: 'hsla(0, 0%, 80%, 0.4)', 
-                            borderColor: 'hsl(0, 0%, 80%)', 
-                            borderWidth: 1, 
-                            data: [{% for tank in session_tanks %}{{ '{:0.0f}'.format(tank['wn8_all']) }},{% endfor %}], 
-                        }] 
-                    },
-                    options:  {
-                        stacked: true,
-                        legend: {
-                            display: false
-                        },
-                        title: {
-                            display: true,
-                            text: "WN8"
-                        }
-                    }
-                })
-            };
-          
-            {% for tank in session_tanks %}
-            {% set id = tank['tank_id'] %}
-            function Chart{{ id }}() { 
-                new Chart(document.getElementById("canvas{{ id }}"), { 
-                    type: 'radar', 
-                    data: { 
-                        labels: {{ radar_names|safe }}, 
-                        datasets: [ { 
-                            label: "Selected period",
-                            backgroundColor: "hsla(0, 35%, 63%, 0.2)", 
-                            borderColor: "hsl(0, 35%, 63%)", 
-                            pointBackgroundColor: "hsl(0, 35%, 63%)", 
-                            pointBorderColor: "#ffffff", 
-                            pointHoverBackgroundColor: "#ffffff", 
-                            pointHoverBorderColor: "hsl(0, 35%, 63%)", 
-                            data: {{ tank['radar_session'] }} }, 
-                                    {
-                            label: "All time", 
-                            backgroundColor: "hsla(195, 20%, 63%, 0.1)", 
-                            borderColor: "hsl(195, 20%, 63%)", 
-                            pointBackgroundColor: "hsl(195, 20%, 63%)", 
-                            pointBorderColor: "#ffffff", 
-                            pointHoverBackgroundColor: "#ffffff", 
-                            pointHoverBorderColor: "hsl(195, 20%, 63%)", 
-                            data: {{ tank['radar_all'] }} }, 
-                        ] 
-                    },
-                    options: {
-                        scale: {
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        }
-                    }  
-                })
-            };
-            {% endfor %}
-            
-            document.getElementById("defaultOpen").click();
-        </script>
+        
+    </div>
     
-    </section>
+    <script type="application/javascript">
+        
+        // All sesson data.
+        var sessionTanks = {{ session_tanks|tojson|safe }};
+        
+        // Calling the page function.
+        var page = new sessionTracker(sessionTanks);
+         
+        // Open the first menu item.
+        document.getElementsByClassName("menulinks")[0].click();
+
+    </script>
+    
     
     {% endif %}
     
-    <br> 
-    
-</form>
+</section>
 
 {% endblock %}

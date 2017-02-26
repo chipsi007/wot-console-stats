@@ -161,100 +161,84 @@ usercache.delete_all_cache()
 
 
 #Class to handle form data.
-class form_data:
+class form_cls:
     def __init__(self, index_of_current_page):
-        self.header_clicked = 'none'
         self.nickname = ''
         self.server = 'xbox'
         self.filter_by_50 = 'unchecked'
-        self.checkboxes_input = ['wr', 'exp_perc', 'avg_lifetime']
+        self.data_input = ['wr', 'exp_perc', 'avg_lifetime']
         self.filter_input = []
-        self.checkboxes = [['WinRate', 'wr', ''],
-                           ['Battles', 'battles', ''],
-                           ['WN8', 'wn8', ''],
+        self.data_selectors = [['WinRate', 'wr'],
+                               ['Battles', 'battles'],
+                               ['WN8', 'wn8'],
 
-                           ['Avg Dmg', 'avg_dmg', ''],
-                           ['Avg Frags', 'avg_frags', ''],
-                           ['Avg Exp', 'avg_exp', ''],
+                               ['Avg Dmg', 'avg_dmg'],
+                               ['Avg Frags', 'avg_frags'],
+                               ['Avg Exp', 'avg_exp'],
 
-                           ['Avg DPM', 'avg_dpm', ''],
-                           ['Avg FPM', 'avg_fpm', ''],
-                           ['Avg EPM', 'avg_epm', ''],
+                               ['Avg DPM', 'avg_dpm'],
+                               ['Avg FPM', 'avg_fpm'],
+                               ['Avg EPM', 'avg_epm'],
 
-                           ['Dmg Percentile', 'dmg_perc', ''],
-                           ['WR Percentile', 'wr_perc', ''],
-                           ['Exp Percentile', 'exp_perc', ''],
+                               ['Dmg Percentile', 'dmg_perc'],
+                               ['WR Percentile', 'wr_perc'],
+                               ['Exp Percentile', 'exp_perc'],
 
-                           ['Penetrated/Hits caused', 'pen_hits_ratio', ''],
-                           ['Bounced/Hits received', 'bounced_hits_r', ''],
-                           ['Survived', 'survived', ''],
+                               ['Penetrated/Hits caused', 'pen_hits_ratio'],
+                               ['Bounced/Hits received', 'bounced_hits_r'],
+                               ['Survived', 'survived'],
 
-                           ['Total Lifetime', 'total_time', ''],
-                           ['Average Lifetime', 'avg_lifetime', ''],
-                           ['Last battle time', 'last_time', '']]
-        self.checkboxes_filter = [['T7', '7', ''],
-                                  ['T4', '4', ''],
-                                  ['T1', '1', ''],
+                               ['Total Lifetime', 'total_time'],
+                               ['Average Lifetime', 'avg_lifetime'],
+                               ['Last battle time', 'last_time']]
+        self.filter_selectors = [['T7', '7'],
+                                  ['T4', '4'],
+                                  ['T1', '1'],
 
-                                  ['T8', '8', ''],
-                                  ['T5', '5', ''],
-                                  ['T2', '2', ''],
+                                  ['T8', '8'],
+                                  ['T5', '5'],
+                                  ['T2', '2'],
 
-                                  ['T9', '9', ''],
-                                  ['T6', '6', ''],
-                                  ['T3', '3', ''],
+                                  ['T9', '9'],
+                                  ['T6', '6'],
+                                  ['T3', '3'],
 
-                                  ['T10', '10', ''],
-                                  ['AT', 'AT-SPG', ''],
-                                  ['SPG', 'SPG', ''],
+                                  ['T10', '10'],
+                                  ['AT', 'AT-SPG'],
+                                  ['SPG', 'SPG'],
 
-                                  ['HT', 'heavyTank', ''],
-                                  ['MT', 'mediumTank', ''],
-                                  ['LT', 'lightTank', '']]
-        self.top_panel = []
+                                  ['HT', 'heavyTank'],
+                                  ['MT', 'mediumTank'],
+                                  ['LT', 'lightTank']]
+        #Generating header. Using 'index_of_current_page' for highlighting.
         self.header = [['Player Profile', '/player-profile/', 'not_current'],
-                       ['Statistics table', '/statistics-table/', 'not_current'],
+                       ['Vehicles', '/vehicles/', 'not_current'],
                        ['Time Series', '/time-series/', 'not_current'],
                        ['Session Tracker', '/session-tracker/', 'not_current'],
                        ['WN8 Target Damage', '/wn8-estimates/', 'not_current'],
                        ['About', '/about', 'not_current']]
-        #Generating header. Using 'index_of_current_page' for highlighting.
         for i, item in enumerate(self.header):
             if i == index_of_current_page:
                 item[2] = 'current'
 
-    def request_cookies(self, nickname, server, filter_by_50, checkboxes_input, filter_input):
-        if nickname is not None:
-            self.nickname = nickname
+    def unpack_form_data(self, form_data):
+        self.nickname = form_data['nickname']
+        self.server = form_data['server']
+        self.filter_by_50 = form_data['filter_by_50']
+        self.data_input = form_data['data_input']
+        self.filter_input = form_data['filter_input']
 
-        if server is not None:
-            self.server = server
+    def pack_form_data(self):
+        form_data = {}
+        form_data['nickname'] = self.nickname
+        form_data['server'] = self.server
+        form_data['filter_by_50'] = self.filter_by_50
+        form_data['data_input'] = self.data_input
+        form_data ['filter_input'] = self.filter_input
+        return(form_data)
 
-        #Checkboxes.
-        if checkboxes_input is not None:
-            self.checkboxes_input = json.loads(checkboxes_input)
-
-        #Loading filter parameters.
-        if filter_input is not None:
-            self.filter_input = json.loads(filter_input)
-
-        #Filter by 50 battles option.
-        if filter_by_50 is not None:
-            self.filter_by_50 = filter_by_50
-
-    def generate_checkboxes(self):
-        for item in self.checkboxes:
-            if item[1] in self.checkboxes_input:
-                item[2] = 'checked'
-            else:
-                item[2] = ''
-        for item in self.checkboxes_filter:
-            if item[1] in self.filter_input:
-                item[2] = 'checked'
-            else:
-                item[2] = ''
 #Class to handle user data.
-class user_data:
+class user_cls:
     def __init__(self, server, nickname):
         self.app_id = 'demo'
         self.server = server
@@ -387,11 +371,10 @@ class user_data:
             closest_value = min(percentiles_list, key=lambda x: abs(x - value))
             index = percentiles_list.index(closest_value)
         #If tank is in tankopedia. Taking the value from generic percentiles.
-        elif tank_id in [row[0] for row in tankopedia] and value != 0:
-            for row in tankopedia:
-                if tank_id == row[0]:
-                    tier_class = str(row[2]) + row[3]
-                    break
+        elif str(tank_id) in tankopedia and value != 0:
+            temp_tank = tankopedia[str(tank_id)]
+            tier_class = str(temp_tank['tier']) + temp_tank['type']
+
             percentiles_list = percentiles_generic[kind][tier_class]
             closest_value = min(percentiles_list, key=lambda x: abs(x - value))
             index = percentiles_list.index(closest_value)
@@ -478,9 +461,9 @@ def index():
 def player_profile():
 
     #Class to handle 'player_profile' page.
-    class player_profile_cls(user_data):
+    class player_profile_cls(user_cls):
         def __init__(self, server, nickname):
-            user_data.__init__(self, server, nickname)
+            user_cls.__init__(self, server, nickname)
             self.title = 'Player Profile'
 
         def calculate_general_account_stats(self, userdata):
@@ -606,19 +589,14 @@ def player_profile():
                     output_dict[key] = symbols['straight']
             return(output_dict)
 
-    #Initiating 'form_data' class and requesting cookies.
-    form = form_data(0)
-    form.checkboxes_filter = [['T1', '1', ''], ['T2', '2', ''], ['T3', '3', ''],
-                              ['T4', '4', ''], ['T5', '5', ''], ['T6', '6', ''],
-                              ['T7', '7', ''], ['T8', '8', ''], ['T9', '9', ''],
-                              ['T10', '10', ''], ['HT', 'heavyTank', ''], ['MT', 'mediumTank', ''],
-                              ['LT', 'lightTank', ''], ['AT', 'AT-SPG', ''], ['SPG', 'SPG', '']]
-    form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
-                         request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
+    #Initiating 'form_cls' and requesting cookies.
+    form = form_cls(0)
+    if request.cookies.get('form_data') is not None:
+        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
 
     #Setting defaults.
     return_empty = True
-    button = 'Enter the details above and click here to <b>Submit</b>'
+    button = 'Enter the details above and click here to Submit'
 
     #Checking if there is info in cookies.
     if form.nickname != '' and form.server in ['xbox', 'ps4']:
@@ -626,9 +604,9 @@ def player_profile():
 
     #If there is new input.
     if request.method == "POST":
-        return_empty = False
-        form.server, form.nickname = request.form["server"], request.form["nickname"]
-        form.filter_input = request.form.getlist('filter_input')
+        if request.form['form_data'] != '':
+            form.unpack_form_data(json.loads(request.form['form_data']))
+            return_empty = False
 
     #Initiating 'time_series_cls'.
     user = player_profile_cls(form.server, form.nickname)
@@ -640,7 +618,7 @@ def player_profile():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to <b>submit</b> again.'
+            button = user.message + ' Click here to submit again.'
 
     #Placeholders.
     all_time, recent, difference = ({} for i in range(3))
@@ -670,8 +648,7 @@ def player_profile():
         all_time['wn8_color'] = user.wn8_color_picker(all_time['wn8'])
 
         #Calculating charts
-        xlabels = []
-        percentiles_totals, wn8_totals = [], []
+        xlabels, percentiles_totals, wn8_totals = [], [], []
 
         for r, row in enumerate(user_history_search):
 
@@ -694,159 +671,152 @@ def player_profile():
         new_list = []
         for item in percentiles_totals:
             new_list.append(sum([value for key, value in item.items()])/5)
-        percentiles_totals = json.dumps(new_list)
-        xlabels = json.dumps(xlabels)
+        percentiles_totals = new_list
 
     #Generating output.
     if return_empty == False:
         form.nickname = user.nickname
-        button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b>'
+        button = 'Found data for ' + str(user.nickname) + ' Click here to resubmit'
 
     #Making response & assigning cookies.
-    form.generate_checkboxes()
-    response = make_response(render_template("player-profile.html", title=user.title, top_panel=form.top_panel, header=form.header,
-                                                                    button=button,
-                                                                    nickname=form.nickname, server=form.server,
-                                                                    checkboxes_filter=form.checkboxes_filter,
+    form.nickname = user.nickname
+    form_data = json.dumps(form.pack_form_data())
+    response = make_response(render_template("player-profile.html", title=user.title, header=form.header,
+                                                                    button=button, form_data=form_data,
 
                                                                     all_time=all_time, recent=recent, difference=difference,
                                                                     xlabels=xlabels, percentiles_totals=percentiles_totals, wn8_totals=wn8_totals))
     #Assigning cookies if not empty.
     if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('nickname', form.nickname, expires=expire_date)
-        response.set_cookie('server', form.server, expires=expire_date)
-        response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
+        response.set_cookie('form_data', form_data, expires=expire_date)
 
     return response
 
-@app.route('/statistics-table/', methods=["GET", "POST"])
-def statistics_table():
+#Class to handle 'vehicles' page.
+class vehicles_cls(user_cls):
+    def __init__(self, server, nickname):
+        user_cls.__init__(self, server, nickname)
+        self.title = 'Vehicles'
 
-    #Class to handle 'statistics_table' page.
-    class statistics_table_cls(user_data):
-        def __init__(self, server, nickname):
-            user_data.__init__(self, server, nickname)
-            self.title = 'Statistics table'
-
-        def extract_needed_data(self, checkboxes, checkbox_input):
-            extracted_data = []
-            #Asembling the header.
-            header = ['tank_id']
-            #Control order of columns.
-            header_elements = [row[1] for row in checkboxes]
-            for element in header_elements:
-                for item in checkbox_input:
-                    if element == item:
-                        header.append(item)
-            extracted_data.append(header)
-            #Extracting the data.
-            for vehicle in self.player_data:
-                #Creating the row.
-                temp_list = []
-                #Appending default data.
-                temp_list.append(vehicle['tank_id'])
-                #Requesting items from 'checkbox_input'.
-                if 'wr' in checkbox_input:
-                    temp_list.append(vehicle['wins']/vehicle['battles'])
-                if 'battles' in checkbox_input:
-                    temp_list.append(vehicle['battles'])
-                if 'wn8' in checkbox_input:
-                    temp_list.append(self.wn8_calculator(vehicle, WN8_dict))
-                if 'avg_dmg' in checkbox_input:
-                    temp_list.append(vehicle['damage_dealt']/vehicle['battles'])
-                if 'avg_frags' in checkbox_input:
-                    temp_list.append(vehicle['frags']/vehicle['battles'])
-                if 'avg_exp' in checkbox_input:
-                    temp_list.append(vehicle['xp']/vehicle['battles'])
-                if 'avg_dpm' in checkbox_input:
-                    if vehicle['battle_life_time'] > 0:
-                        temp_list.append(vehicle['damage_dealt'] / vehicle['battle_life_time'] * 60)
-                    else:
-                        temp_list.append(0)
-                if 'avg_fpm' in checkbox_input:
-                    if vehicle['battle_life_time'] > 0:
-                        temp_list.append(vehicle['frags'] / vehicle['battle_life_time'] * 60)
-                    else:
-                        temp_list.append(0)
-                if 'avg_epm' in checkbox_input:
-                    if vehicle['battle_life_time'] > 0:
-                        temp_list.append(vehicle['xp'] / vehicle['battle_life_time'] * 60)
-                    else:
-                        temp_list.append(0)
-                if 'dmg_perc' in checkbox_input:
-                    value = vehicle['damage_dealt']/vehicle['battles']
-                    perc = self.percentile_calculator('dmgc', vehicle['tank_id'], value)
-                    temp_list.append(perc)
-                if 'wr_perc' in checkbox_input:
-                    value = vehicle['wins']/vehicle['battles']*100
-                    perc = self.percentile_calculator('wr', vehicle['tank_id'], value)
-                    temp_list.append(perc)
-                if 'exp_perc' in checkbox_input:
-                    value = vehicle['xp']/vehicle['battles']
-                    perc = self.percentile_calculator('exp', vehicle['tank_id'], value)
-                    temp_list.append(perc)
-                if 'pen_hits_ratio' in checkbox_input:
-                    if vehicle['hits'] > 0:
-                        temp_list.append(vehicle['piercings'] / vehicle['hits'])
-                    else:
-                        temp_list.append(0)
-                if 'bounced_hits_r' in checkbox_input:
-                    if vehicle['direct_hits_received'] > 0:
-                        temp_list.append(vehicle['no_damage_direct_hits_received'] / vehicle['direct_hits_received'])
-                    else:
-                        temp_list.append(0)
-                if 'survived' in checkbox_input:
-                    temp_list.append(vehicle['survived_battles']/vehicle['battles'])
-                if 'total_time' in checkbox_input:
-                    temp_list.append(vehicle['battle_life_time'] / 60)
-                if 'avg_lifetime' in checkbox_input:
-                    temp_list.append(vehicle['battle_life_time'] / vehicle['battles'])
-                if 'last_time' in checkbox_input:
-                    temp_list.append(vehicle['last_battle_time'])
-
-                #Appending row (temp_list) to data.
-                extracted_data.append(temp_list)
-            self.player_data = extracted_data
-
-        def name_tanks(self, tankopedia):
-            #Headers.
-            new_data = [self.player_data[0]]
-            #Data.
-            for row in self.player_data[1:]:
-                temp_list = []
-                tank_id = row[0]
-                #Checking if the name is in the dict and appending to the temp list.
-                if str(tank_id) in tankopedia:
-                    temp_list.append(tankopedia[str(tank_id)]['short_name'])
+    def extract_needed_data(self, data_selectors, data_input):
+        extracted_data = []
+        #Asembling the header.
+        header = ['tank_id']
+        #Control order of columns.
+        header_elements = [row[1] for row in data_selectors]
+        for element in header_elements:
+            for item in data_input:
+                if element == item:
+                    header.append(item)
+        extracted_data.append(header)
+        #Extracting the data.
+        for vehicle in self.player_data:
+            #Creating the row.
+            temp_list = []
+            #Appending default data.
+            temp_list.append(vehicle['tank_id'])
+            #Requesting items from 'checkbox_input'.
+            if 'wr' in data_input:
+                temp_list.append(vehicle['wins']/vehicle['battles'])
+            if 'battles' in data_input:
+                temp_list.append(vehicle['battles'])
+            if 'wn8' in data_input:
+                temp_list.append(self.wn8_calculator(vehicle, WN8_dict))
+            if 'avg_dmg' in data_input:
+                temp_list.append(vehicle['damage_dealt']/vehicle['battles'])
+            if 'avg_frags' in data_input:
+                temp_list.append(vehicle['frags']/vehicle['battles'])
+            if 'avg_exp' in data_input:
+                temp_list.append(vehicle['xp']/vehicle['battles'])
+            if 'avg_dpm' in data_input:
+                if vehicle['battle_life_time'] > 0:
+                    temp_list.append(vehicle['damage_dealt'] / vehicle['battle_life_time'] * 60)
                 else:
-                    temp_list.append('Unknown')
-                #Appending what's left.
-                [temp_list.append(item) for item in row[1:]]
-                #Adding to the rest of the data.
-                new_data.append(temp_list)
-            self.player_data = new_data
+                    temp_list.append(0)
+            if 'avg_fpm' in data_input:
+                if vehicle['battle_life_time'] > 0:
+                    temp_list.append(vehicle['frags'] / vehicle['battle_life_time'] * 60)
+                else:
+                    temp_list.append(0)
+            if 'avg_epm' in data_input:
+                if vehicle['battle_life_time'] > 0:
+                    temp_list.append(vehicle['xp'] / vehicle['battle_life_time'] * 60)
+                else:
+                    temp_list.append(0)
+            if 'dmg_perc' in data_input:
+                value = vehicle['damage_dealt']/vehicle['battles']
+                perc = self.percentile_calculator('dmgc', vehicle['tank_id'], value)
+                temp_list.append(perc)
+            if 'wr_perc' in data_input:
+                value = vehicle['wins']/vehicle['battles']*100
+                perc = self.percentile_calculator('wr', vehicle['tank_id'], value)
+                temp_list.append(perc)
+            if 'exp_perc' in data_input:
+                value = vehicle['xp']/vehicle['battles']
+                perc = self.percentile_calculator('exp', vehicle['tank_id'], value)
+                temp_list.append(perc)
+            if 'pen_hits_ratio' in data_input:
+                if vehicle['hits'] > 0:
+                    temp_list.append(vehicle['piercings'] / vehicle['hits'])
+                else:
+                    temp_list.append(0)
+            if 'bounced_hits_r' in data_input:
+                if vehicle['direct_hits_received'] > 0:
+                    temp_list.append(vehicle['no_damage_direct_hits_received'] / vehicle['direct_hits_received'])
+                else:
+                    temp_list.append(0)
+            if 'survived' in data_input:
+                temp_list.append(vehicle['survived_battles']/vehicle['battles'])
+            if 'total_time' in data_input:
+                temp_list.append(vehicle['battle_life_time'] / 60)
+            if 'avg_lifetime' in data_input:
+                temp_list.append(vehicle['battle_life_time'] / vehicle['battles'])
+            if 'last_time' in data_input:
+                temp_list.append(vehicle['last_battle_time'])
+
+            #Appending row (temp_list) to data.
+            extracted_data.append(temp_list)
+        self.player_data = extracted_data
+
+    def name_tanks(self, tankopedia):
+        #Headers.
+        new_data = [self.player_data[0]]
+        #Data.
+        for row in self.player_data[1:]:
+            temp_list = []
+            tank_id = row[0]
+            #Checking if the name is in the dict and appending to the temp list.
+            if str(tank_id) in tankopedia:
+                temp_list.append(tankopedia[str(tank_id)]['short_name'])
+            else:
+                temp_list.append('Unknown')
+            #Appending what's left.
+            [temp_list.append(item) for item in row[1:]]
+            #Adding to the rest of the data.
+            new_data.append(temp_list)
+        self.player_data = new_data
+
+@app.route('/vehicles/', methods=["GET", "POST"])
+def vehicles():
 
     #Initializing 'form_data'.
-    form = form_data(1)
+    form = form_cls(1)
     #Requesting cookies.
-    form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
-                         request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
+    if request.cookies.get('form_data') is not None:
+        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
 
     #Setting defaults.
     return_empty = True
-    button = 'Enter the details above and click here to <b>Submit</b>'
+    button = 'Submit'
 
+    #If POST request.
     if request.method == "POST":
         return_empty = False
-        #Collecting form items.
-        form.server, form.nickname = request.form['server'], request.form['nickname']
-        form.checkboxes_input = request.form.getlist('checkboxes_input')
-        form.filter_input = request.form.getlist('filter_input')
-        form.filter_by_50 = request.form['filter_by_50'] if 'filter_by_50' in request.form else ''
+        form.unpack_form_data(json.loads(request.form['form_data']))
 
     #Initiating 'statistics_table_cls'.
-    user = statistics_table_cls(form.server, form.nickname)
+    user = vehicles_cls(form.server, form.nickname)
 
     #Eiter find cached player data or request from API and save into 'usercache'.
     current_user = None
@@ -855,7 +825,7 @@ def statistics_table():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to <b>submit</b> again.'
+            button = user.message + ' Click here resubmit'
 
     #Calculations.
     table_array = ''
@@ -863,29 +833,25 @@ def statistics_table():
         #Filtering and extracting data based on checkbox_input.
         user.filter_by_50(form.filter_by_50)
         user.filter_data(form.filter_input, tankopedia)
-        user.extract_needed_data(form.checkboxes, form.checkboxes_input)
+        user.extract_needed_data(form.data_selectors, form.data_input)
         #Naming headers and tanks.
         user.name_tanks(tankopedia)
         #Generating output.
-        table_array = json.dumps(user.player_data)
-        button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b> or any of the headers to sort by column'
+        table_array = user.player_data
+        button = 'Found data for '+str(user.nickname)+' Click here to resubmit'
 
     #Generating output.
     form.nickname = user.nickname
-    form.generate_checkboxes()
-    response = make_response(render_template("statistics-table.html", title=user.title, top_panel=form.top_panel, header=form.header,
-                                                                      nickname=form.nickname, server=form.server, filter_by_50=form.filter_by_50,
-                                                                      checkboxes=form.checkboxes, checkboxes_filter=form.checkboxes_filter,
-                                                                      button=button, table_array=table_array))
+    form_data = json.dumps(form.pack_form_data())
+
+    response = make_response(render_template("vehicles.html", title=user.title, header=form.header, button=button,
+                                                              data_selectors=form.data_selectors, filter_selectors=form.filter_selectors,
+                                                              form_data=form_data, table_array=table_array))
 
     #Assigning cookies.
     if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('nickname', form.nickname, expires=expire_date)
-        response.set_cookie('server', form.server, expires=expire_date)
-        response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
-        response.set_cookie('checkboxes_input', json.dumps(form.checkboxes_input), expires=expire_date)
-        response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
+        response.set_cookie('form_data', form_data, expires=expire_date)
 
     return response
 
@@ -893,9 +859,9 @@ def statistics_table():
 def time_series():
 
     #Class to handle 'time_series' page.
-    class time_series_cls(user_data):
+    class time_series_cls(user_cls):
         def __init__(self, server, nickname):
-            user_data.__init__(self, server, nickname)
+            user_cls.__init__(self, server, nickname)
             self.title = 'Time Series'
 
         def calculate_percentiles_for_all_tanks(self, userdata):
@@ -985,29 +951,30 @@ def time_series():
                 self.snapshot_data = self.player_data
             return
 
-    #Initiating 'form_data' class and requesting cookies.
-    form = form_data(2)
-    form.checkboxes_filter = [['T1', '1', ''], ['T2', '2', ''], ['T3', '3', ''],
-                              ['T4', '4', ''], ['T5', '5', ''], ['T6', '6', ''],
-                              ['T7', '7', ''], ['T8', '8', ''], ['T9', '9', ''],
-                              ['T10', '10', ''], ['HT', 'heavyTank', ''], ['MT', 'mediumTank', ''],
-                              ['LT', 'lightTank', ''], ['AT', 'AT-SPG', ''], ['SPG', 'SPG', '']]
-    form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
-                         request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
+    #Initiating 'form_cls' and requesting cookies.
+    form = form_cls(2)
+    if request.cookies.get('form_data') is not None:
+        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
+
+    #Custom layout.
+    form.filter_selectors = [['T1', '1'], ['T2', '2'], ['T3', '3'],
+                             ['T4', '4'], ['T5', '5'], ['T6', '6'],
+                             ['T7', '7'], ['T8', '8'], ['T9', '9'],
+                             ['T10', '10'], ['HT', 'heavyTank'], ['MT', 'mediumTank'],
+                             ['LT', 'lightTank'], ['AT', 'AT-SPG'], ['SPG', 'SPG']]
 
     #Setting defaults.
     return_empty = True
-    button = 'Enter the details above and click here to <b>Submit</b>'
+    button = 'Enter the details above and click here to Submit'
 
     #Checking if there is info in cookies.
     if form.nickname != '' and form.server in ['xbox', 'ps4']:
         return_empty = False
 
-    #If there is new input.
+    #If POST request.
     if request.method == "POST":
         return_empty = False
-        form.server, form.nickname = request.form["server"], request.form["nickname"]
-        form.filter_input = request.form.getlist('filter_input')
+        form.unpack_form_data(json.loads(request.form['form_data']))
 
     #Initiating 'time_series_cls'.
     user = time_series_cls(form.server, form.nickname)
@@ -1019,7 +986,7 @@ def time_series():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to <b>submit</b> again.'
+            button = user.message + ' Click here to resubmit.'
 
     #Placeholders.
     percentiles_change, x_labels = ([] for i in range(2))
@@ -1044,22 +1011,20 @@ def time_series():
     #Generating output.
     if return_empty == False:
         form.nickname = user.nickname
-        button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b>'
+        button = 'Found data for ' + str(user.nickname) + ' Click here to resubmit'
 
     #Making response & assigning cookies.
-    form.generate_checkboxes()
-    response = make_response(render_template("time-series.html", title=user.title, top_panel=form.top_panel, header=form.header,
-                                                                 button=button,
-                                                                 nickname=form.nickname, server=form.server,
-                                                                 checkboxes_filter=form.checkboxes_filter,
+    form.nickname = user.nickname
+    form_data = json.dumps(form.pack_form_data())
+
+    response = make_response(render_template("time-series.html", title=user.title, header=form.header, button=button,
+                                                                 filter_selectors=form.filter_selectors,form_data=form_data,
                                                                  percentiles_change=percentiles_change, x_labels=x_labels,
                                                                  wn8_totals=wn8_totals, wn8_change=wn8_change, wn8_labels=wn8_labels))
     #Assigning cookies if not empty.
     if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('nickname', form.nickname, expires=expire_date)
-        response.set_cookie('server', form.server, expires=expire_date)
-        response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
+        response.set_cookie('form_data', form_data, expires=expire_date)
 
     return response
 
@@ -1067,9 +1032,9 @@ def time_series():
 def session_tracker():
 
     #Class to handle 'session_tracker' page.
-    class session_tracker_cls(user_data):
+    class session_tracker_cls(user_cls):
         def __init__(self, server, nickname, selected_radio):
-            user_data.__init__(self, server, nickname)
+            user_cls.__init__(self, server, nickname)
             self.request = selected_radio
             self.title = 'Session tracker'
 
@@ -1081,26 +1046,26 @@ def session_tracker():
             else:
                 return(str(int(seconds)) + 's')
 
-    #Requesting cookies.
-    form = form_data(3)
-    form.request = ''
-    form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
-                         request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
+    #Initiating 'form_cls' and requesting cookies.
+    form = form_cls(3)
+    if request.cookies.get('form_data') is not None:
+        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
 
     #Setting defaults.
     return_empty = True
-    button = '<strong>Submit</strong>'
+    form.request = ''
+    button = 'Submit'
     history_checkpoints =  [['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0], ['', 'XX', 0]]
 
     if request.method == "POST":
-        form.server, form.nickname = request.form["server"], request.form["nickname"]
-        form.request = request.form['checkpoints'] if 'checkpoints' in request.form else ''
         return_empty = False
-
+        form.unpack_form_data(json.loads(request.form['form_data']))
+        #Additional entry for this page only.
+        if 'request_session' in json.loads(request.form['form_data']):
+            form.request = json.loads(request.form['form_data'])['request_session']
 
     #Initiating 'session_tracker_cls'.
     user = session_tracker_cls(form.server, form.nickname, form.request)
-
 
     #Eiter find cached player data or request from API and save into 'usercache'.
     current_user = None
@@ -1109,8 +1074,7 @@ def session_tracker():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to <b>submit</b> again.'
-
+            button = user.message + ' Click here to submit again.'
 
     #Calling all 'userdata_history' datapoints to show in the form.
     if user.nickname != '':
@@ -1125,7 +1089,7 @@ def session_tracker():
     #If user is found, but the checkpoint is not selected.
     if return_empty == False and user.request == '':
         return_empty = True
-        button = 'Found data for <b>' + user.nickname + '</b>, please select the checkpoint. If no checkpoints available, come tomorrow to see your statistics.'
+        button = 'Found data for ' + user.nickname + ', please select the checkpoint. If no checkpoints available, come tomorrow to see your statistics.'
 
 
     #Placeholders.
@@ -1138,7 +1102,7 @@ def session_tracker():
     #Request to compare with history point.
     if return_empty == False:
         timestamp_to_search = None
-        for row in  history_checkpoints:
+        for row in history_checkpoints:
             if user.request == str(row[0]):
                 timestamp_to_search = row[2]
 
@@ -1202,8 +1166,8 @@ def session_tracker():
                     dmgr_perc = user.percentile_calculator('dmgr', a_tank['tank_id'], temp_dict['dmgr_all'])
                     acc_perc = user.percentile_calculator('acc', a_tank['tank_id'], temp_dict['acc_all'])
 
-                    temp_dict['radar_all'] = json.dumps([round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
-                                                         round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)])
+                    temp_dict['radar_all'] = [round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
+                                              round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)]
 
                     #For 'radar_session'.
                     temp_dict['dmgc_session'] = s_tank['damage_dealt'] / s_tank['battles']
@@ -1222,8 +1186,8 @@ def session_tracker():
                     dmgr_perc = user.percentile_calculator('dmgr', s_tank['tank_id'], temp_dict['dmgr_session'])
                     acc_perc = user.percentile_calculator('acc', s_tank['tank_id'], temp_dict['acc_session'])
 
-                    temp_dict['radar_session'] = json.dumps([round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
-                                                             round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)])
+                    temp_dict['radar_session'] = [round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
+                                                  round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)]
 
                     #Other values.
                     temp_dict['tank_id'] = a_tank['tank_id']
@@ -1244,6 +1208,17 @@ def session_tracker():
                     temp_dict['wn8_session'] = user.wn8_calculator(s_tank, WN8_dict)
                     temp_dict['wn8_all'] = user.wn8_calculator(a_tank, WN8_dict)
 
+                    #Formatting numbers.
+                    temp_dict['acc_session'] = str(round(temp_dict['acc_session'], 2)) + ' %'
+                    temp_dict['acc_all'] = str(round(temp_dict['acc_all'], 2)) + ' %'
+
+                    items_to_int = ['dmgc_all', 'dmgc_session', 'rass_all', 'rass_session',
+                                    'exp_all', 'exp_session', 'dmgr_all', 'dmgr_session',
+                                    'dpm_all', 'dpm_session', 'wn8_all', 'wn8_session']
+
+                    for item in items_to_int:
+                        temp_dict[item] = int(temp_dict[item])
+
                     #Appending dictionary.
                     session_tanks.append(temp_dict)
 
@@ -1254,151 +1229,147 @@ def session_tracker():
     radar_names = ['Accuracy', 'Damage Caused', 'Radio Assist', 'Experience', 'Damage Received (inv)']
 
 
-    #Generating output.
+    #Making response & assigning cookies.
     form.nickname, form.server = user.nickname, user.server
-    response = make_response(render_template("session-tracker.html", title=user.title, top_panel=form.top_panel, header=form.header,
-                                                                     button=button,
-                                                                     nickname=form.nickname, server=form.server,
-                                                                     session_tanks=session_tanks,
+    form_data = json.dumps(form.pack_form_data())
+    response = make_response(render_template("session-tracker.html", title=user.title, header=form.header, button=button,
+                                                                     session_tanks=session_tanks, form_data=form_data,
                                                                      radar_names=radar_names,
                                                                      history_checkpoints=history_checkpoints))
     #Assigning cookies.
     if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('nickname', form.nickname, expires=expire_date)
-        response.set_cookie('server', form.server, expires=expire_date)
+        response.set_cookie('form_data', form_data, expires=expire_date)
+
     return response
+
+#Class to handle calculation of 'wn8_estimates'.
+class wn8_estimates_cls(user_cls):
+    def __init__(self, server, nickname):
+        user_cls.__init__(self, server, nickname)
+        self.title = 'WN8 Estimate Values'
+
+    def calculate_wn8_damage_targets(self, tank_data, WN8_dict):
+        wn8_scale = [[300, "ORANGERED"],
+                     [450, "DARKORANGE"],
+                     [650, "GOLD"],
+                     [900, "YELLOWGREEN"],
+                     [1200, "LIME"],
+                     [1600, "DEEPSKYBLUE"],
+                     [2000, "DODGERBLUE"],
+                     [2450, "MEDIUMSLATEBLUE"],
+                     [2900, "REBECCAPURPLE"]]
+
+        #Loading expected values
+        exp_values = {}
+        for item in WN8_dict['data']:
+            if len(item) > 0 and tank_data['tank_id'] == item['IDNum']:
+                exp_values = item
+
+        #If there are no expected values in the table, return 0
+        if len(exp_values) == 0:
+            return(0)
+        #step 0 - assigning the variables
+        expDmg      = exp_values['expDamage']
+        expSpot     = exp_values['expSpot']
+        expFrag     = exp_values['expFrag']
+        expDef      = exp_values['expDef']
+        expWinRate  = exp_values['expWinRate']
+
+        #step 1
+        #rDAMAGE = tank_data['damage_dealt']             /   tank_data['battles']     / expDmg
+        rSPOT   = tank_data['spotted']                  /   tank_data['battles']     / expSpot
+        rFRAG   = tank_data['frags']                    /   tank_data['battles']     / expFrag
+        rDEF    = tank_data['dropped_capture_points']   /   tank_data['battles']     / expDef
+        rWIN    = tank_data['wins']                     /   tank_data['battles']*100 / expWinRate
+
+        def wn8_last_step(AvgDamage, expDmg, rSPOT, rFRAG, rDEF, rWIN):
+
+            rDAMAGE = AvgDamage / expDmg
+
+            rWINc    = max(0,                     (rWIN    - 0.71) / (1 - 0.71) )
+            rDAMAGEc = max(0,                     (rDAMAGE - 0.22) / (1 - 0.22) )
+            rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG   - 0.12) / (1 - 0.12)))
+            rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT   - 0.38) / (1 - 0.38)))
+            rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF    - 0.10) / (1 - 0.10)))
+
+            WN8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
+
+            return(WN8)
+
+
+        #Iterating.
+        result_list = []
+        count = 0
+        for i in range(20, 7000):
+            temp_score = wn8_last_step(i, expDmg, rSPOT, rFRAG, rDEF, rWIN)
+            if int(temp_score) > wn8_scale[count][0]:
+                result_list.append(i)
+                count += 1
+                if count >= len(wn8_scale):
+                    break
+
+        return(result_list)
+
+    def extract_data_for_wn8(self, WN8_dict, tankopedia_dict):
+        extracted_data = []
+        #Extracting the data.
+        for vehicle in self.player_data:
+            tank_id = vehicle['tank_id']
+            tank_dict = {}
+            #Check if item on both sources.
+            in_wn8, in_tankopedia = False, False
+            #Iterating through WN8 dictionary.
+            for wn8_item in WN8_dict['data']:
+                if 'IDNum' in wn8_item and wn8_item['IDNum'] == tank_id and vehicle['battles'] > 0:
+                    #If match, adding all the expected values from WN8.
+                    in_wn8 = True
+                    for key, value in wn8_item.items():
+                        tank_dict[key] = value
+                    #Adding values from tankopedia if item in tankopedia.
+                    if str(tank_id) in tankopedia_dict:
+                        in_tankopedia = True
+                        for key, value in tankopedia_dict[str(tank_id)].items():
+                            tank_dict[key] = value
+                    #Quitting 'WN8_dict' loop.
+                    break
+
+            #Continue only if tank both in 'WN8_dict' and 'tankopedia_dict'.
+            if in_wn8 == True and in_tankopedia == True:
+                tank_dict['Damage']     = vehicle['damage_dealt']/vehicle['battles']
+                tank_dict['Def']        = vehicle['dropped_capture_points']/vehicle['battles']
+                tank_dict['Frag']       = vehicle['frags']/vehicle['battles']
+                tank_dict['Spot']       = vehicle['spotted']//vehicle['battles']
+                tank_dict['WinRate']    = vehicle['wins']/vehicle['battles']*100
+
+                #Calculating damage targets.
+                tank_dict['dmgTargets'] = self.calculate_wn8_damage_targets(vehicle, WN8_dict)
+
+            #Appending row (temp_list) to data.
+            extracted_data.append(tank_dict)
+
+        #Deleting empty rows.
+        for i, item in enumerate(extracted_data):
+            if len(item) == 0:
+                extracted_data.pop(i)
+
+        self.player_data = extracted_data
 
 @app.route('/wn8-estimates/', methods=["GET", "POST"])
 def wn8_estimates():
 
-    #Class to handle 'statistics_table' page.
-    class wn8_estimates_cls(user_data):
-        def __init__(self, server, nickname):
-            user_data.__init__(self, server, nickname)
-            self.title = 'WN8 Estimate Values'
-
-        def calculate_wn8_damage_targets(self, tank_data, WN8_dict):
-            wn8_scale = [[300, "ORANGERED"],
-                         [450, "DARKORANGE"],
-                         [650, "GOLD"],
-                         [900, "YELLOWGREEN"],
-                         [1200, "LIME"],
-                         [1600, "DEEPSKYBLUE"],
-                         [2000, "DODGERBLUE"],
-                         [2450, "MEDIUMSLATEBLUE"],
-                         [2900, "REBECCAPURPLE"]]
-
-            #Loading expected values
-            exp_values = {}
-            for item in WN8_dict['data']:
-                if len(item) > 0 and tank_data['tank_id'] == item['IDNum']:
-                    exp_values = item
-
-            #If there are no expected values in the table, return 0
-            if len(exp_values) == 0:
-                return(0)
-            #step 0 - assigning the variables
-            expDmg      = exp_values['expDamage']
-            expSpot     = exp_values['expSpot']
-            expFrag     = exp_values['expFrag']
-            expDef      = exp_values['expDef']
-            expWinRate  = exp_values['expWinRate']
-
-            #step 1
-            #rDAMAGE = tank_data['damage_dealt']             /   tank_data['battles']     / expDmg
-            rSPOT   = tank_data['spotted']                  /   tank_data['battles']     / expSpot
-            rFRAG   = tank_data['frags']                    /   tank_data['battles']     / expFrag
-            rDEF    = tank_data['dropped_capture_points']   /   tank_data['battles']     / expDef
-            rWIN    = tank_data['wins']                     /   tank_data['battles']*100 / expWinRate
-
-            def wn8_last_step(AvgDamage, expDmg, rSPOT, rFRAG, rDEF, rWIN):
-
-                rDAMAGE = AvgDamage / expDmg
-
-                rWINc    = max(0,                     (rWIN    - 0.71) / (1 - 0.71) )
-                rDAMAGEc = max(0,                     (rDAMAGE - 0.22) / (1 - 0.22) )
-                rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG   - 0.12) / (1 - 0.12)))
-                rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT   - 0.38) / (1 - 0.38)))
-                rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF    - 0.10) / (1 - 0.10)))
-
-                WN8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
-
-                return(WN8)
-
-
-            #Iterating.
-            result_list = []
-            count = 0
-            for i in range(20, 7000):
-                temp_score = wn8_last_step(i, expDmg, rSPOT, rFRAG, rDEF, rWIN)
-                if int(temp_score) > wn8_scale[count][0]:
-                    result_list.append(i)
-                    count += 1
-                    if count >= len(wn8_scale):
-                        break
-
-            return(result_list)
-
-        def extract_data_for_wn8(self, WN8_dict, tankopedia_dict):
-            extracted_data = []
-            #Extracting the data.
-            for vehicle in self.player_data:
-                tank_id = vehicle['tank_id']
-                tank_dict = {}
-                #Check if item on both sources.
-                in_wn8, in_tankopedia = False, False
-                #Iterating through WN8 dictionary.
-                for wn8_item in WN8_dict['data']:
-                    if 'IDNum' in wn8_item and wn8_item['IDNum'] == tank_id and vehicle['battles'] > 0:
-                        #If match, adding all the expected values from WN8.
-                        in_wn8 = True
-                        for key, value in wn8_item.items():
-                            tank_dict[key] = value
-                        #Adding values from tankopedia if item in tankopedia.
-                        if str(tank_id) in tankopedia_dict:
-                            in_tankopedia = True
-                            for key, value in tankopedia_dict[str(tank_id)].items():
-                                tank_dict[key] = value
-                        #Quitting 'WN8_dict' loop.
-                        break
-
-                #Continue only if tank both in 'WN8_dict' and 'tankopedia_dict'.
-                if in_wn8 == True and in_tankopedia == True:
-                    tank_dict['Damage']     = vehicle['damage_dealt']/vehicle['battles']
-                    tank_dict['Def']        = vehicle['dropped_capture_points']/vehicle['battles']
-                    tank_dict['Frag']       = vehicle['frags']/vehicle['battles']
-                    tank_dict['Spot']       = vehicle['spotted']//vehicle['battles']
-                    tank_dict['WinRate']    = vehicle['wins']/vehicle['battles']*100
-
-                    #Calculating damage targets.
-                    tank_dict['dmgTargets'] = self.calculate_wn8_damage_targets(vehicle, WN8_dict)
-
-                #Appending row (temp_list) to data.
-                extracted_data.append(tank_dict)
-            self.player_data = extracted_data
-
-    #Initializing 'form_data'.
-    form = form_data(4)
-    #Custom checkboxes layout for filter area.
-    form.checkboxes_filter = [['T1', '1', ''], ['T2', '2', ''], ['T3', '3', ''],
-                              ['T4', '4', ''], ['T5', '5', ''], ['T6', '6', ''],
-                              ['T7', '7', ''], ['T8', '8', ''], ['T9', '9', ''],
-                              ['T10', '10', ''], ['HT', 'heavyTank', ''], ['MT', 'mediumTank', ''],
-                              ['LT', 'lightTank', ''], ['AT', 'AT-SPG', ''], ['SPG', 'SPG', '']]
-    #Requesting cookies.
-    form.request_cookies(request.cookies.get('nickname'), request.cookies.get('server'), request.cookies.get('filter_by_50'),
-                         request.cookies.get('checkboxes_input'), request.cookies.get('filter_input'))
+    #Initiating 'form_cls' and requesting cookies.
+    form = form_cls(4)
+    if request.cookies.get('form_data') is not None:
+        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
 
     #Setting defaults.
     return_empty = True
-    button = 'Enter the details above and click here to <b>Submit</b>'
+    button = 'Submit'
 
     if request.method == "POST":
         return_empty = False
-        #Collecting form items.
-        form.server, form.nickname = request.form['server'], request.form['nickname']
-        form.filter_input = request.form.getlist('filter_input')
+        form.unpack_form_data(json.loads(request.form['form_data']))
 
     #Initiating 'statistics_table_cls'.
     user = wn8_estimates_cls(form.server, form.nickname)
@@ -1410,50 +1381,49 @@ def wn8_estimates():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to <b>submit</b> again.'
+            button = user.message + ' Click here to resubmit'
 
     #Calculations.
-    output_list = ''
+    table_array = ''
     if return_empty == False:
         #Filtering and extracting data.
         user.filter_data(form.filter_input, tankopedia)
         user.extract_data_for_wn8(WN8_dict, tankopedia)
         #Generating output.
-        #output_list = json.dumps(user.player_data)
-        output_list = user.player_data
+        table_array = user.player_data
 
-        button = 'Found data for <b>'+str(user.nickname)+'</b> &nbsp;Click here to <b>resubmit</b> or any of the headers to sort by column'
+        button = 'Found data for ' + str(user.nickname) + '  Click here to resubmit'
 
-    #Generating output.
+    #Making response & assigning cookies.
     form.nickname = user.nickname
-    form.generate_checkboxes()
-    response = make_response(render_template("wn8-estimates.html", title=user.title, top_panel=form.top_panel, header=form.header,
-                                                                      nickname=form.nickname, server=form.server,
-                                                                      checkboxes_filter=form.checkboxes_filter,
-                                                                      button=button, output_list=output_list))
+    form_data = json.dumps(form.pack_form_data())
+    response = make_response(render_template("wn8-estimates.html", title=user.title, header=form.header, button=button,
+                                                                   form_data=form_data, table_array=table_array))
 
     #Assigning cookies.
     if return_empty == False:
         expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('nickname', form.nickname, expires=expire_date)
-        response.set_cookie('server', form.server, expires=expire_date)
-        response.set_cookie('filter_input', json.dumps(form.filter_input), expires=expire_date)
+        response.set_cookie('form_data', form_data, expires=expire_date)
 
     return response
 
 @app.route('/about')
 def about():
 
-    form = form_data(5)
+    form = form_cls(5)
 
-    return render_template("about.html", title='About', top_panel=form.top_panel, header=form.header)
+    return render_template("about.html", title='About', header=form.header)
 
+
+
+#APIs
+#Legacy API.
 @app.route('/export/<export_type>/<server>/<nickname>/')
 def export(export_type, server, nickname):
 
-    class export_table_cls(user_data):
+    class export_table_cls(user_cls):
         def __init__(self, server, nickname):
-            user_data.__init__(self, server, nickname)
+            user_cls.__init__(self, server, nickname)
             self.checkboxes = [['tier', 'tier', ''],
                                ['class', 'class', ''],
                                ['winrate', 'wr', ''],
@@ -1646,6 +1616,238 @@ def export(export_type, server, nickname):
         return Response(json.dumps(user.player_data), mimetype='application/json')
     else:
         return(message)
+
+#Class to handle 'vehicles' API.
+class api_vehicles_cls(user_cls):
+    def __init__(self, server, nickname):
+        user_cls.__init__(self, server, nickname)
+        #Loading WN8 PC dictionary.
+        with open('references/wn8pc.json','r') as infile:
+            self.wn8pc = json.load(infile)
+
+    def extract_vehicle_data(self):
+        extracted_data = []
+        #Asembling the header.
+        header = ['tank_id']
+        #Extracting the data.
+        for vehicle in self.player_data:
+
+            if vehicle['battles'] < 1:
+                continue
+
+            #Creating the dictionary.
+            temp_dict = {}
+
+            temp_dict['tank_id'] = vehicle['tank_id']
+            temp_dict['battles'] = vehicle['battles']
+            temp_dict['survived'] = vehicle['survived_battles'] / vehicle['battles']
+
+            #Naming.
+            if str(temp_dict['tank_id']) in tankopedia:
+                temp_dict['short_name'] = tankopedia[str(temp_dict['tank_id'])]['short_name']
+                temp_dict['name'] = tankopedia[str(temp_dict['tank_id'])]['name']
+            else:
+                temp_dict['short_name'] = 'Unknown'
+                temp_dict['name'] = 'Unknown'
+
+            #WN8
+            temp_dict['wn8'] = self.wn8_calculator(vehicle, WN8_dict)
+            temp_dict['wn8pc'] = self.wn8_calculator(vehicle, self.wn8pc)
+
+            temp_dict['avg_dmg'] = vehicle['damage_dealt'] / vehicle['battles']
+            temp_dict['avg_frags'] = vehicle['frags'] / vehicle['battles']
+
+            #'avg_dpm', 'avg_fpm', 'avg_epm'
+            if vehicle['battle_life_time'] > 0:
+                temp_dict['avg_dpm'] = vehicle['damage_dealt'] / vehicle['battle_life_time'] * 60
+                temp_dict['avg_fpm'] = vehicle['frags'] / vehicle['battle_life_time'] * 60
+                temp_dict['avg_epm'] = vehicle['xp'] / vehicle['battle_life_time'] * 60
+            else:
+                temp_dict['avg_dpm'] = 0
+                temp_dict['avg_fpm'] = 0
+                temp_dict['avg_epm'] = 0
+
+            #Percentiles
+            temp_dict['avg_dmg'] = vehicle['damage_dealt'] / vehicle['battles']
+            temp_dict['dmg_perc'] = self.percentile_calculator('dmgc', vehicle['tank_id'], temp_dict['avg_dmg'])
+
+            temp_dict['wr'] = vehicle['wins'] / vehicle['battles'] * 100
+            temp_dict['wr_perc'] = self.percentile_calculator('wr', vehicle['tank_id'], temp_dict['wr'])
+
+            temp_dict['avg_exp'] = vehicle['xp'] / vehicle['battles']
+            temp_dict['exp_perc'] = self.percentile_calculator('exp', vehicle['tank_id'], temp_dict['avg_exp'])
+
+
+            #'pen_hits_ratio'
+            if vehicle['hits'] > 0:
+                temp_dict['pen_hits_ratio'] = vehicle['piercings'] / vehicle['hits']
+            else:
+                temp_dict['pen_hits_ratio'] = 0
+
+            #'bounced_hits_ratio'
+            if vehicle['direct_hits_received'] > 0:
+                temp_dict['bounced_hits_ratio'] = vehicle['no_damage_direct_hits_received'] / vehicle['direct_hits_received']
+            else:
+                temp_dict['bounced_hits_ratio'] = 0
+
+            #Time values.
+            temp_dict['total_time_m'] = vehicle['battle_life_time'] / 60
+            temp_dict['avg_lifetime_s'] = vehicle['battle_life_time'] / vehicle['battles']
+            temp_dict['last_time'] = vehicle['last_battle_time']
+
+
+            extracted_data.append(temp_dict)
+        self.player_data = extracted_data
+
+@app.route('/api-request-vehicles/<server>/<nickname>/')
+def api_request_vehicles(server, nickname):
+
+    #Defaults.
+    output = {'status': 'error',
+              'message': 'Bad request',
+              'count': 0,
+              'nickname': None,
+              'server': None,
+              'account_id': None,
+              'data': None}
+
+    #Server validation.
+    if server not in ['xbox', 'ps4']:
+        output['message'] = 'Wrong server'
+        return Response(json.dumps(output), mimetype='application/json')
+
+    #Initiating 'api_vehicles_cls'.
+    user = api_vehicles_cls(server, nickname)
+    #Eiter find cached player data or request from API and save into 'usercache'.
+    user.request_or_find_cached()
+    #Return error If status != 'ok'.
+    if user.status != 'ok':
+        output['status'] = 'error'
+        output['message'] = user.message
+        return Response(json.dumps(output), mimetype='application/json')
+
+    #Calculations.
+    user.extract_vehicle_data()
+    #Generating output.
+    output['data'] = user.player_data
+    output['count'] = len(user.player_data)
+    output['status'], output['message'] = 'ok', 'ok'
+    output['nickname'], output['server'] = user.nickname, user.server
+    output['account_id'] = user.account_id
+
+    return Response(json.dumps(output), mimetype='application/json')
+
+#Using 'wn8_estimates_cls'
+@app.route('/api-request-wn8-estimates/<server>/<nickname>/')
+def api_request_wn8_estimates(server, nickname):
+
+    #Defaults.
+    output = {'status': 'error',
+              'message': 'Bad request',
+              'count': 0,
+              'nickname': None,
+              'server': None,
+              'account_id': None,
+              'data': None}
+
+    #Server validation.
+    if server not in ['xbox', 'ps4']:
+        output['message'] = 'Wrong server'
+        return Response(json.dumps(output), mimetype='application/json')
+
+
+    #Initiating 'wn8_estimates_cls'.
+    user = wn8_estimates_cls(server, nickname)
+    #Eiter find cached player data or request from API and save into 'usercache'.
+    user.request_or_find_cached()
+    #Return error If status != 'ok'.
+    if user.status != 'ok':
+        output['status'] = 'error'
+        output['message'] = user.message
+        return Response(json.dumps(output), mimetype='application/json')
+
+    #Extracting data.
+    user.extract_data_for_wn8(WN8_dict, tankopedia)
+
+    #Generating output.
+    output['data'] = user.player_data
+    output['count'] = len(user.player_data)
+    output['status'], output['message'] = 'ok', 'ok'
+    output['nickname'], output['server'] = user.nickname, user.server
+    output['account_id'] = user.account_id
+
+    return Response(json.dumps(output), mimetype='application/json')
+
+#Request different files.
+@app.route('/api-request-file/<file_type>/')
+def api_request_file(file_type):
+
+    #Defaults.
+    output = {'status': 'error',
+              'message': 'Bad request',
+              'data': None,
+              'count': 0}
+
+    #File types.
+    if file_type == 'percentiles':
+        output['data'] = percentiles
+    elif file_type == 'percentiles_generic':
+        output['data'] = percentiles_generic
+    elif file_type == 'tankopedia':
+        output['data'] = tankopedia
+    elif file_type == 'wn8console':
+        output['data'] = WN8_dict['data']
+    elif file_type == 'wn8pc':
+        with open('references/wn8pc.json','r') as infile:
+            wn8pc = json.load(infile)
+        output['data'] = wn8pc['data']
+    else:
+        output['message'] = 'Wrong file type'
+        return Response(json.dumps(output), mimetype='application/json')
+
+    #Output if success.
+    output['count'] = len(output['data'])
+    output['status'], output['message'] = 'ok', 'ok'
+    return Response(json.dumps(output), mimetype='application/json')
+
+#Request snapshots straight from SQL.
+@app.route('/api-request-snapshots/<server>/<nickname>/')
+def api_request_snapshots(server, nickname):
+
+    #Defaults.
+    output = {'status': 'error',
+              'message': 'Bad request',
+              'count': 0,
+              'nickname': None,
+              'server': None,
+              'account_id': None,
+              'data': None}
+
+    #Server validation.
+    if server not in ['xbox', 'ps4']:
+        output['message'] = 'Wrong server'
+        return Response(json.dumps(output), mimetype='application/json')
+
+
+    #SQL Search.
+    user_history_search = userdata_history.query.filter_by(nickname=nickname, server=server).all()
+
+    #If nothing found.
+    if len(user_history_search) < 1:
+        output['message'] = 'User was not found'
+        return Response(json.dumps(output), mimetype='application/json')
+
+    output['data'] = []
+    for row in user_history_search:
+        output['data'].append(pickle.loads(row.player_data))
+
+    output['count'] = len(output['data'])
+    output['status'], output['message'] = 'ok', 'ok'
+    output['nickname'] = nickname
+    output['server'] = server
+    output['account_id'] = user_history_search[0].account_id
+
+    return Response(json.dumps(output), mimetype='application/json')
 
 
 if __name__ == '__main__':

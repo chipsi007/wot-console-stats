@@ -1,7 +1,7 @@
 
 #### Features overview:
 
-*Pictures as of February 22*
+*Screenshots of the old version*
 
 
 ###### Player Profile
@@ -49,4 +49,6 @@ Overview                              | Vehicle view
   - pickle
   - datetime
 - JavaScript:
-  - Charts.js
+  - Chart.js
+- CSS
+  - Bulma
