@@ -210,6 +210,11 @@ class form_cls:
                                   ['HT', 'heavyTank'],
                                   ['MT', 'mediumTank'],
                                   ['LT', 'lightTank']]
+        self.valid_items = ['wr', 'battles', 'wn8', 'avg_dmg', 'avg_frags', 'avg_exp', 'avg_dpm', 'avg_fpm', 'avg_epm',
+                            'dmg_perc', 'wr_perc', 'exp_perc', 'pen_hits_ratio', 'bounced_hits_r',
+                            'survived', 'total_time', 'avg_lifetime','last_time',
+                            '7', '4', '1', '8', '5', '2', '9', '6', '3', '10',
+                            'AT-SPG', 'SPG', 'heavyTank', 'mediumTank', 'lightTank']
         #Generating header. Using 'index_of_current_page' for highlighting.
         self.header = [['Player Profile', '/player-profile/', 'not_current'],
                        ['Vehicles', '/vehicles/', 'not_current'],
@@ -221,21 +226,40 @@ class form_cls:
             if i == index_of_current_page:
                 item[2] = 'current'
 
+    #['ab', 'cd', 'ef'] -> ab&cd&ef'
+    def pack_to_string(self, list_of_strings):
+
+        #Filtering.
+        for i, item in enumerate(list_of_strings):
+            if item not in self.valid_items:
+                list_of_strings.pop(i)
+
+        output = '&'.join(list_of_strings)
+
+        return(output)
+
+    #'ab&cd&ef&' -> ['ab', 'cd', 'ef']
+    def unpack_from_string(self, string):
+
+        output = string.split('&')
+        for i, item in enumerate(output):
+            if len(item) == 0:
+                output.pop(i)
+
+        #Filtering.
+        for i, item in enumerate(output):
+            if item not in self.valid_items:
+                output.pop(i)
+
+        return(output)
+
+    #Unpacking data on submit.
     def unpack_form_data(self, form_data):
         self.nickname = form_data['nickname']
         self.server = form_data['server']
         self.filter_by_50 = form_data['filter_by_50']
         self.data_input = form_data['data_input']
         self.filter_input = form_data['filter_input']
-
-    def pack_form_data(self):
-        form_data = {}
-        form_data['nickname'] = self.nickname
-        form_data['server'] = self.server
-        form_data['filter_by_50'] = self.filter_by_50
-        form_data['data_input'] = self.data_input
-        form_data ['filter_input'] = self.filter_input
-        return(form_data)
 
 #Class to handle user data.
 class user_cls:
@@ -591,8 +615,11 @@ def player_profile():
 
     #Initiating 'form_cls' and requesting cookies.
     form = form_cls(0)
-    if request.cookies.get('form_data') is not None:
-        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
+    form.nickname = request.cookies.get('nickname') if 'nickname' in request.cookies else ''
+    form.server = request.cookies.get('server') if 'server' in request.cookies else form.server
+    form.filter_by_50 = request.cookies.get('filter_by_50') if 'filter_by_50' in request.cookies else form.filter_by_50
+    form.data_input = form.unpack_from_string(request.cookies.get('data_input')) if 'data_input' in request.cookies else form.data_input
+    form.filter_input = form.unpack_from_string(request.cookies.get('filter_input')) if 'filter_input' in request.cookies else form.filter_input
 
     #Setting defaults.
     return_empty = True
@@ -680,16 +707,17 @@ def player_profile():
 
     #Making response & assigning cookies.
     form.nickname = user.nickname
-    form_data = json.dumps(form.pack_form_data())
-    response = make_response(render_template("player-profile.html", title=user.title, header=form.header,
-                                                                    button=button, form_data=form_data,
+    response = make_response(render_template("player-profile.html", title=user.title, header=form.header, button=button,
 
                                                                     all_time=all_time, recent=recent, difference=difference,
                                                                     xlabels=xlabels, percentiles_totals=percentiles_totals, wn8_totals=wn8_totals))
-    #Assigning cookies if not empty.
-    if return_empty == False:
-        expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('form_data', form_data, expires=expire_date)
+    #Assigning cookies.
+    expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+    response.set_cookie('nickname', form.nickname, expires=expire_date)
+    response.set_cookie('server', form.server, expires=expire_date)
+    response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
+    response.set_cookie('data_input', form.pack_to_string(form.data_input), expires=expire_date)
+    response.set_cookie('filter_input', form.pack_to_string(form.filter_input), expires=expire_date)
 
     return response
 
@@ -802,9 +830,11 @@ def vehicles():
 
     #Initializing 'form_data'.
     form = form_cls(1)
-    #Requesting cookies.
-    if request.cookies.get('form_data') is not None:
-        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
+    form.nickname = request.cookies.get('nickname') if 'nickname' in request.cookies else ''
+    form.server = request.cookies.get('server') if 'server' in request.cookies else form.server
+    form.filter_by_50 = request.cookies.get('filter_by_50') if 'filter_by_50' in request.cookies else form.filter_by_50
+    form.data_input = form.unpack_from_string(request.cookies.get('data_input')) if 'data_input' in request.cookies else form.data_input
+    form.filter_input = form.unpack_from_string(request.cookies.get('filter_input')) if 'filter_input' in request.cookies else form.filter_input
 
     #Setting defaults.
     return_empty = True
@@ -838,20 +868,21 @@ def vehicles():
         user.name_tanks(tankopedia)
         #Generating output.
         table_array = user.player_data
-        button = 'Found data for '+str(user.nickname)+' Click here to resubmit'
+        button = 'Found data for ' + str(user.nickname) + ' Click here to resubmit'
 
     #Generating output.
     form.nickname = user.nickname
-    form_data = json.dumps(form.pack_form_data())
-
     response = make_response(render_template("vehicles.html", title=user.title, header=form.header, button=button,
                                                               data_selectors=form.data_selectors, filter_selectors=form.filter_selectors,
-                                                              form_data=form_data, table_array=table_array))
+                                                              table_array=table_array))
 
     #Assigning cookies.
-    if return_empty == False:
-        expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('form_data', form_data, expires=expire_date)
+    expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+    response.set_cookie('nickname', form.nickname, expires=expire_date)
+    response.set_cookie('server', form.server, expires=expire_date)
+    response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
+    response.set_cookie('data_input', form.pack_to_string(form.data_input), expires=expire_date)
+    response.set_cookie('filter_input', form.pack_to_string(form.filter_input), expires=expire_date)
 
     return response
 
@@ -953,8 +984,11 @@ def time_series():
 
     #Initiating 'form_cls' and requesting cookies.
     form = form_cls(2)
-    if request.cookies.get('form_data') is not None:
-        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
+    form.nickname = request.cookies.get('nickname') if 'nickname' in request.cookies else ''
+    form.server = request.cookies.get('server') if 'server' in request.cookies else form.server
+    form.filter_by_50 = request.cookies.get('filter_by_50') if 'filter_by_50' in request.cookies else form.filter_by_50
+    form.data_input = form.unpack_from_string(request.cookies.get('data_input')) if 'data_input' in request.cookies else form.data_input
+    form.filter_input = form.unpack_from_string(request.cookies.get('filter_input')) if 'filter_input' in request.cookies else form.filter_input
 
     #Custom layout.
     form.filter_selectors = [['T1', '1'], ['T2', '2'], ['T3', '3'],
@@ -1015,16 +1049,18 @@ def time_series():
 
     #Making response & assigning cookies.
     form.nickname = user.nickname
-    form_data = json.dumps(form.pack_form_data())
-
     response = make_response(render_template("time-series.html", title=user.title, header=form.header, button=button,
-                                                                 filter_selectors=form.filter_selectors,form_data=form_data,
+                                                                 filter_selectors=form.filter_selectors,
                                                                  percentiles_change=percentiles_change, x_labels=x_labels,
                                                                  wn8_totals=wn8_totals, wn8_change=wn8_change, wn8_labels=wn8_labels))
-    #Assigning cookies if not empty.
-    if return_empty == False:
-        expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('form_data', form_data, expires=expire_date)
+
+    #Assigning cookies.
+    expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+    response.set_cookie('nickname', form.nickname, expires=expire_date)
+    response.set_cookie('server', form.server, expires=expire_date)
+    response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
+    response.set_cookie('data_input', form.pack_to_string(form.data_input), expires=expire_date)
+    response.set_cookie('filter_input', form.pack_to_string(form.filter_input), expires=expire_date)
 
     return response
 
@@ -1048,8 +1084,11 @@ def session_tracker():
 
     #Initiating 'form_cls' and requesting cookies.
     form = form_cls(3)
-    if request.cookies.get('form_data') is not None:
-        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
+    form.nickname = request.cookies.get('nickname') if 'nickname' in request.cookies else ''
+    form.server = request.cookies.get('server') if 'server' in request.cookies else form.server
+    form.filter_by_50 = request.cookies.get('filter_by_50') if 'filter_by_50' in request.cookies else form.filter_by_50
+    form.data_input = form.unpack_from_string(request.cookies.get('data_input')) if 'data_input' in request.cookies else form.data_input
+    form.filter_input = form.unpack_from_string(request.cookies.get('filter_input')) if 'filter_input' in request.cookies else form.filter_input
 
     #Setting defaults.
     return_empty = True
@@ -1231,15 +1270,16 @@ def session_tracker():
 
     #Making response & assigning cookies.
     form.nickname, form.server = user.nickname, user.server
-    form_data = json.dumps(form.pack_form_data())
     response = make_response(render_template("session-tracker.html", title=user.title, header=form.header, button=button,
-                                                                     session_tanks=session_tanks, form_data=form_data,
-                                                                     radar_names=radar_names,
+                                                                     session_tanks=session_tanks, radar_names=radar_names,
                                                                      history_checkpoints=history_checkpoints))
     #Assigning cookies.
-    if return_empty == False:
-        expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('form_data', form_data, expires=expire_date)
+    expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+    response.set_cookie('nickname', form.nickname, expires=expire_date)
+    response.set_cookie('server', form.server, expires=expire_date)
+    response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
+    response.set_cookie('data_input', form.pack_to_string(form.data_input), expires=expire_date)
+    response.set_cookie('filter_input', form.pack_to_string(form.filter_input), expires=expire_date)
 
     return response
 
@@ -1360,8 +1400,11 @@ def wn8_estimates():
 
     #Initiating 'form_cls' and requesting cookies.
     form = form_cls(4)
-    if request.cookies.get('form_data') is not None:
-        form.unpack_form_data(json.loads(request.cookies.get('form_data')))
+    form.nickname = request.cookies.get('nickname') if 'nickname' in request.cookies else ''
+    form.server = request.cookies.get('server') if 'server' in request.cookies else form.server
+    form.filter_by_50 = request.cookies.get('filter_by_50') if 'filter_by_50' in request.cookies else form.filter_by_50
+    form.data_input = form.unpack_from_string(request.cookies.get('data_input')) if 'data_input' in request.cookies else form.data_input
+    form.filter_input = form.unpack_from_string(request.cookies.get('filter_input')) if 'filter_input' in request.cookies else form.filter_input
 
     #Setting defaults.
     return_empty = True
@@ -1396,14 +1439,16 @@ def wn8_estimates():
 
     #Making response & assigning cookies.
     form.nickname = user.nickname
-    form_data = json.dumps(form.pack_form_data())
     response = make_response(render_template("wn8-estimates.html", title=user.title, header=form.header, button=button,
-                                                                   form_data=form_data, table_array=table_array))
+                                                                   table_array=table_array))
 
     #Assigning cookies.
-    if return_empty == False:
-        expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
-        response.set_cookie('form_data', form_data, expires=expire_date)
+    expire_date = datetime.datetime.now() + datetime.timedelta(days=7)
+    response.set_cookie('nickname', form.nickname, expires=expire_date)
+    response.set_cookie('server', form.server, expires=expire_date)
+    response.set_cookie('filter_by_50', form.filter_by_50, expires=expire_date)
+    response.set_cookie('data_input', form.pack_to_string(form.data_input), expires=expire_date)
+    response.set_cookie('filter_input', form.pack_to_string(form.filter_input), expires=expire_date)
 
     return response
 
@@ -1417,9 +1462,10 @@ def about():
 
 
 #APIs
+
 #Legacy API.
-@app.route('/export/<export_type>/<server>/<nickname>/')
-def export(export_type, server, nickname):
+@app.route('/export/csv/<server>/<nickname>/')
+def export(server, nickname):
 
     class export_table_cls(user_cls):
         def __init__(self, server, nickname):
@@ -1583,11 +1629,11 @@ def export(export_type, server, nickname):
             return(text)
 
     #Validation.
-    if server in ['xbox', 'ps4'] and export_type in ['csv', 'json']:
+    if server in ['xbox', 'ps4']:
         return_empty = False
     else:
         return_empty = True
-        message = 'Wrong server or export type.'
+        message = 'Wrong server.'
 
     #Requesting player data.
     if return_empty == False:
@@ -1610,12 +1656,245 @@ def export(export_type, server, nickname):
         user.name_tanks(tankopedia)
 
     #Generating response.
-    if export_type == 'csv' and return_empty == False:
+    if return_empty == False:
         return Response(user.convert_to_csv(), mimetype='text/csv')
-    if export_type == 'json' and return_empty == False:
-        return Response(json.dumps(user.player_data), mimetype='application/json')
     else:
         return(message)
+
+#Class to handle 'player_profile' api.
+class api_player_profile_cls(user_cls):
+    def __init__(self, server, nickname):
+        user_cls.__init__(self, server, nickname)
+        self.title = 'Player Profile'
+
+    def decode_filters_string(self, filters_string):
+        #'ab&cd&ef&' -> ['ab', 'cd', 'ef']
+        output = []
+        new_list = filters_string.split('&')
+
+        for item in new_list:
+            if len(item) > 0:
+                output.append(item)
+
+        return(output)
+
+    def calculate_general_account_stats(self, userdata):
+        battles, hits, shots, dmgc, rass, dmgr, frags, survived, wins = (0 for i in range(9))
+        for tank in userdata:
+
+            battles     += tank['battles']
+            hits        += tank['hits']
+            shots       += tank['shots']
+            dmgc        += tank['damage_dealt']
+            rass        += tank['damage_assisted_radio']
+            dmgr        += tank['damage_received']
+            frags       += tank['frags']
+            survived    += tank['survived_battles']
+            wins        += tank['wins']
+
+        if battles > 0:
+            acc = round(hits / shots * 100, 2)              if shots > 0                    else 0
+            k_d = round(frags / (battles - survived), 2)    if (battles - survived) > 0     else 100
+            dmgc_dmgr = round(dmgc / dmgr, 2)               if dmgr > 0                     else 100
+
+            output_dict = {'acc': acc,
+                           'dmgc': round(dmgc / battles, 2),
+                           'rass': round(rass / battles, 2),
+                           'dmgr': round(dmgr / battles, 2),
+                           'k_d': k_d,
+                           'dmgc_dmgr': dmgc_dmgr,
+                           'wr': round(wins / battles * 100, 2)}
+        else:
+            output_dict = {'acc': 0, 'dmgc': 0, 'rass': 0, 'dmgr': 0, 'k_d': 0, 'dmgc_dmgr': 0, 'wr': 0}
+
+        return(output_dict)
+
+    def calculate_percentiles_for_all_tanks(self, userdata):
+        dmgc_temp, wr_temp, rass_temp, dmgr_temp, acc_temp = ([] for i in range(5))
+        output_dict = {}
+        #Iterating through vehicles.
+        dmgc, wr, rass, dmgr, acc = (0 for i in range(5))
+        battle_counter = 0
+        for vehicle in userdata:
+            if vehicle['battles'] > 0:
+                battle_counter = battle_counter + vehicle['battles']
+
+                dmgc = dmgc + self.percentile_calculator('dmgc', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']) * vehicle['battles']
+                wr = wr + self.percentile_calculator('wr', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100) * vehicle['battles']
+                rass = rass + self.percentile_calculator('rass', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']) * vehicle['battles']
+                dmgr = dmgr + self.percentile_calculator('dmgr', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']) * vehicle['battles']
+
+                #If no hits, percentile would be 0 anyways.
+                if vehicle['hits'] > 0:
+                    acc = acc + self.percentile_calculator('acc', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100) * vehicle['battles']
+
+        #Preparing output.
+        if battle_counter == 0:
+            #In case nothing found.
+            output_dict = {'dmgc': 0.0, 'wr': 0.0, 'rass': 0.0, 'dmgr': 0.0, 'acc': 0.0}
+        else:
+            #If at least one vehicle with "vehicle['battles'] > 0"
+            output_dict = {'dmgc': round(dmgc / battle_counter, 2),
+                           'wr': round(wr / battle_counter, 2),
+                           'rass': round(rass / battle_counter, 2),
+                           'dmgr': abs(round(dmgr / battle_counter, 2)-100),
+                           'acc': round(acc / battle_counter, 2)}
+        return(output_dict)
+
+    def calculate_overall_percentile(self, percentile_dict):
+        total = 0
+        for key, value in percentile_dict.items():
+            total = total + value
+        return(round(total/5, 2))
+
+    def calculate_wn8_for_all_tanks(self, userdata):
+        battle_counter, wn8_counter = 0, 0
+        for tank in userdata:
+            wn8_temp = self.wn8_calculator(tank, WN8_dict) * tank['battles']
+            #Adding up only if WN8 value is more than 0.
+            if wn8_temp > 0:
+                battle_counter = battle_counter + tank['battles']
+                wn8_counter = wn8_counter + wn8_temp
+
+        if battle_counter > 0:
+            output_wn8 = int(wn8_counter/battle_counter)
+        else:
+            output_wn8 = 0.0
+
+        return(output_wn8)
+
+    def wn8_color_picker(self, wn8):
+        color_scale = [[-999, 299, 'DARKRED'],
+                       [300,449, 'ORANGERED'],
+                       [450,649, 'DARKORANGE'],
+                       [650,899, 'GOLD'],
+                       [900,1199, 'YELLOWGREEN'],
+                       [1200,1599, 'LIME'],
+                       [1600,1999, 'DEEPSKYBLUE'],
+                       [2000,2449, 'DODGERBLUE'],
+                       [2450,2899, 'MEDIUMSLATEBLUE'],
+                       [2900,99999, 'REBECCAPURPLE']]
+
+        color = 'BLACK'
+        for value in color_scale:
+            if value[0] <= wn8 < value[1]:
+                color = value[2]
+
+        code = '<font color=\'' + color + '\'>&#10029;</font>'
+        return(code)
+
+    def calculate_difference_markers(self, all_time, recent):
+        symbols = {'up': '<font color="#89b891">&#9650;</font>',
+                   'down': '<font color="#c28080">&#9660;</font>',
+                   'straight': '&#9654;'}
+        output_dict = {}
+        for key, value in all_time.items():
+            if key == 'percentiles':
+                continue
+            elif recent[key] == 0:
+                output_dict[key] = symbols['straight']
+            elif all_time[key] < recent[key]:
+                output_dict[key] = symbols['up']
+            elif all_time[key] > recent[key]:
+                output_dict[key] = symbols['down']
+            else:
+                output_dict[key] = symbols['straight']
+        return(output_dict)
+
+@app.route('/api-request-player-profile/<filters>/<server>/<nickname>/')
+def api_request_player_profile(filters, server, nickname):
+
+    #Defaults.
+    output = {'status': 'error',
+              'message': 'Bad request',
+              'count': 0,
+              'nickname': None,
+              'server': None,
+              'account_id': None,
+              'data': None}
+
+    #Server validation.
+    if server not in ['xbox', 'ps4']:
+        output['message'] = 'Wrong server'
+        return Response(json.dumps(output), mimetype='application/json')
+
+    #Initiating 'api_vehicles_cls'.
+    user = api_player_profile_cls(server, nickname)
+    #Eiter find cached player data or request from API and save into 'usercache'.
+    user.request_or_find_cached()
+    #Return error If status != 'ok'.
+    if user.status != 'ok':
+        output['status'] = 'error'
+        output['message'] = user.message
+        return Response(json.dumps(output), mimetype='application/json')
+
+
+    #Placeholders.
+    all_time, recent, difference = ({} for i in range(3))
+    xlabels, percentiles_totals, wn8_totals = ([] for i in range(3))
+
+    #Converting filters into a list.
+    filters = user.decode_filters_string(filters)
+
+    #Calculations.
+    user.filter_data(filters, tankopedia)
+
+    all_time = user.calculate_general_account_stats(user.player_data)
+    all_time['wn8'] = user.calculate_wn8_for_all_tanks(user.player_data)
+    all_time['percentiles'] = user.calculate_percentiles_for_all_tanks(user.player_data)
+    all_time['total_perc'] = user.calculate_overall_percentile(all_time['percentiles'])
+
+    #Searching all records of the player in SQL 'history' and taking first available.
+    user_history_search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server).all()
+    if len(user_history_search) > 0:
+        user.player_data = user.find_difference(pickle.loads(user_history_search[0].player_data), user.player_data)
+
+    user.filter_data(filters, tankopedia)
+
+    recent = user.calculate_general_account_stats(user.player_data)
+    recent['wn8'] = user.calculate_wn8_for_all_tanks(user.player_data)
+    recent['percentiles'] = user.calculate_percentiles_for_all_tanks(user.player_data)
+    recent['total_perc'] = user.calculate_overall_percentile(recent['percentiles'])
+
+    difference = user.calculate_difference_markers(all_time, recent)
+    all_time['wn8_color'] = user.wn8_color_picker(all_time['wn8'])
+
+    #Calculating charts.
+    for r, row in enumerate(user_history_search):
+        #Getting 'xlabels'.
+        timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
+        if timedelta.days > 0:
+            xlabels.append(str(timedelta.days) + 'd ago')
+        else:
+            xlabels.append('Today')
+        #Loading and filtering player data.
+        user.player_data = pickle.loads(row.player_data)
+        #Filtering data using function of the same class.
+        user.filter_data(filters, tankopedia)
+        #Calculating Percentile totals.
+        percentiles_totals.append(user.calculate_percentiles_for_all_tanks(user.player_data))
+        #Calculating WN8 totals.
+        wn8_totals.append(user.calculate_wn8_for_all_tanks(user.player_data))
+
+    #Calculating overall percentile.
+    new_list = []
+    for item in percentiles_totals:
+        new_list.append(sum([value for key, value in item.items()])/5)
+    percentiles_totals = new_list
+
+    #Generating output.
+    output['data'] = {'all_time': all_time,
+                      'recent': recent,
+                      'difference': difference,
+                      'xlabels': xlabels,
+                      'percentiles_totals': percentiles_totals,
+                      'wn8_totals': wn8_totals}
+    output['count'] = len(output['data'])
+    output['status'], output['message'] = 'ok', 'ok'
+    output['nickname'], output['server'] = user.nickname, user.server
+    output['account_id'] = user.account_id
+
+    return Response(json.dumps(output), mimetype='application/json')
 
 #Class to handle 'vehicles' API.
 class api_vehicles_cls(user_cls):

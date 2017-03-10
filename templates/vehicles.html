@@ -19,71 +19,29 @@
             <div class="tile is-ancestor">
                 <div class="tile is-parent">
                     <div class="tile is-child">
-                          
-                        <div class="columns is-gapless">
-                            <div class="column">
-                                {% for i in range(0,3) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(3,6) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(6,9) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(9,12) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(12,15) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(15,18) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ data_selectors[i][1] }}" onclick="form.dataSelToggle('{{ data_selectors[i][1] }}')">{{ data_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
+                        <div class="columns is-gapless is-mobile is-multiline">
+                        {% for i in range(0, 18, 3) %}
+                        {% set temp_list = [data_selectors[i], data_selectors[i+1], data_selectors[i+2]] %}
+                        <div class="column">
+                            {% for item in temp_list %}
+                            <a class="button is-small is-light is-fullwidth" id="{{ item[1] }}" onclick="form.dataSelToggle('{{ item[1] }}')">{{ item[0] }}</a>
+                            {% endfor %}
                         </div>
-
-                    </div>
+                        {% endfor %}
+                        </div>
+                    </div>   
                 </div>
-                
-                <div class="tile is-parent is-4">
+                <div class="tile is-parent is-3">
                     <div class="tile is-child">
-                        <div class="columns is-gapless">
+                        <div class="columns is-gapless is-mobile is-multiline">
+                            {% for i in range(0, 15, 3) %}
+                            {% set temp_list = [filter_selectors[i], filter_selectors[i+1], filter_selectors[i+2]] %}
                             <div class="column">
-                                {% for i in range(0,3) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
+                                {% for item in temp_list %}
+                                <a class="button is-fullwidth is-small is-light" id="{{ item[1] }}" onclick="form.filtersToggle('{{ item[1] }}')">{{ item[0] }}</a>
                                 {% endfor %}
                             </div>
-                            <div class="column">
-                                {% for i in range(3,6) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(6,9) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(9,12) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
-                            <div class="column">
-                                {% for i in range(12,15) %}
-                                    <a class="button is-fullwidth is-small is-light" id="{{ filter_selectors[i][1] }}" onclick="form.filtersToggle('{{ filter_selectors[i][1] }}')">{{ filter_selectors[i][0] }}</a>
-                                {% endfor %}
-                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -101,10 +59,11 @@
         
         <script type="text/javascript">
             
-            var formData = {{ form_data|safe }};
-            
             // Calling the form function.
-            var form = new formClass(formData);
+            var form = new formClass();
+            
+            // Calling cookies.
+            form.takeCookieData();
             
             // Intiating the form.
             form.initBasics();

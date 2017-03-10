@@ -20,10 +20,16 @@
             <p>The outcome looks <a href="https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/wn8_results/all_tanks.png">near identical</a> but with Console-specific values inside. As a bonus, actual expected statistics for Console-exclusive tanks were also calculated.</p>
 
             <p>Latest percentiles and WN8 table update: 19 FEB 2017
-            <br>The <a href="https://github.com/IDDT/wot-console-playerbase-analysis">GitHub repo</a> for calculating percentiles and WN8
-            <br>Download WN8 table in <a href="https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/wn8_results/wn8console.json">JSON</a>.</p>
+            <div class="control is-grouped">
+                <p class="control">
+                    <a href="https://github.com/IDDT/wot-console-playerbase-analysis" class="button is-primary is-outlined">GitHub repo</a>
+                </p>
+                <p class="control">
+                    <a href="https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/wn8_results/wn8console.json" class="button is-primary is-outlined">WN8 table in JSON</a>
+                </p>
+            </div>
+                
 
-            
             <h3>Statistics  Table</h3>
 
             <p>Avg Damage, Avg Frags, Avg EXP - show average damage, frags and experience per battle.
@@ -39,7 +45,7 @@
             
             <h3>Export functionality</h3>
 
-            <p>Currently, as an experimental feature, it's possible to export clean data straight into CSV for own analysis in Excel or Tableau. Use following URL: "wot.pythonanywhere.com/export/{type}/{server}/{username}/" where type is either 'csv' or 'json', server: 'xbox' or 'ps4', and username is either your Xbox Gamertag or PSN. Then in the browser click File > Save As. For example, to export my statistics the URL would be "wot.pythonanywhere.com/export/csv/ps4/turboparrot666/".</p>
+            <p>Currently, as an experimental feature, it's possible to export clean data straight into CSV for own analysis in Excel. Use the following URL: "wot.pythonanywhere.com/export/csv/{server}/{username}/" where server is 'xbox' or 'ps4', and username is either your Xbox Gamertag or PSN. Then in the browser click File > Save As. For example, to export my statistics the URL would be "wot.pythonanywhere.com/export/csv/ps4/turboparrot666/".</p>
 
 
             <h3>Data Collection</h3>
@@ -56,9 +62,6 @@
 
 
             <h3>Bugs and errors</h3>
-            
-            <p>This web site handles all WG API errors by showing API error message right in the submit button. For ex. 
-            </p>
 
             <p>If something doesn't seem to work properly or as expected, please consider submitting an issue on <a href="https://github.com/IDDT/wot-console-stats/issues">GitHub</a>, or if you don't have GitHub account, send a message to <a href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">my profile</a> on World Of Tanks Console forum.</p>
             

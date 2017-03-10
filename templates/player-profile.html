@@ -92,10 +92,11 @@
             
         <script>
             
-            var formData = {{ form_data|safe }};
-            
             // Calling the form function.
-            var form = new formClass(formData);
+            var form = new formClass();
+            
+            // Calling cookies.
+            form.takeCookieData();
             
             // Intiating the form.
             form.initBasics();

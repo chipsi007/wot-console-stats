@@ -2,18 +2,18 @@
 function switchTab(evt, tabName) {
     // Hide all elements with class="tabcontent".
     var contents = document.getElementsByClassName("tabcontent");
-    for(var c = 0; c < contents.length; c++) {
+    for (var c = 0; c < contents.length; c++) {
         contents[c].style.display = "none";
-    };
+    }
     // Deactivate all elements with class="tablinks".
     var links = document.getElementsByClassName("tablinks");
     for(var l = 0; l < links.length; l++) {
         links[l].className = links[l].className.replace(" is-active", "");
-    };
+    }
     // Add "is-active" to selected tab, show corresponding contents.
     document.getElementById(tabName).style.display = "block";
     evt.currentTarget.className += " is-active";  
-};
+}
 
 
 // Hamburger menu toggle.
@@ -34,52 +34,115 @@ function hamburgerToggle() {
         navMenu.className = navMenu.className.replace(" is-active", "");
         
         toggleButton.className += " is-active";
-        navMenu.className += " is-active";
-        
-    };    
-};
-
+        navMenu.className += " is-active";  
+    }  
+}
 
 
 //// Function that controls user input items.
-function formClass(formData) {
+function formClass() {
     
-    this.formData = formData;
+    // Defaults.
+    this.server = "xbox";
+    this.nickname = "";
+    this.data_input = [];
+    this.filter_input = [];
+    this.filter_by_50 = "unchecked";
+    
     this.formName = "theForm";
     this.inputName = "form_data";
+    
+    
+    // Convert list to string and vice versa.
+    this.listToString = function(list) {
+        
+        var output = list.join("&");
+        
+        return(output);
+    };
+    this.stringToList = function(string) {
+        
+        var output = string.split("&");
+                
+        return(output); 
+    };
+    
+    
+    // Get cookie by name.
+    this.getCookie = function(cname) {
+        var name = cname + "=";
+        var decodedCookie = decodeURIComponent(document.cookie);
+        var ca = decodedCookie.split(';');
+        for(var i = 0; i <ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    };
+    // Get form data from cookies.
+    this.takeCookieData = function() {
+        
+        var server = this.getCookie("server");
+        if (server !== "") {
+            this.server = server;
+        }
+        
+        // Function getCookie returns " if cookie string has whitespaces.
+        this.nickname = this.getCookie("nickname").replace(/"/g , "");
+        
+        var data_input_str = this.getCookie("data_input");
+        if (data_input_str !== "") {
+            this.data_input = this.stringToList(data_input_str);
+        }
+        
+        var filter_input_str = this.getCookie("filter_input");
+        if (filter_input_str !== "") {
+            this.filter_input = this.stringToList(filter_input_str);
+        }
+        
+        
+        this.filter_by_50 = this.getCookie("filter_by_50");
+        
+    };
+    
     
     // Initialize form functions.
     this.initBasics = function() {
         
         // Nickname.
-        document.getElementById("nickname").value = this.formData.nickname;
+        document.getElementById("nickname").value = this.nickname;
 
         // Server.
-        if (this.formData.server == "xbox") {
+        if (this.server == "xbox") {
             document.getElementById("xbox").className += " is-active";
 
-        } else if (this.formData.server == "ps4") {
+        } else if (this.server == "ps4") {
             document.getElementById("ps4").className += " is-active";
         }
     };
     this.initFilters = function() {
         
         // Filter selectors.
-        for(var i = 0; i < this.formData.filter_input.length; i++) {
-            document.getElementById(this.formData.filter_input[i]).className += " is-active";
+        for(var i = 0; i < this.filter_input.length; i++) {
+            document.getElementById(this.filter_input[i]).className += " is-active";
         }
     };
     this.initFilterBy50 = function() {
         // filter_by_50
-        if (this.formData.filter_by_50 == "checked") {
+        if (this.filter_by_50 == "checked") {
             document.getElementById("filter_by_50").className += " is-active";
         }
     };
     this.initDataSelectors = function() {
         
         // Data selectors.
-        for(var i = 0; i < this.formData.data_input.length; i++) {
-            document.getElementById(this.formData.data_input[i]).className += " is-active";
+        for(var i = 0; i < this.data_input.length; i++) {
+            document.getElementById(this.data_input[i]).className += " is-active";
         }
     };
 
@@ -98,11 +161,11 @@ function formClass(formData) {
         // Checking conditions.
         if (id == "xbox") {
             xboxButton.className += " is-active";
-            this.formData.server = "xbox";
+            this.server = "xbox";
 
         } else if (id == "ps4") {
             ps4Button.className += " is-active";
-            this.formData.server = "ps4";
+            this.server = "ps4";
         }
     };
     this.filterBy50Toggle = function() {
@@ -111,13 +174,13 @@ function formClass(formData) {
         var button = document.getElementById("filter_by_50");
 
         // Checking conditions.
-        if (this.formData.filter_by_50 == "checked") {
+        if (this.filter_by_50 == "checked") {
             button.className = button.className.replace(" is-active", "");
-            this.formData.filter_by_50 = "unchecked";
+            this.filter_by_50 = "unchecked";
             
         } else {
             button.className += " is-active";
-            this.formData.filter_by_50 = "checked";
+            this.filter_by_50 = "checked";
         }
     };
     this.dataSelToggle = function(id) {
@@ -125,17 +188,17 @@ function formClass(formData) {
         // Reference for button.
         var button = document.getElementById(id);
         // Looking for index in the array.
-        var index = this.formData.data_input.indexOf(id);
+        var index = this.data_input.indexOf(id);
 
         // If in the array.
         if (index != -1) {
-            this.formData.data_input.splice(index, 1);
+            this.data_input.splice(index, 1);
             button.className = button.className.replace(" is-active", "");
         }
         
         // If not in the array.
         else {
-            this.formData.data_input.push(id);
+            this.data_input.push(id);
             button.className += " is-active";
         }
     };
@@ -144,16 +207,16 @@ function formClass(formData) {
         // Reference for button.
         var button = document.getElementById(id);
         // Looking for index in the array.
-        var index = this.formData.filter_input.indexOf(id);
+        var index = this.filter_input.indexOf(id);
 
         // If in the array.
         if (index != -1) {
-            this.formData.filter_input.splice(index, 1);
+            this.filter_input.splice(index, 1);
             button.className = button.className.replace(" is-active", "");
         }
         // If not in the array.
         else {
-            this.formData.filter_input.push(id);
+            this.filter_input.push(id);
             button.className += " is-active";
         }
     };
@@ -165,13 +228,13 @@ function formClass(formData) {
         var button;
 
         // Deselect all buttons
-        for(var i = 0; i < this.formData.filter_input.length; i++) {
-            button = document.getElementById(this.formData.filter_input[i]);
+        for(var i = 0; i < this.filter_input.length; i++) {
+            button = document.getElementById(this.filter_input[i]);
             button.className = button.className.replace(" is-active", "");
         }
 
         // Empty the variable.
-        this.formData.filter_input = [];
+        this.filter_input = [];
     };
     
     
@@ -179,30 +242,41 @@ function formClass(formData) {
     this.submit = function() {
 
         // Putting nickname into the array.
-        this.formData.nickname = document.getElementById("nickname").value;
+        this.nickname = document.getElementById("nickname").value;
 
         // Putting the data dictionary into the <input>.
         var input = document.getElementsByName(this.inputName)[0];
-        input.value = JSON.stringify(this.formData);
+        input.value = JSON.stringify({
+            "nickname": this.nickname,
+            "server": this.server,
+            "data_input": this.data_input,
+            "filter_input": this.filter_input,
+            "filter_by_50": this.filter_by_50
+        });
 
         // Submit the form.
         document.forms[this.formName].submit();
 
     };
     
-    // Custom submit buttons for "session-tracker.html"
-    this.requestSession =function(id) {
-    
-        // Putting the requested ID into the array.
-        this.formData.request_session = id;
+    // Custom submit buttons for "session-tracker.html" with additional custom parameter.
+    this.requestSession = function(id) {
 
         // Putting nickname into the array.
-        this.formData.nickname = document.getElementById("nickname").value;
+        this.nickname = document.getElementById("nickname").value;
 
         // Putting the data dictionary into the <input>.
         input = document.getElementsByName(this.inputName)[0];
-        input.value = JSON.stringify(this.formData);
-
+        
+        input.value = JSON.stringify({
+            "nickname": this.nickname,
+            "server": this.server,
+            "data_input": this.data_input,
+            "filter_input": this.filter_input,
+            "filter_by_50": this.filter_by_50,
+            "request_session": id
+        });
+        
         // Submit the form.
         document.forms[this.formName].submit();
     };
@@ -403,12 +477,12 @@ function vehiclesPage(data) {
     // Sort "this.unsortedArray" into "this.sortedArray".
     this.sortCells = function(headerID) {
         
-        var column_to_sort = 0
+        var column_to_sort = 0;
         
         for(var h = 0; h < this.headers.length; h++) {
             
             if (this.headers[h] == headerID) {
-                column_to_sort = h
+                column_to_sort = h;
                 break;
             }
         }
@@ -416,7 +490,7 @@ function vehiclesPage(data) {
         // Sorting.
         this.sortedArray = this.unsortedArray.sort(function(a,b) {
             return b[column_to_sort] - a[column_to_sort];
-        })
+        });
     };
     
     
@@ -468,10 +542,10 @@ function vehiclesPage(data) {
             "avg_lifetime": "Avg Lifetime",
             "last_time": "Last Battle"
         };
-
+        
         // If header.
         if (y == "header") {
-            output = headersDict[this.headers[x]];
+            var output = headersDict[this.headers[x]];
         }
         // If cell.
         else {
@@ -482,7 +556,7 @@ function vehiclesPage(data) {
                 case "pen_hits_ratio":
                 case "bounced_hits_r":
                 case "survived":
-                    output = Math.round(this.sortedArray[y][x]*1000)/10 + " %";
+                    var output = Math.round(this.sortedArray[y][x]*1000)/10 + " %";
                     break;
                 // Integer.
                 case "wn8":
@@ -490,22 +564,22 @@ function vehiclesPage(data) {
                 case "avg_exp":
                 case "avg_dpm":
                 case "avg_epm":
-                    output = Math.round(this.sortedArray[y][x]);
+                    var output = Math.round(this.sortedArray[y][x]);
                     break;
                 // Float with two decimals.
                 case "avg_frags":
                 case "avg_fpm":
-                    output = Math.round(this.sortedArray[y][x]*100)/100;
+                    var output = Math.round(this.sortedArray[y][x]*100)/100;
                     break;
                 // Minutes.
                 case "total_time":
-                    output = String(Math.round(this.sortedArray[y][x])) + "m"
+                    var output = String(Math.round(this.sortedArray[y][x])) + "m";
                     break;
                 // Minutes and seconds.
                 case "avg_lifetime":
                     var minutes = parseInt(this.sortedArray[y][x]/60);
                     var seconds = parseInt(this.sortedArray[y][x] - minutes * 60);
-                    output = minutes + 'm ' + seconds + 's';
+                    var output = minutes + 'm ' + seconds + 's';
                     break;
                 // Last battle time.
                 case "last_time":
@@ -514,7 +588,7 @@ function vehiclesPage(data) {
                     break;
                 // Default.
                 default:
-                    output = this.sortedArray[y][x];  
+                    var output = this.sortedArray[y][x];  
             }
         }
         
@@ -544,8 +618,8 @@ function vehiclesPage(data) {
         for (var c = 0; c < color_scale.length; c++) {
             if ((score >= color_scale[c][0]) && (score <= color_scale[c][1])) {
                 color = color_scale[c][2];
-            };
-        };
+            }
+        }
 
         // Creating <span> and textnode elements, setting color.
         var span = document.createElement("span");
@@ -567,7 +641,7 @@ function vehiclesPage(data) {
 
         // Creating <table> element and setting attributes.
         var table = document.createElement("table");
-        table.setAttribute("class", "table is-bordered");
+        table.setAttribute("class", "table is-bordered is-narrow is-striped");
         table.setAttribute("id", this.tableID);
 
 
@@ -674,7 +748,7 @@ function sessionTracker(sessionTanks) {
         // Looking for "tank_id"
         for(var i = 0; i < this.sessionTanks.length; i++) {
             
-            if (("tank_id" in this.sessionTanks[i]) && (String(this.sessionTanks[i]["tank_id"]) == tankID)) {
+            if (("tank_id" in this.sessionTanks[i]) && (String(this.sessionTanks[i].tank_id) == tankID)) {
                 
                 this.tank = this.sessionTanks[i];
                 break;
@@ -717,7 +791,7 @@ function sessionTracker(sessionTanks) {
                     }
                 }
             }  
-        })
+        });
     };
     
     // Generate table.
@@ -767,7 +841,7 @@ function sessionTracker(sessionTanks) {
                      ["Lifetime", this.tank.lifetime_session, this.tank.lifetime_all],
                      ["DPM", this.tank.dpm_session, this.tank.dpm_all],
                      ["WN8", this.tank.wn8_session, this.tank.wn8_all]
-                    ]
+                    ];
 
         // Creating body.
         var tbody = document.createElement("tbody");
@@ -817,9 +891,9 @@ function sessionTracker(sessionTanks) {
 
         // Remove table if exists.
         var element = document.getElementById(this.tableID);
-        if (element != null) {
+        if (element !== null) {
             element.parentNode.removeChild(element);
-        };    
+        }
 
         // Draw the table.
         this.generateTable();
@@ -862,8 +936,8 @@ function ChartOverview()  {
                 text: "Average Damage"
             }
         }
-    })
-};
+    });
+}
 function ChartOverview2()  {
     new Chart(document.getElementById("BarChart_wn8"), { 
         type: 'bar', 
@@ -894,8 +968,8 @@ function ChartOverview2()  {
                 text: "WN8"
             }
         }
-    })
-};
+    });
+}
 
 
 
