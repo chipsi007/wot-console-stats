@@ -1,8 +1,8 @@
 {% extends "index.html" %} {% block content %}
 
 <section class="section">
-    <div class="container">
-
+    <div id="parentNotification" class="container">
+        
         <div class="control is-grouped">
             <p class="control is-expanded">
                 <input type="text" class="input" id="nickname" placeholder="Playername">
@@ -13,7 +13,7 @@
             </p>
         </div>
 
-        <div class="columns">
+        <div class="columns is-mobile is-multiline">
 
             <div class="column">
                 <p class="control">
@@ -101,6 +101,9 @@
             // Intiating the form.
             form.initBasics();
             form.initFilters();
+            
+            //Notification.
+            drawNotification("parentNotification", "notification12MAR2017", "Some work has been done to address bugs which appeared after moving to the new styling. Please empty your browser cache and cookies if something is still glitchy.");
         
         </script>
 

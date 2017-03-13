@@ -623,7 +623,7 @@ def player_profile():
 
     #Setting defaults.
     return_empty = True
-    button = 'Enter the details above and click here to Submit'
+    button = 'Submit'
 
     #Checking if there is info in cookies.
     if form.nickname != '' and form.server in ['xbox', 'ps4']:
@@ -638,14 +638,14 @@ def player_profile():
     #Initiating 'time_series_cls'.
     user = player_profile_cls(form.server, form.nickname)
 
-    #Eiter find cached player data or request from API and save into 'usercache'.
+    #Eiter find cached player data or request from WG API and save into 'usercache'.
     current_user = None
     if return_empty == False:
         user.request_or_find_cached()
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to submit again.'
+            button = user.message + ' | Click to resubmit'
 
     #Placeholders.
     all_time, recent, difference = ({} for i in range(3))
@@ -703,7 +703,7 @@ def player_profile():
     #Generating output.
     if return_empty == False:
         form.nickname = user.nickname
-        button = 'Found data for ' + str(user.nickname) + ' Click here to resubmit'
+        button = 'Data for ' + str(user.nickname) + ' | Click to refresh'
 
     #Making response & assigning cookies.
     form.nickname = user.nickname
@@ -855,7 +855,7 @@ def vehicles():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here resubmit'
+            button = user.message + ' | Click to resubmit'
 
     #Calculations.
     table_array = ''
@@ -868,7 +868,7 @@ def vehicles():
         user.name_tanks(tankopedia)
         #Generating output.
         table_array = user.player_data
-        button = 'Found data for ' + str(user.nickname) + ' Click here to resubmit'
+        button = 'Data for ' + str(user.nickname) + ' | Click to refresh'
 
     #Generating output.
     form.nickname = user.nickname
@@ -999,7 +999,7 @@ def time_series():
 
     #Setting defaults.
     return_empty = True
-    button = 'Enter the details above and click here to Submit'
+    button = 'Submit'
 
     #Checking if there is info in cookies.
     if form.nickname != '' and form.server in ['xbox', 'ps4']:
@@ -1020,7 +1020,7 @@ def time_series():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to resubmit.'
+            button = user.message + ' | Click to resubmit'
 
     #Placeholders.
     percentiles_change, x_labels = ([] for i in range(2))
@@ -1045,7 +1045,7 @@ def time_series():
     #Generating output.
     if return_empty == False:
         form.nickname = user.nickname
-        button = 'Found data for ' + str(user.nickname) + ' Click here to resubmit'
+        button = 'Data for ' + str(user.nickname) + ' | Click to refresh'
 
     #Making response & assigning cookies.
     form.nickname = user.nickname
@@ -1113,7 +1113,7 @@ def session_tracker():
         #Return error If status not 'ok'.
         if user.status != 'ok':
             return_empty = True
-            button = user.message + ' Click here to submit again.'
+            button = user.message + ' | Click to resubmit'
 
     #Calling all 'userdata_history' datapoints to show in the form.
     if user.nickname != '':
@@ -1128,7 +1128,7 @@ def session_tracker():
     #If user is found, but the checkpoint is not selected.
     if return_empty == False and user.request == '':
         return_empty = True
-        button = 'Found data for ' + user.nickname + ', please select the checkpoint. If no checkpoints available, come tomorrow to see your statistics.'
+        button = 'Checkpoints for ' + user.nickname + ' | Come tomorrow if none available.'
 
 
     #Placeholders.
@@ -1151,7 +1151,7 @@ def session_tracker():
         else:
             search = userdata_history.query.filter_by(nickname=user.nickname, server=user.server, timestamp=timestamp_to_search).first()
             user.snapshot_data = pickle.loads(search.player_data)
-            button = 'Viewing last ' + str(user.request) + ' day(s) of player statistics.'
+            button = 'Viewing last ' + str(user.request) + ' day(s)'
 
     #Calculations.
     if return_empty == False:
@@ -1263,7 +1263,7 @@ def session_tracker():
 
         #If data didn't change.
         if len(session_tanks) < 1:
-            button = 'No tanks were played.'
+            button = 'No tanks were played'
 
     radar_names = ['Accuracy', 'Damage Caused', 'Radio Assist', 'Experience', 'Damage Received (inv)']
 

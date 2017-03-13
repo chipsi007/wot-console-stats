@@ -1,3 +1,5 @@
+/* jshint browser: true */
+
 // Switch tabs.
 function switchTab(evt, tabName) {
     // Hide all elements with class="tabcontent".
@@ -19,8 +21,8 @@ function switchTab(evt, tabName) {
 // Hamburger menu toggle.
 function hamburgerToggle() {
     
-    toggleButton = document.getElementById("nav-toggle");
-    navMenu = document.getElementById("nav-menu");
+    var toggleButton = document.getElementById("nav-toggle");
+    var navMenu = document.getElementById("nav-menu");
     
     // If hamburger toggle is active.
     if (toggleButton.classList.contains("is-active")) {
@@ -266,7 +268,7 @@ function formClass() {
         this.nickname = document.getElementById("nickname").value;
 
         // Putting the data dictionary into the <input>.
-        input = document.getElementsByName(this.inputName)[0];
+        var input = document.getElementsByName(this.inputName)[0];
         
         input.value = JSON.stringify({
             "nickname": this.nickname,
@@ -496,7 +498,8 @@ function vehiclesPage(data) {
     
     // Format one cell. Used inside "this.generateTable"
     this.formatCell = function(y, x) {
-
+        
+        var output;
         // Dictionaries.
         var monthsDict = {
             "1": "Jan",
@@ -545,7 +548,7 @@ function vehiclesPage(data) {
         
         // If header.
         if (y == "header") {
-            var output = headersDict[this.headers[x]];
+            output = headersDict[this.headers[x]];
         }
         // If cell.
         else {
@@ -556,7 +559,7 @@ function vehiclesPage(data) {
                 case "pen_hits_ratio":
                 case "bounced_hits_r":
                 case "survived":
-                    var output = Math.round(this.sortedArray[y][x]*1000)/10 + " %";
+                    output = Math.round(this.sortedArray[y][x]*1000)/10 + " %";
                     break;
                 // Integer.
                 case "wn8":
@@ -564,31 +567,31 @@ function vehiclesPage(data) {
                 case "avg_exp":
                 case "avg_dpm":
                 case "avg_epm":
-                    var output = Math.round(this.sortedArray[y][x]);
+                    output = Math.round(this.sortedArray[y][x]);
                     break;
                 // Float with two decimals.
                 case "avg_frags":
                 case "avg_fpm":
-                    var output = Math.round(this.sortedArray[y][x]*100)/100;
+                    output = Math.round(this.sortedArray[y][x]*100)/100;
                     break;
                 // Minutes.
                 case "total_time":
-                    var output = String(Math.round(this.sortedArray[y][x])) + "m";
+                    output = String(Math.round(this.sortedArray[y][x])) + "m";
                     break;
                 // Minutes and seconds.
                 case "avg_lifetime":
                     var minutes = parseInt(this.sortedArray[y][x]/60);
                     var seconds = parseInt(this.sortedArray[y][x] - minutes * 60);
-                    var output = minutes + 'm ' + seconds + 's';
+                    output = minutes + 'm ' + seconds + 's';
                     break;
                 // Last battle time.
                 case "last_time":
                     var time = new Date(this.sortedArray[y][x]*1000);
-                    var output = monthsDict[String(time.getMonth()+1)] + " " + String(time.getDate());
+                    output = monthsDict[String(time.getMonth()+1)] + " " + String(time.getDate());
                     break;
                 // Default.
                 default:
-                    var output = this.sortedArray[y][x];  
+                    output = this.sortedArray[y][x];  
             }
         }
         
@@ -1163,3 +1166,56 @@ function wn8Estimates(data) {
 
 }
 
+
+
+
+// Draw notification.
+function drawNotification(parentID, notificationID, message) {
+    
+    // Checking browser has local storage support.
+    var localStorageSupported = false;
+    if (typeof(Storage) !== "undefined") {
+        localStorageSupported = true;
+    }
+    
+    // Check if notification was closed before.
+    var isHidden = false;
+    if ((localStorageSupported === true) && (localStorage.getItem(notificationID) == "hidden")) {
+        isHidden = true;
+    }
+    
+    // Drawing the notification if it was never closed.
+    if (isHidden === false) {
+        
+        var parent = document.getElementById(parentID);
+    
+        var notification = document.createElement("div");
+        notification.setAttribute("class", "notification has-text-centered");
+        notification.setAttribute("id", notificationID);
+        
+        // Not drawing close button if local storage is not supported.
+        if (localStorageSupported === true) {
+            
+            var deleteButton = document.createElement("button");
+            deleteButton.setAttribute("class", "delete");
+            deleteButton.setAttribute("onclick", "closeNotification(\"" + notificationID + "\");");
+            notification.appendChild(deleteButton);  
+        }
+
+        var textNode = document.createTextNode(message);
+        notification.appendChild(textNode);
+        
+        parent.appendChild(notification);
+    }    
+}
+function closeNotification(notificationID) {
+    
+    // Remove element.
+    var element = document.getElementById(notificationID);    
+    if (element !== null) {
+        element.parentNode.removeChild(element);
+    }
+    
+    // Save data to local storage.
+    localStorage.setItem(notificationID, "hidden");
+}

@@ -20,8 +20,7 @@
             <a class="button is-primary is-fullwidth" onclick="form.submit()">{{ button }}</a>
         </p>
         
-        <div class="columns">
-            
+        <div class="columns is-mobile is-multiline">
             {% for checkpoint in history_checkpoints %}
             <div class="column">
                 <p class="control">
@@ -29,7 +28,6 @@
                 </p>
             </div>
             {% endfor %}
-            
         </div>
 
     </div>

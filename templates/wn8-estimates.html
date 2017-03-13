@@ -2,7 +2,7 @@
 {% block content %}
 
 <section class="section">
-    <div class="container">
+    <div id="parentNotification" class="container">
         
         <div class="control is-grouped">
             <p class="control is-expanded">
@@ -14,7 +14,7 @@
             </p>
         </div>
           
-        <div class="columns">
+        <div class="columns is-mobile is-multiline">
 
             <div class="column">
                 <p class="control">
@@ -104,6 +104,9 @@
         // Intiating the form.
         form.initBasics();
         form.initFilters();
+        
+        //Notification.
+        drawNotification("parentNotification", "notification11MAR2017", "WN8 damage targets are calculated according to the current player statistics in real time.");
 
     </script>
 
@@ -125,9 +128,7 @@
 
 <div class="container">
     
-    <div class="notification has-text-centered">
-        WN8 damage targets are calculated according to the current player statistics in real time.
-    </div>
+    <div id="notification"></div>
     
     <div class="tabs is-centered">
         <ul>

@@ -5,20 +5,21 @@
         
         <div class="container">
             
+            
+                
             <div class="control is-grouped">
-                <p class="control has-addons is-expanded">
-                    <input type="text" class="input is-expanded" id="nickname" placeholder="Playername">
+                <p class="control is-expanded">
+                    <input type="text" class="input" id="nickname" placeholder="Playername">
+                </p>
+                <p class="control has-addons">
                     <a class="button" id="xbox" onclick="form.serverToggle('xbox')">XBOX</a>
                     <a class="button" id="ps4" onclick="form.serverToggle('ps4')">PLAYSTATION</a>
-                </p>
-                <p class="control">
-                    <a class="button" id="filter_by_50" onclick="form.filterBy50Toggle()">> 50</a>
                 </p>
             </div>
             
             <div class="tile is-ancestor">
                 <div class="tile is-parent">
-                    <div class="tile is-child">
+                    <div class="tile is-child is-flex">
                         <div class="columns is-gapless is-mobile is-multiline">
                         {% for i in range(0, 18, 3) %}
                         {% set temp_list = [data_selectors[i], data_selectors[i+1], data_selectors[i+2]] %}
@@ -46,7 +47,11 @@
                     </div>
                 </div>
             </div>
-             
+            
+            <p class="control">
+                <a class="button is-light is-small is-fullwidth" id="filter_by_50" onclick="form.filterBy50Toggle()">Filter by at least 50 battles</a>
+            </p>
+            
             <p class="control">
                 <a class="button is-primary is-fullwidth" onclick="form.submit()">{{ button }}</a>
             </p>

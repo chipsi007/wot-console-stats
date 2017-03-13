@@ -1,3 +1,9 @@
+/* workaround for using multiline columns for Safari */
+.column {
+  flex-shrink: 1;
+  flex-basis: auto;
+}
+
 /* player-profile */
 .custom-card {
     text-align: center;
@@ -16,3 +22,4 @@
 .tabcontent {}
 .menulinks {}
 .menucontent {}
+
