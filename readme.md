@@ -1,44 +1,13 @@
+###### Description:
 
-#### Features overview:
+Advanced World of Tanks Console player statistics with charts, trends, evaluations.
 
-*Screenshots of the old version*
+Wrapped up into SPA - style frontend, communicates with the server via JSON API. Heavily relies on ES6 methods and Fetch API (polyfill included for Safari).
 
+Collects raw daily user snapshots in pickletype SQL fields, performs real time calculations based on the stored data.
 
-###### Player Profile
+Utilizes data analysis insights from data of around 50,000 players. [Github repo](https://github.com/IDDT/wot-console-playerbase-analysis)
 
-General player statistics dashboard with performance change indicators, WN8 color tag and two charts showing cumulative WN8 and percentile for the last 7 days. In depth general statistics with radar chart showing the difference between all-time results and recent player performance.
-
-Main dashboard                       |  In-depth
------------------------------------- | ------------------------------------
-![](screenshots/player-profile1.png) | ![](screenshots/player-profile2.png)
-
-
-###### Statistics Table
-
-Main page                              |
----------------------------------------|-----------------------------------
-![](screenshots/statistics-table1.png) | Very handy to view different vehicles and how they compare to each other. Filtering and sorting options available.
-
-
-###### Time Series
-
-Charts to show day-to-day difference in performance and the recent trend.
-
-Day-to-day percentiles            | WN8 Day-to-day + Total
-----------------------------------|----------------------------------
-![](screenshots/time-series1.png) | ![](screenshots/time-series2.png)
-
-
-###### Session Tracker
-
-Allows to analyze vehicle-by-vehicle performance in various periods (from 1 to 7) days.
-
-Overview                              | Vehicle view
---------------------------------------|-------------------------------------
-![](screenshots/session-tracker1.png) | ![](screenshots/session-tracker2.png)
-
-
-#### Technicals
 
 ###### Dependencies:
 - Python:
@@ -49,6 +18,47 @@ Overview                              | Vehicle view
   - pickle
   - datetime
 - JavaScript:
-  - Chart.js
+  - [Chart.js 2.50](https://github.com/chartjs/Chart.js)
+  - [Fetch 2.0.3 (Polyfill)](https://github.com/github/fetch)
 - CSS
-  - Bulma
+  - [Bulma 0.4.0](https://github.com/jgthms/bulma)
+- SQL
+  - SQLite3
+
+
+###### Bulma SASS Changes:
+
+utilities/variables.sass - colors
+
+```SASS
+$grey-lighter: hsl(0, 0%, 80%) !default
+
+$white-ter:    hsl(0, 0%, 94%) !default
+$white-bis:    hsl(0, 0%, 96%) !default
+$white:        hsl(0, 0%, 98%) !default
+
+$yellow:       hsl(45, 88%, 65%) !default
+$green:        hsl(125, 37%, 54%) !default
+$turquoise:    hsl(212, 43%, 65%) !default
+$blue:         hsl(193, 58%, 44%) !default
+$red:          hsl(353, 80%, 64%) !default
+```
+components/tabs.sass - .tabs &.is-boxed &.is-active a
+```SASS
+background-color: $white !important
+```
+
+###### Initial SQL database setup:
+
+```Python
+from flask_site import db
+
+#Create all tables
+db.create_all()
+
+#Remove all tables
+db.drop_all()
+
+db.session.commit()
+db.session.close()
+```

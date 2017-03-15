@@ -3,8 +3,6 @@ __pycache__/
 
 sql_database.db
 
-static/Chart.js
-
 scripts/
 
 static/bulma.css.map
@@ -12,3 +10,9 @@ static/bulma.css.map
 static/bulma.css
 
 test/
+
+static/Chart.min.js
+
+.sass-cache/
+
+static/fetch.js
