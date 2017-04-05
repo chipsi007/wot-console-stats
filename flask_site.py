@@ -76,7 +76,7 @@ class userdata_history(db.Model):
     @classmethod
     def delete_expired(cls):
         #Setting the period.
-        period = 8 * 24 * 60 * 60
+        period = 12 * 24 * 60 * 60
         #Calling timestamp.
         timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
         #Searching for all entries which are older than 'period'.
@@ -146,6 +146,7 @@ usercache.delete_all_cache()
 #Front end.
 @app.route('/')
 def index():
+    userdata_history.delete_expired()
     return render_template("index.html")
 
 
@@ -631,13 +632,43 @@ class session_tracker_cls(user_cls):
     def __init__(self, server, account_id):
         user_cls.__init__(self, server, account_id)
 
-    def convert_seconds_to_str(self, seconds):
-        if seconds >= 60:
-            m = int(seconds/60)
-            s = int(seconds - m * 60)
-            return(str(m) + 'm ' + str(s) + 's')
-        else:
-            return(str(int(seconds)) + 's')
+    def get_snapshots(self, search):
+        snapshots = []
+        if len(search) > 0:
+            for row in search:
+                timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
+                #Passing data points that are older than today.
+                if timedelta.days > 0:
+                    snapshots.append(row.timestamp)
+        return(snapshots)
+
+    def get_radar_data(self, tank_data, tank_id):
+        temp_dict = {'dmgc': tank_data['damage_dealt'] / tank_data['battles'],
+                     'exp': tank_data['xp'] / tank_data['battles'],
+                     'rass': tank_data['damage_assisted_radio'] / tank_data['battles'],
+                     'dmgr': tank_data['damage_received'] / tank_data['battles'],
+                     'acc': tank_data['hits'] / tank_data['shots'] * 100 if tank_data['shots'] > 0 else 0.0}
+
+        dmgc_perc = self.percentile_calculator('dmgc', tank_id, temp_dict['dmgc'])
+        exp_perc = self.percentile_calculator('exp', tank_id, temp_dict['exp'])
+        rass_perc = self.percentile_calculator('rass', tank_id, temp_dict['rass'])
+        dmgr_perc = self.percentile_calculator('dmgr', tank_id, temp_dict['dmgr'])
+        acc_perc = self.percentile_calculator('acc', tank_id, temp_dict['acc'])
+
+        temp_dict['radar'] = [round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2), round(exp_perc, 2),
+                  abs(round(dmgr_perc, 2) - 100)]
+
+        return(temp_dict)
+
+    def get_other_data(self, tank_data):
+        temp_dict = {'battles': tank_data['battles'],
+                     'wins': tank_data['wins'],
+                     'lifetime': tank_data['battle_life_time'] / tank_data['battles'],
+                     'dpm': tank_data['damage_dealt'] / tank_data['battle_life_time'] * 60,
+                     'wn8': self.wn8_calculator(tank_data, wn8console)}
+        return(temp_dict)
+
+
 
 class wn8_estimates_cls(user_cls):
     def __init__(self, server, account_id):
@@ -896,17 +927,9 @@ def api_main(request_type, server, account_id, timestamp, filters):
             output['message'] = user.message
             return Response(json.dumps(output), mimetype='application/json')
 
-
         #Calling all 'userdata_history' snapshots from SQL.
         search = userdata_history.query.filter_by(account_id=user.account_id, server=user.server).all()
-        #If more than 0 snapshots found.
-        snapshots = []
-        if len(search) > 0:
-            for row in search:
-                timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
-                #Passing data points that are older than today.
-                if timedelta.days > 0:
-                    snapshots.append(row.timestamp)
+        snapshots = user.get_snapshots(search)
 
         #If the checkpoint is not in the database return the list of checkpoints.
         if int(timestamp) not in snapshots:
@@ -921,7 +944,6 @@ def api_main(request_type, server, account_id, timestamp, filters):
             output['server'] = user.server
             return Response(json.dumps(output), mimetype='application/json')
 
-
         #If the checkpoint is in the database
         for row in search:
             if int(timestamp) == row.timestamp:
@@ -934,95 +956,28 @@ def api_main(request_type, server, account_id, timestamp, filters):
         #List for output.
         session_tanks = []
         #Calculating data.
-        for s_tank in user.slice_data:
-            for a_tank in user.player_data:
-                if s_tank['tank_id'] == a_tank['tank_id']:
+        for session_tank in user.slice_data:
+            tank_id = session_tank['tank_id']
 
-                    #Creating a dictionary.
-                    temp_dict = {}
+            for alltime_tank in user.player_data:
+                if tank_id == alltime_tank['tank_id']:
 
-                    #For 'radar_all'.
-                    temp_dict['dmgc_all'] = a_tank['damage_dealt'] / a_tank['battles']
-                    temp_dict['exp_all'] = a_tank['xp'] / a_tank['battles']
-                    temp_dict['rass_all'] = a_tank['damage_assisted_radio'] / a_tank['battles']
-                    temp_dict['dmgr_all'] = a_tank['damage_received'] / a_tank['battles']
-                    if a_tank['shots'] > 0:
-                        temp_dict['acc_all'] = a_tank['hits'] / a_tank['shots'] * 100
-                    else:
-                        temp_dict['acc_all'] = 0.0
+                    current_tank = {'all': {**user.get_radar_data(alltime_tank, tank_id),
+                                            **user.get_other_data(alltime_tank)},
+                                    'session': {**user.get_radar_data(session_tank, tank_id),
+                                                **user.get_other_data(session_tank)},
+                                    'tank_id': tank_id,
+                                    'tank_name': tankopedia[str(tank_id)]['name'] if str(tank_id) in tankopedia else 'Unknown'}
 
-                    dmgc_perc, exp_perc, rass_perc, dmgr_perc, acc_perc = (0.0 for i in range(5))
-                    dmgc_perc = user.percentile_calculator('dmgc', a_tank['tank_id'], temp_dict['dmgc_all'])
-                    exp_perc = user.percentile_calculator('exp', a_tank['tank_id'], temp_dict['exp_all'])
-                    rass_perc = user.percentile_calculator('rass', a_tank['tank_id'], temp_dict['rass_all'])
-                    dmgr_perc = user.percentile_calculator('dmgr', a_tank['tank_id'], temp_dict['dmgr_all'])
-                    acc_perc = user.percentile_calculator('acc', a_tank['tank_id'], temp_dict['acc_all'])
-
-                    temp_dict['radar_all'] = [round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
-                                              round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)]
-
-                    #For 'radar_session'.
-                    temp_dict['dmgc_session'] = s_tank['damage_dealt'] / s_tank['battles']
-                    temp_dict['exp_session'] = s_tank['xp'] / s_tank['battles']
-                    temp_dict['rass_session'] = s_tank['damage_assisted_radio'] / s_tank['battles']
-                    temp_dict['dmgr_session'] = s_tank['damage_received'] / s_tank['battles']
-                    if s_tank['shots'] > 0:
-                        temp_dict['acc_session'] = s_tank['hits'] / s_tank['shots'] * 100
-                    else:
-                        temp_dict['acc_session'] = 0.0
-
-                    dmgc_perc, exp_perc, rass_perc, dmgr_perc, acc_perc = (0.0 for i in range(5))
-                    dmgc_perc = user.percentile_calculator('dmgc', s_tank['tank_id'], temp_dict['dmgc_session'])
-                    exp_perc = user.percentile_calculator('exp', s_tank['tank_id'], temp_dict['exp_session'])
-                    rass_perc = user.percentile_calculator('rass', s_tank['tank_id'], temp_dict['rass_session'])
-                    dmgr_perc = user.percentile_calculator('dmgr', s_tank['tank_id'], temp_dict['dmgr_session'])
-                    acc_perc = user.percentile_calculator('acc', s_tank['tank_id'], temp_dict['acc_session'])
-
-                    temp_dict['radar_session'] = [round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2),
-                                                  round(exp_perc, 2), abs(round(dmgr_perc, 2)-100)]
-
-                    #Other values.
-                    temp_dict['tank_id'] = a_tank['tank_id']
-                    if str(temp_dict['tank_id']) in tankopedia:
-                        temp_dict['tank_name'] = tankopedia[str(temp_dict['tank_id'])]['name']
-                    else:
-                        temp_dict['tank_name'] = 'Unknown'
-
-                    temp_dict['battles_session'] = s_tank['battles']
-                    temp_dict['wins_session'] = s_tank['wins']
-
-                    temp_dict['lifetime_session'] = user.convert_seconds_to_str(s_tank['battle_life_time']/s_tank['battles'])
-                    temp_dict['lifetime_all'] = user.convert_seconds_to_str(a_tank['battle_life_time']/a_tank['battles'])
-
-                    temp_dict['dpm_session'] = s_tank['damage_dealt'] / s_tank['battle_life_time']*60
-                    temp_dict['dpm_all'] = a_tank['damage_dealt'] / a_tank['battle_life_time']*60
-
-                    temp_dict['wn8_session'] = user.wn8_calculator(s_tank, wn8console)
-                    temp_dict['wn8_all'] = user.wn8_calculator(a_tank, wn8console)
-
-                    #Formatting numbers.
-                    temp_dict['acc_session'] = str(round(temp_dict['acc_session'], 2)) + ' %'
-                    temp_dict['acc_all'] = str(round(temp_dict['acc_all'], 2)) + ' %'
-
-                    items_to_int = ['dmgc_all', 'dmgc_session', 'rass_all', 'rass_session',
-                                    'exp_all', 'exp_session', 'dmgr_all', 'dmgr_session',
-                                    'dpm_all', 'dpm_session', 'wn8_all', 'wn8_session']
-
-                    for item in items_to_int:
-                        temp_dict[item] = int(temp_dict[item])
-
-                    #Appending dictionary.
-                    session_tanks.append(temp_dict)
+                    session_tanks.append(current_tank)
+                    break
 
         #Preparing output.
         output['status'], output['message'] = 'ok', 'ok'
-        output['account_id'] = user.account_id
-        output['server'] = user.server
-        output['data'] = {
-            'session_tanks': session_tanks,
-            'timestamp':     timestamp,
-            'snapshots':     snapshots,
-        }
+        output['account_id'], output['server'] = user.account_id, user.server
+        output['data'] = {'session_tanks': session_tanks,
+                          'timestamp':     timestamp,
+                          'snapshots':     snapshots}
         output['count'] = len(output['data'])
 
     if request_type == 'wn8_estimates':

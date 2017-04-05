@@ -5,10 +5,10 @@
 
 // Templates
 const component = {
-  
+
   // Login page.
   login: function() {
-    
+
     let html = `<section class="section is-large">
                   <div class="columns">
                     <div class="column is-4 is-offset-4">
@@ -43,28 +43,28 @@ const component = {
                     </div>
                   </div>
                 </section>`;
-    
+
     return(html);
-    
+
   },
-  
+
   // Header section.
   heroHeader: function() {
-    
+
     const NICKNAME = data.nickname;
     const PAGES = data.pages;
-    
+
     function genHeroHead(nickname) {
-      
+
       let html = `<div class="hero-head">
                       <header class="nav">
                           <div class="container">
 
                               <div class="nav-left">
                                   <span class="nav-item">
-                                    
+
                                       <strong> ${ nickname } </strong>
-                                
+
                                   </span>
                               </div>
 
@@ -77,82 +77,82 @@ const component = {
                           </div>
                       </header>
                   </div>`;
-      
+
       return(html);
-      
-      
-      
-      
+
+
+
+
     }
-    
+
     function genHeroFoot(pages) {
-      
+
       let string = '';
       pages.forEach((page) => {
-        
+
         string += '<li';
-        
+
         if (page.active === true) {
           string += ' class="is-active"';
         }
-        
+
         string += '><a onclick="' + page.onclick + '">' + page.label + '</a></li>';
       });
-      
-      
+
+
       let html = `<div class="hero-foot">
                       <nav class="tabs is-boxed">
                         <div class="container">
                           <ul>
-                            
+
                             ${ string }
 
                           </ul>
                         </div>
                       </nav>
                   </div>`;
-      
-      return(html);      
+
+      return(html);
     }
-    
-    
+
+
     let html = '<section class="hero is-primary is-bold">' + genHeroHead(NICKNAME) + genHeroFoot(PAGES) + '</section>';
-    
+
     return(html);
-    
+
   },
   nav: function() {
-    
+
     const TABS = data.tabs;
-    
+
     let string = '';
     TABS.forEach((tab) => {
       string += '<a class="nav-item is-tab';
-      
+
       if (tab.active === true) {
         string += ' is-active';
       }
-      
+
       string += '" onclick="' + tab.onclick + '">' + tab.label + '</a>';
     });
-    
-    
+
+
     let html = `<nav class="nav has-shadow">
                   <div class="container">
                     <div class="nav-left">
-                      
+
                       ${string}
-                      
+
                     </div>
                   </div>
                 </nav>`;
-    
+
     return(html);
   },
-  
+
   // Controls section for Profile and Time Series
   controls: function() {
-    
+
     let html = `<div class='container' style='margin-top: 15px; margin-bottom: 15px;'>
                   ${ this.filters('tiers') }
                   ${ this.filters('class') }
@@ -160,14 +160,14 @@ const component = {
                   ${ this.refreshButton() }
                 </div>`;
     return(html);
-    
+
   },
   filters: function(type) {
     // Type is either 'tiers' or 'class'.
-    
+
     const ITEMS = data.filters.filter((item) => item.type == type);
     let string = '';
-    
+
     function isActive(bool) {
       if (bool === true) {
         return(' is-active');
@@ -175,18 +175,18 @@ const component = {
         return('');
       }
     }
-    
+
     for (let item of ITEMS) {
-      
+
       let onclick = `onclick="ctrl.filters.actToggle('${ item.id }');"`;
-      
+
       string += `<div class="column">
 
                     <a class="button is-small is-light is-fullwidth${ isActive(item.active) }" id="${ item.id }" ${ onclick }>${ item.label }</a>
 
                 </div>`;
     }
-      
+
     let html = `<div class="columns is-gapless is-mobile is-multiline is-marginless">
                   ${ string }
                 </div>`;
@@ -200,33 +200,33 @@ const component = {
   },
   refreshButton: function() {
     let html = `<div class='level'>
-                                
+
                   <a class="button is-primary is-fullwidth" id="refreshButton">Refresh</a>
-  
+
                 </div>`;
     return(html);
   },
-  
+
   // Profile page.
   dashboard: function() {
-    
+
     let string = '';
-    
+
     string += '<div class="container">';
     string += this.level();
     string += this.panels();
     string += '</div>';
-    
+
     return(string);
-    
+
   },
   level: function() {
-    
+
     function getArrowTag(recentNumber, alltimeNumber) {
-      
+
       let symbol = '';
       let color = '';
-      
+
       if (recentNumber > alltimeNumber) {
           //Arrow up.
           symbol = '&#9650';
@@ -244,9 +244,9 @@ const component = {
 
       return(html);
     }
-    
+
     function getWn8Color(wn8Score) {
-                        
+
       let color = 'BLACK';
 
       let scale = [
@@ -261,24 +261,24 @@ const component = {
         [2450,  2899,   'MEDIUMSLATEBLUE'],
         [2900,  99999,  'REBECCAPURPLE']
       ];
-      
+
       for (let item of scale) {
         if ((wn8Score >= item[0]) && (wn8Score <= item[1])) {
           color = item[2];
         }
       }
-      
+
       return(color);
     }
-    
+
     const WR_SCORE = data.profile.all_time.wr;
     const WN8_SCORE = data.profile.all_time.wn8;
     const PERC_SCORE = data.profile.all_time.total_perc;
-    
+
     const WR_TAG = getArrowTag(data.profile.recent.wr, data.profile.all_time.wr);
     const WN8_TAG = getArrowTag(data.profile.recent.wn8, data.profile.all_time.wn8);
     const PERC_TAG = getArrowTag(data.profile.recent.total_perc, data.profile.all_time.total_perc);
-      
+
     let html = `<nav class="level is-mobile">
                   <div class="level-item has-text-centered">
                     <div>
@@ -290,7 +290,7 @@ const component = {
                   <div class="level-item has-text-centered">
                     <div>
                       <p class="heading">WN8</p>
-                      <p class="title"> ${ WN8_SCORE } <span style="color: ${ getWn8Color(WN8_SCORE) }">✭</span></p>
+                      <p class="title"> ${ WN8_SCORE } <span style="color: ${ getWn8Color(WN8_SCORE) }">&#9733;</span></p>
                       ${ WN8_TAG }
                     </div>
                   </div>
@@ -302,12 +302,12 @@ const component = {
                     </div>
                   </div>
                 </nav>`;
-    
+
     return(html);
-    
+
   },
   panels: function() {
-    
+
     let html = `<div class='columns'>
                   <div class='column is-6'>
 
@@ -331,15 +331,15 @@ const component = {
                         <canvas id="PercCanvas" width="100" height="40"></canvas>
                       </div>
                     </nav>
-                      
+
                   </div>
                 </div>`;
     return(html);
-    
+
   },
-  
+
   inDetail: function() {
-    
+
     const tableData = [
       {label: 'Win Rate',                 attr: 'wr',         addon: ' %'},
       {label: 'WN8',                      attr: 'wn8',        addon: ''},
@@ -351,12 +351,12 @@ const component = {
       {label: 'Kills / Deaths',           attr: 'k_d',        addon: ''},
       {label: 'Damage Caused / Received', attr: 'dmgc_dmgr',  addon: ''}
     ];
-    
+
     function getArrowTag(recentNumber, alltimeNumber) {
-      
+
       let symbol = '';
       let color = '';
-      
+
       if (recentNumber > alltimeNumber) {
           //Arrow up.
           symbol = '&#9650';
@@ -374,13 +374,13 @@ const component = {
 
       return(html);
     }
-    
+
     let string = '';
     tableData.forEach((item) => {
-      
+
       const RECENT = data.profile.recent[item.attr];
       const ALL_TIME = data.profile.all_time[item.attr];
-      
+
       string += `<tr>
                   <td> ${ getArrowTag(RECENT, ALL_TIME) } </td>
                   <td> ${ item.label } </td>
@@ -388,7 +388,7 @@ const component = {
                   <td> ${ RECENT + item.addon } </td>
                 </tr>`;
     });
-    
+
     let html = `<div class="container">
                   <div class="tile is-ancestor">
                       <div class="tile is-parent is-6">
@@ -410,9 +410,9 @@ const component = {
                                   </thead>
 
                                   <tbody>
-                                    
+
                                     ${ string }
-                                  
+
                                   </tbody>
 
                               </table>
@@ -420,11 +420,11 @@ const component = {
                       </div>
                   </div>
               </div>`;
-    
+
     return(html);
-    
+
   },
-  
+
   // Vehicles page.
   vControls: function() {
     let html = `<div class='container' style='margin-top: 15px; margin-bottom: 15px;'>
@@ -437,11 +437,11 @@ const component = {
     return(html);
   },
   vSelectors: function() {
-    
+
     const ITEMS = data.vSelectors;
     const ONCLICK = 'ctrl.vSelectors.toggle';
     let string = '';
-      
+
     function isActive(bool) {
       if (bool === true) {
         return(' is-active');
@@ -449,7 +449,7 @@ const component = {
         return('');
       }
     }
-      
+
     for (let x = 0; x < ITEMS.length; x+=3) {
       string += `<div class="column">
 
@@ -461,68 +461,68 @@ const component = {
 
                   </div>`;
     }
-    
+
     let html = `<div class="columns is-gapless is-mobile is-multiline">
                   ${ string }
                 </div>`;
-  
+
     return(html);
   },
   filterBy50: function() {
-    
+
     let active = '';
     if (data.filterBy50 === true) {
       active = ' is-active';
     }
-    
+
     let html = `<div class="field">
                   <a class="button is-light is-small is-fullwidth${ active }" id="filterBy50" onclick="ctrl.filterBy50();">Filter by at least 50 battles</a>
                 </div>`;
     return(html);
   },
-  
+
   // Time Series page.
   timeSeries: function() {
-    
+
     let html = `<div class='container'>
                   <canvas id='ChCanvas' width='400' height='150'></canvas>
                 </div>`;
-    
+
     return(html);
   },
-  
+
   // Session tracker
   stControls: function() {
-    
+
     let html = `<div class='container' style='margin-top: 15px; margin-bottom: 15px;'>
                   ${ this.snapshots() }
                   ${ this.refreshButton() }
                 </div>`;
     return(html);
-    
+
   },
   snapshots: function() {
-    
+
     // Return nothing if property doesnt exist.
     if (data.sessionTracker === null) {
       return('');
     }
-    
+
     const SNAPSHOTS = data.sessionTracker.snapshots;
     const DATA_OBJ = 'sessionTracker';
-    
+
     let string = '';
     SNAPSHOTS.forEach((timestamp) => {
       let label = Math.round((Date.now() / 1000 - timestamp) / 60 / 60 / 24);
       let onclick = `data.timestamp = ${ timestamp }; data.${ DATA_OBJ } = null; app.draw();`;
-      
+
       string += `<div class="column">
                   <p class="control">
                     <a class="button is-light is-fullwidth" onclick="${ onclick }">${ String(label) + ' days ago' }</a>
                   </p>
                 </div>`;
     });
-    
+
     // In case there are 0 snapshots.
     if (SNAPSHOTS.length === 0) {
       string = `<div class="column">
@@ -531,19 +531,19 @@ const component = {
                   </div>
                 </div>`;
     }
-    
+
     let html = `<div class="columns is-mobile is-multiline">
-                  ${ string }  
+                  ${ string }
                 </div>`;
-    
+
     return(html);
   },
   sessionTracker: function(sTankID) {
-    
+
     const ELEMENT_ID = 'sessionTracker';
-    const TANKS = data.sessionTracker.session_tanks;    
+    const TANKS = data.sessionTracker.session_tanks;
     const SELECTED_TANK = TANKS.filter((tank) => String(tank.tank_id) == sTankID)[0];
-    
+
     let links = '';
     TANKS.forEach((tank) => {
       let active = '';
@@ -553,7 +553,7 @@ const component = {
       let onclick = `app.refresh('${ tank.tank_id }')`;
       links += `<li><a ${ active } id="${ tank.tank_id }" onclick="${ onclick }"> ${ tank.tank_name } </a></li>`;
     });
-    
+
     let html = `<div id='${ ELEMENT_ID }' class="container">
                   <div class="tile is-ancestor">
 
@@ -578,7 +578,7 @@ const component = {
 
                     <div class="tile is-parent is-5">
                       <div id="TableParent" class="tile is-child box is-12">
-                        
+
                         ${ this.stTable(SELECTED_TANK) }
 
                       </div>
@@ -586,32 +586,58 @@ const component = {
 
                   </div>
                 </div>`;
-    
+
     return(html);
-    
+
   },
   stTable: function(oTank) {
-    
-    let thead = oTank.tank_name + " Battles: " + oTank.battles_session + "  Wins: " + oTank.wins_session;
 
-    let rows = [
-      ["Accuracy",           oTank.acc_session,      oTank.acc_all],
-      ["Damage Caused",      oTank.dmgc_session,     oTank.dmgc_all],
-      ["Radio Assist",       oTank.rass_session,     oTank.rass_all],
-      ["Experience",         oTank.exp_session,      oTank.exp_all],
-      ["Damage Received",    oTank.dmgr_session,     oTank.dmgr_all],
-      ["Lifetime",           oTank.lifetime_session, oTank.lifetime_all],
-      ["DPM",                oTank.dpm_session,      oTank.dpm_all],
-      ["WN8",                oTank.wn8_session,      oTank.wn8_all]
+    let thead = oTank.tank_name + " Battles: " + oTank.session.battles + "  Wins: " + oTank.session.wins;
+
+    let tableRows = [
+      ["Accuracy",           oTank.session.acc,      oTank.all.acc],
+      ["Damage Caused",      oTank.session.dmgc,     oTank.all.dmgc],
+      ["Radio Assist",       oTank.session.rass,     oTank.all.rass],
+      ["Experience",         oTank.session.exp,      oTank.all.exp],
+      ["Damage Received",    oTank.session.dmgr,     oTank.all.dmgr],
+      ["Lifetime",           oTank.session.lifetime, oTank.all.lifetime],
+      ["DPM",                oTank.session.dpm,      oTank.all.dpm],
+      ["WN8",                oTank.session.wn8,     oTank.all.wn8]
     ];
     
+    function convertTime(seconds) {
+        if (seconds >= 60) {
+          const M = parseInt(seconds / 60);
+          const S = parseInt(seconds - M * 60);
+          return(String(M) + 'm ' + String(S) + 's');
+        } else {
+          return(String(seconds) + 's');
+        }
+    }
+
     let tbody = '';
-    rows.forEach((row) => {
+    tableRows.forEach((row) => {
+      switch(row[0]) {
+        // Percent with 2 decimals.
+        case 'Accuracy':
+          row[1] = String(Math.round(row[1] * 100) / 100) + ' %';
+          row[2] = String(Math.round(row[2] * 100) / 100) + ' %';
+          break;
+        case 'Lifetime':
+          row[1] = convertTime(row[1]);
+          row[2] = convertTime(row[2]);
+          break;
+        // Integer.
+        default:
+          row[1] = Math.round(row[1]);
+          row[2] = Math.round(row[2]);
+          break;
+      }
       tbody += `<tr>
                   <td>${ row[0] }</td><td>${ row[1] }</td><td>${ row[2] }</td>
                 </tr>`;
     });
-    
+
     let html = `<table class='table'>
                   <thead>
                     <tr>
@@ -631,12 +657,12 @@ const component = {
                 </table>`;
     return(html);
   },
-  
-  
+
+
   // About page
   abtPercentiles: function() {
     let html = `<section class='section'><div class='container content'>
-                
+
                 <p>
                 While WN8 rating is a good measure of overall player competency in one number, percentiles can be useful when it is necessary to assess the performance of a single tank. 50th percentile is same as median and represents an average player, 100th represents the best of the best.
                 </p>
@@ -646,25 +672,25 @@ const component = {
                 </p>
 
                 </div></section>`;
-    
+
     return(html);
   },
   abtWN8: function() {
-    
+
     let html = `<section class='section'><div class='container content'>
-                
+
                 <p>
                 Unlike most of other web sites which provide WN8 scores for Consoles, this site uses WN8 expected values precisely calculated for console players. With Console WN8 table it's impossible to increase the overall WN8 rating by playing on tanks that have premium matchmaking on consoles but don't have it on PC. It's also impossible to do so called "stat padding" when certain tanks are either overpowered on console or nerfed on PC.
                 </p>
-                
+
                 <p>
                 The WN8 rating was calculated by using the same chunk of data used for percentiles. The aim was to keep the same level of WN8 scores as with PC table, but have tanks normalized according to their real Console performance. Tier by tier, starting from 10, console data was fitted inside the same slope which comes out of using WN8 PC table.
                 </p>
-                
+
                 <p>
                 The outcome looks near identical but with Console-specific values inside. As a bonus, actual expected statistics for Console-exclusive tanks were also calculated.
                 </p>
-                
+
                 <p>
                 Latest percentiles and WN8 table update: 19 FEB 2017
                 </p>
@@ -685,39 +711,39 @@ const component = {
                 </div>
 
                 </div></section>`;
-    
+
     return(html);
-  
+
   },
   abtData: function() {
     let html = `<section class='section'><div class='container content'>
-                
+
                 <p>
                 Every time user performs statistics look up, the site collects and stores the data point for caching and charting purposes. Daily snapshots are stored for the last 10 days, then deleted automatically.
                 </p>
-                
+
                 <p>
                 Because the website performs charting and data calculations in real time, storing data for longer periods of time might be taxing on server. The advantage of this method is if the variables change (like WN8 table) old values are just recalculated as usual.
                 </p>
 
                 </div></section>`;
-    
+
     return(html);
-    
+
   },
   abtBugs: function() {
     let html = `<section class='section'><div class='container content'>
-                
+
                 <p>
                 If something doesn't seem to work properly or as expected, please consider sending a message to my profile on World Of Tanks Console forum.
                 </p>
-                
+
                 <p class='control'>
                   <a class='button is-primary is-outlined' href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'> WoT Console Forum Profile </a>
                 </p>
-                    
+
                 </div></section>`;
-    
+
     return(html);
   }
 };
@@ -840,7 +866,7 @@ const chart = {
           }
       });
     },
-  
+
   // Time Series
   timeSeriesPerc: function() {
     new Chart(document.getElementById("ChCanvas"), {
@@ -857,7 +883,7 @@ const chart = {
               pointRadius: 4,
               pointHoverRadius: 6,
               data: data.timeSeries.percentiles_change.map((Obj) => { return(Obj.acc); })
-          },{ 
+          },{
               label: 'Damage Caused',
               fill: false,
               borderColor: 'hsl(228, 25%, 63%)',
@@ -867,7 +893,7 @@ const chart = {
               pointRadius: 4,
               pointHoverRadius: 6,
               data: data.timeSeries.percentiles_change.map((Obj) => { return(Obj.dmgc); })
-          },{ 
+          },{
               label: 'Radio Assist',
               fill: false,
               borderColor: 'hsl(197, 25%, 63%)',
@@ -877,7 +903,7 @@ const chart = {
               pointRadius: 4,
               pointHoverRadius: 6,
               data: data.timeSeries.percentiles_change.map((Obj) => { return(Obj.rass); })
-          },{ 
+          },{
               label: 'WinRate',
               fill: false,
               borderColor: 'hsl(127, 25%, 63%)',
@@ -887,7 +913,7 @@ const chart = {
               pointRadius: 4,
               pointHoverRadius: 6,
               data: data.timeSeries.percentiles_change.map((Obj) => { return(Obj.wr); })
-          },{ 
+          },{
               label: 'Damage Received (inv)',
               fill: false,
               borderColor: 'hsl(60, 25%, 63%)',
@@ -921,23 +947,23 @@ const chart = {
               {
                   label: "WN8 Daily",
                   fill: false,
-                  backgroundColor: "hsla(0, 35%, 63%, 0.2)", 
-                  borderColor: "hsl(0, 35%, 63%)", 
-                  pointBackgroundColor: "hsl(0, 35%, 63%)", 
-                  pointBorderColor: "#ffffff", 
-                  pointHoverBackgroundColor: "#ffffff", 
-                  pointHoverBorderColor: "hsl(0, 35%, 63%)", 
+                  backgroundColor: "hsla(0, 35%, 63%, 0.2)",
+                  borderColor: "hsl(0, 35%, 63%)",
+                  pointBackgroundColor: "hsl(0, 35%, 63%)",
+                  pointBorderColor: "#ffffff",
+                  pointHoverBackgroundColor: "#ffffff",
+                  pointHoverBorderColor: "hsl(0, 35%, 63%)",
                   data: data.timeSeries.wn8_change,
               },
               {
                   label: "WN8 Total",
                   fill: true,
-                  backgroundColor: "hsla(195, 20%, 63%, 0.1)", 
-                  borderColor: "hsl(195, 20%, 63%)", 
-                  pointBackgroundColor: "hsl(195, 20%, 63%)", 
-                  pointBorderColor: "#ffffff", 
-                  pointHoverBackgroundColor: "#ffffff", 
-                  pointHoverBorderColor: "hsl(195, 20%, 63%)", 
+                  backgroundColor: "hsla(195, 20%, 63%, 0.1)",
+                  borderColor: "hsl(195, 20%, 63%)",
+                  pointBackgroundColor: "hsl(195, 20%, 63%)",
+                  pointBorderColor: "#ffffff",
+                  pointHoverBackgroundColor: "#ffffff",
+                  pointHoverBorderColor: "hsl(195, 20%, 63%)",
                   data: data.timeSeries.wn8_totals,
               }
           ]
@@ -945,13 +971,13 @@ const chart = {
       options: {},
     });
   },
-  
-  stRadar: function(oTank) {    
-    new Chart(document.getElementById("RadChCanvas"), { 
-      type: 'radar', 
-      data: { 
-        labels: ["Accuracy", "Damage Caused", "Radio Assist", "Experience", "Damage Received (inv)"], 
-        datasets: [{ 
+
+  stRadar: function(oTank) {
+    new Chart(document.getElementById("RadChCanvas"), {
+      type: 'radar',
+      data: {
+        labels: ["Accuracy", "Damage Caused", "Radio Assist", "Experience", "Damage Received (inv)"],
+        datasets: [{
           label: "Selected period",
           backgroundColor: "hsla(0, 35%, 63%, 0.2)",
           borderColor: "hsl(0, 35%, 63%)",
@@ -959,7 +985,7 @@ const chart = {
           pointBorderColor: "#ffffff",
           pointHoverBackgroundColor: "#ffffff",
           pointHoverBorderColor: "hsl(0, 35%, 63%)",
-          data: oTank.radar_session
+          data: oTank.session.radar
         },
         {
           label: "All time",
@@ -969,7 +995,7 @@ const chart = {
           pointBorderColor: "#ffffff",
           pointHoverBackgroundColor: "#ffffff",
           pointHoverBorderColor: "hsl(195, 20%, 63%)",
-          data: oTank.radar_all
+          data: oTank.all.radar
         }]
       },
       options: {
@@ -978,18 +1004,18 @@ const chart = {
             beginAtZero: true
           }
         }
-      }  
+      }
     });
   }
-    
+
 };
 
 // Simple onclick controls.
 const ctrl = {
   logout: function() {
-    
+
     document.getElementsByTagName('body')[0].innerHTML = '';
-    
+
     data.nickname = null;
     data.server = null;
     data.accountID = null;
@@ -1003,16 +1029,16 @@ const ctrl = {
 
     page.login();
   },
-  
+
   filters: {
     toggle: function(sID) {
-      
+
       for (let item of data.filters) {
-        
+
         if (item.id !== sID) { continue; }
-        
+
         let button = document.getElementById(sID);
-        
+
         if (item.active === true) {
           item.active = false;
           button.classList.remove('is-active');
@@ -1024,11 +1050,11 @@ const ctrl = {
     },
     actToggle: function(sID) {
       for (let item of data.filters) {
-        
+
         if (item.id !== sID) { continue; }
-        
+
         let button = document.getElementById(sID);
-        
+
         if (item.active === true) {
           item.active = false;
           button.classList.remove('is-active');
@@ -1047,15 +1073,15 @@ const ctrl = {
     app.refresh();
     }
   },
-  
+
   vSelectors: {
     toggle: function(sID) {
       for (let item of data.vSelectors) {
-        
+
         if (item.id !== sID) { continue; }
-        
+
         let button = document.getElementById(sID);
-        
+
         if (item.active === true) {
           button.classList.remove('is-active');
           item.active = false;
@@ -1066,9 +1092,9 @@ const ctrl = {
         break;
       }
       app.refresh();
-    } 
+    }
   },
-  
+
   filterBy50: function() {
     let button = document.getElementById('filterBy50');
     if (data.filterBy50 === false) {
@@ -1123,21 +1149,21 @@ const page = {
 
 // Data
 let data = {
-  
+
   nickname: null,
   server: null,
   accountID: null,
-  
+
   profile: null,
   vehicles: null,
   timeSeries: null,
   sessionTracker: null,
   wn8Estimates: null,
-  
+
   filterBy50: false,
-  
+
   timestamp: 0,
-  
+
   filters: [
     {label: 'Tier 1',        type: 'tiers', active: true, id: '1',          onclick: 'ctrl.filters.toggle(\'1\')'},
     {label: 'Tier 2',        type: 'tiers', active: true, id: '2',          onclick: 'ctrl.filters.toggle(\'2\')'},
@@ -1159,23 +1185,23 @@ let data = {
     {label: 'WinRate', active: true, id: 'wr'},
     {label: 'Battles', active: false, id: 'battles'},
     {label: 'WN8',     active: true, id: 'wn8'},
-    
+
     {label: 'Avg Dmg',   active: false, id: 'avg_dmg'},
     {label: 'Avg Frags', active: false, id: 'avg_frags'},
     {label: 'Avg Exp',   active: false, id: 'avg_exp'},
-    
+
     {label: 'Avg DPM', active: true, id: 'avg_dpm'},
     {label: 'Avg FPM', active: false, id: 'avg_fpm'},
     {label: 'Avg EPM', active: false, id: 'avg_epm'},
-    
+
     {label: 'Dmg Percentile', active: false, id: 'dmg_perc'},
     {label: 'WR Percentile',  active: true, id: 'wr_perc'},
     {label: 'Exp Percentile', active: false, id: 'exp_perc'},
-    
+
     {label: 'Penetrated/Hits caused', active: false, id: 'pen_hits_ratio'},
     {label: 'Bounced/Hits received',  active: false, id: 'bounced_hits_ratio'},
     {label: 'Survived',               active: false, id: 'survived'},
-    
+
     {label: 'Total Lifetime',   active: false, id: 'total_time_m'},
     {label: 'Average Lifetime', active: false, id: 'avg_lifetime_s'},
     {label: 'Last battle time', active: false, id: 'last_time'},
@@ -1192,11 +1218,11 @@ let data = {
     {label: 'Sample tab 1', active: false, onclick: 'sampleFunction();'},
     {label: 'Sample tab 2', active: false, onclick: 'sampleFunction();'}
   ],
-  
+
 };
 
 // Views
-class view {  
+class view {
   // Select active elements for future rendering.
   selectHeader(sHeaderText) {
     data.pages.forEach((page) => {
@@ -1207,26 +1233,26 @@ class view {
     });
   }
   selectTab(sTabText) {
-    
+
     data.tabs.forEach((tab) => {
       tab.active = false;
       if (tab.label == sTabText) {
         tab.active = true;
       }
     });
-    
+
     if ((typeof(sTabText) == 'undefined') && (data.tabs.length > 0)) {
       data.tabs[0].active = true;
     }
   }
-  
+
   // Assemble URL to talk with the host.
   getURL(sDataObj) {
-    
+
     // Convert data.filters to string.
     const TEMP_FILTERS = data.filters.filter((x) => x.active === true).map((x) => x.id);
     const FILTERS = '&' + TEMP_FILTERS.join('&');
-    
+
     // Get the url.
     let type;
     switch (sDataObj) {
@@ -1249,55 +1275,62 @@ class view {
             type = 'error';
             break;
     }
-    
+
     let url = '/api/' + type + '/' + data.server + '/' + data.accountID + '/' + data.timestamp + '/' + FILTERS + '/';
     return(url);
 }
-  
+
   // Add onclick event.
   activateRefreshButton(sDataObj, onclickFunc) {
     document.getElementById('refreshButton').addEventListener('click', function() {
       data[sDataObj] = null;
       onclickFunc();
     });
-  } 
-  
+  }
+
 }
 class viewLogin extends view {
   draw() {
-    
+
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML = component.login();
-    
-    
+
+
     // Handling server buttons.
     let xbox = document.getElementById('xbox');
     let ps4 = document.getElementById('ps4');
-    
+
     xbox.addEventListener('click', function() {
       data.server = 'xbox';
       xbox.classList.add('is-active');
       ps4.classList.remove('is-active');
     });
-    
+
     ps4.addEventListener('click', function() {
       data.server = 'ps4';
       ps4.classList.add('is-active');
       xbox.classList.remove('is-active');
     });
-    
-    
+
+
     // Handling login button.
     let loginButton = document.getElementById('loginButton');
     loginButton.addEventListener('click', function() {
-      
-      
+
+
       loginButton.classList.add('is-loading');
-    
+
       let nickname = document.getElementById("nickname").value;
       let server = data.server;
       data.nickname = nickname;
-      
+
+      // Server not specified handler.
+      if (server === null) {
+        loginButton.classList.remove('is-loading');
+        alert('No server specified');
+        return;
+      }
+
       // Getting the url.
       let url;
       if (server == 'xbox') {
@@ -1305,15 +1338,15 @@ class viewLogin extends view {
       } else {
         url = "https://api-ps4-console.worldoftanks.com/wotx/account/list/?application_id=demo&search=" + nickname;
       }
-      
+
       // Fetching
       fetch(url)
-        .then(function(response) { 
+        .then(function(response) {
           return response.json();
         })
         .then(function(j) {
           loginButton.classList.remove('is-loading');
-        
+
           if ((j.status == 'ok') && (j.meta.count > 0)) {
             data.nickname = j.data[0].nickname;
             data.accountID = j.data[0].account_id;
@@ -1328,35 +1361,37 @@ class viewLogin extends view {
           loginButton.classList.remove('is-loading');
           alert('There has been a problem with your fetch operation: ' + error.message);
         });
-      
+
     });
   }
 }
 class viewProfile extends view {
   draw(sTabID) {
-    
+
+    const DATA_OBJ = 'profile';
+
     this.selectHeader('Profile');
     data.tabs = [
       {label: 'Dashboard', active: false, onclick: 'app.draw(\'Dashboard\');'},
       {label: 'In-Detail', active: false, onclick: 'app.draw(\'In-Detail\');'}
     ];
     this.selectTab(sTabID);
-    
-    
+
+
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML = component.heroHeader() + component.nav() + component.controls();
-    
-    if (data.profile === null) {
-      let url = this.getURL('profile');
+
+    if (data[DATA_OBJ] === null) {
+      let url = this.getURL(DATA_OBJ);
       let button = document.getElementById('refreshButton');
       button.classList.add('is-loading');
       fetch(url)
-        .then(function(response) { 
+        .then(function(response) {
           return response.json();
         })
         .then(function(j) {
           button.classList.remove('is-loading');
-          data.profile = j.data;
+          data[DATA_OBJ] = j.data;
           app.draw();
         })
         .catch(function(error) {
@@ -1366,14 +1401,14 @@ class viewProfile extends view {
     } else if (sTabID == 'In-Detail') {
       body.innerHTML += component.inDetail();
       chart.OpenRadCh();
-    } 
+    }
     // Default tab.
     else {
       body.innerHTML += component.dashboard();
       chart.OpenPercCh();
       chart.OpenWN8Ch();
     }
-    
+
     // Activating onclick events.
     this.activateRefreshButton('profile', page.profile);
   }
@@ -1382,21 +1417,21 @@ class viewProfile extends view {
   }
 }
 class viewVehicles extends view {
-  
+
   draw() {
-    
+
     this.selectHeader('Vehicles');
     data.tabs = [];
-    
+
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML = component.heroHeader() + component.nav() + component.vControls();
-    
+
     if (data.vehicles === null) {
       let url = this.getURL('vehicles');
       let button = document.getElementById('refreshButton');
       button.classList.add('is-loading');
       fetch(url)
-        .then(function(response) { 
+        .then(function(response) {
           return response.json();
         })
         .then(function(j) {
@@ -1414,28 +1449,28 @@ class viewVehicles extends view {
     // Activating onclick events.
     this.activateRefreshButton('vehicles', page.vehicles);
   }
-  
+
   refresh(sHeaderID) {
-    
+
     const TABLE_ID = 'table';
-    
+
     // Removing the table.
     let element = document.getElementById(TABLE_ID);
     if (element !== null) {
         element.parentNode.removeChild(element);
-    } 
-        
-    this.makeArray(sHeaderID);    
+    }
+
+    this.makeArray(sHeaderID);
     document.getElementsByTagName('body')[0].innerHTML += this.makeTable(TABLE_ID);
     this.activateRefreshButton('vehicles', page.vehicles);
   }
-  
+
   // Makes filtered array without headers.
   makeArray(sHeaderID) {
-    
+
     const ACTIVE_SELECTORS = data.vSelectors.filter((x) => x.active === true).map((x) => x.id);
     this.headers = ['name'].concat(ACTIVE_SELECTORS);
-    
+
     // Creating filtered array with tank names appended as first cell.
     let unsortedArray = [];
     data.vehicles.forEach((row) => {
@@ -1447,8 +1482,8 @@ class viewVehicles extends view {
         unsortedArray.push(tempList);
       }
     });
-    
-    
+
+
     // Looking for column to sort based on header id.
     let column_to_sort = 0;
     for(let h = 0; h < this.headers.length; h++) {
@@ -1463,7 +1498,7 @@ class viewVehicles extends view {
         return b[column_to_sort] - a[column_to_sort];
     });
   }
-  
+
   // Returns "true" when the tank is not allowed by filters.
   isFilteredOut(oTank) {
 
@@ -1473,11 +1508,11 @@ class viewVehicles extends view {
               return(true);
           }
       }
-      
+
       const ACTIVE = data.filters.filter((x) => x.active === true);
       const ACTIVE_TIERS = ACTIVE.filter((x) => x.type == 'tiers').map((x) => x.id );
       const ACTIVE_CLASSES = ACTIVE.filter((x) => x.type == 'class').map((x) => x.id );
-      
+
       // Tank tier.
       if (!ACTIVE_TIERS.includes(String(oTank.tier))) {
           return(true);
@@ -1490,14 +1525,64 @@ class viewVehicles extends view {
       return(false);
   }
 
-  // Format one cell. Used inside "this.generateTable"
-  formatCell(y, x) {
+  // array, formatCell -> getCell -> makeTable
+  getCell(y, x) {
 
-      var output;
-      // Dictionaries.
-      const monthsDict = {
+    const HEADERS_DICT = {
+        "name": "Tank",
+
+        "wr": "WinRate",
+        "battles": "Battles",
+        "wn8": "WN8",
+
+        "avg_dmg": "Avg DMG",
+        "avg_frags": "Avg Frags",
+        "avg_exp": "Avg EXP",
+
+        "avg_dpm": "Avg DPM",
+        "avg_fpm": "Avg FPM",
+        "avg_epm": "Avg EPM",
+
+        "dmg_perc": "DMG Perc",
+        "wr_perc": "WR Perc",
+        "exp_perc": "EXP Perc",
+
+        "pen_hits_ratio": "Penned",
+        "bounced_hits_ratio": "Bounced",
+        "survived": "Survived",
+
+        "total_time_m": "Total Lifetime",
+        "avg_lifetime_s": "Avg Lifetime",
+        "last_time": "Last Battle"
+    };
+
+    // If header.
+    if (y == 'header') {
+      return(HEADERS_DICT[this.headers[x]]);
+    }
+    // If footer.
+    else if (y == 'footer') {
+      if (x === 0) {
+        return('Average');
+      }
+      const ARRAY = this.array.map((item) => item[x]);
+      const SUM = ARRAY.reduce((total, val) => total + val);
+      const VALUE = SUM / ARRAY.length;
+      return(this.formatCell(VALUE, x));
+    }
+    // If cell.
+    else {
+      const VALUE = this.array[y][x];
+      return(this.formatCell(VALUE, x));
+    }
+  }
+
+  // headers -> formatCell -> getCell
+  formatCell(fValue, x) {
+
+    const MONTHS_DICT = {
           "1": "Jan",
-          "2": "Feb", 
+          "2": "Feb",
           "3": "Mar",
           "4": "Apr",
 
@@ -1512,104 +1597,75 @@ class viewVehicles extends view {
           "11": "Nov",
           "12": "Dec"
       };
-      const headersDict = {
-          "name": "Tank",
 
-          "wr": "WinRate", 
-          "battles": "Battles",
-          "wn8": "WN8",
-
-          "avg_dmg": "Avg DMG",
-          "avg_frags": "Avg Frags",
-          "avg_exp": "Avg EXP",
-
-          "avg_dpm": "Avg DPM",
-          "avg_fpm": "Avg FPM",
-          "avg_epm": "Avg EPM",
-
-          "dmg_perc": "DMG Perc",
-          "wr_perc": "WR Perc",
-          "exp_perc": "EXP Perc",
-
-          "pen_hits_ratio": "Penned",
-          "bounced_hits_ratio": "Bounced",
-          "survived": "Survived",
-
-          "total_time_m": "Total Lifetime",
-          "avg_lifetime_s": "Avg Lifetime",
-          "last_time": "Last Battle"
-      };
-
-      // If header.
-      if (y == "header") {
-          output = headersDict[this.headers[x]];
-      }
-      // If cell.
-      else {
-          // Looking for header name.
-          switch (this.headers[x]) {
-              // Percent with two decimals.
-              case 'wr':
-                  output = Math.round(this.array[y][x]*100)/100 + " %";
-                  break;
-              case "pen_hits_ratio":
-              case "bounced_hits_ratio":
-              case "survived":
-                  output = Math.round(this.array[y][x]*1000)/10 + " %";
-                  break;
-              // Integer.
-              case "wn8":
-              case "avg_dmg":
-              case "avg_exp":
-              case "avg_dpm":
-              case "avg_epm":
-                  output = Math.round(this.array[y][x]);
-                  break;
-              // Float with two decimals.
-              case "avg_frags":
-              case "avg_fpm":
-                  output = Math.round(this.array[y][x]*100)/100;
-                  break;
-              // Minutes.
-              case "total_time_m":
-                  output = String(Math.round(this.array[y][x])) + "m";
-                  break;
-              // Minutes and seconds.
-              case "avg_lifetime_s":
-                  var minutes = parseInt(this.array[y][x]/60);
-                  var seconds = parseInt(this.array[y][x] - minutes * 60);
-                  output = minutes + 'm ' + seconds + 's';
-                  break;
-              // Last battle time.
-              case "last_time":
-                  var time = new Date(this.array[y][x]*1000);
-                  output = monthsDict[String(time.getMonth()+1)] + " " + String(time.getDate());
-                  break;
-              // Default.
-              default:
-                  output = this.array[y][x];  
-          }
-      }
-      return(output); 
+    let output;
+    switch (this.headers[x]) {
+      // Percent with two decimals.
+      case 'wr':
+        output = Math.round(fValue * 100) / 100 + " %";
+        break;
+      case 'pen_hits_ratio':
+      case 'bounced_hits_ratio':
+      case 'survived':
+        output = Math.round(fValue * 1000) / 10 + " %";
+        break;
+      // Integer.
+      case 'wn8':
+      case 'battles':
+      case 'avg_dmg':
+      case 'avg_exp':
+      case 'avg_dpm':
+      case 'avg_epm':
+      case 'dmg_perc':
+      case 'wr_perc':
+      case 'exp_perc':
+        output = Math.round(fValue);
+        break;
+      // Float with two decimals.
+      case 'avg_frags':
+      case 'avg_fpm':
+        output = Math.round(fValue * 100) / 100;
+        break;
+      // Minutes.
+      case 'total_time_m':
+        output = Math.round(fValue) + 'm';
+        break;
+      // Minutes and seconds.
+      case 'avg_lifetime_s':
+        var minutes = parseInt(fValue / 60);
+        var seconds = parseInt(fValue - minutes * 60);
+        output = minutes + 'm ' + seconds + 's';
+        break;
+      // Last battle time.
+      case 'last_time':
+        var time = new Date(fValue * 1000);
+        output = MONTHS_DICT[String(time.getMonth() + 1)] + ' ' + String(time.getDate());
+        break;
+      // Default.
+      default:
+        output = fValue;
+    }
+    return(output);
   }
-  
+
+  // getCell -> makeTable -> draw
   makeTable(sTableID) {
-    
+
     const HEADERS = this.headers;
-    
+
     let thead = '';
     let tfoot = '';
     for (let h=0; h<HEADERS.length; h++) {
       let onclick = `app.refresh('${ HEADERS[h] }');`;
-      thead += `<th><a onclick="${ onclick }">${ this.formatCell('header', h) }</a></th>`;
-      tfoot += `<th>${ this.formatCell('header', h) }</th>`;
+      thead += `<th><a onclick="${ onclick }">${ this.getCell('header', h) }</a></th>`;
+      tfoot += `<th>${ this.getCell('footer', h) }</th>`;
     }
-    
+
     let tbody = '';
     for (let r = 0; r < this.array.length; r++) {
       let cells = '';
       for (let c = 0; c < this.array[r].length; c++) {
-          cells += `<td> ${ this.formatCell(r, c) } </td>`;
+          cells += `<td> ${ this.getCell(r, c) } </td>`;
       }
       tbody += `<tr> ${ cells } </tr>`;
     }
@@ -1622,7 +1678,7 @@ class viewVehicles extends view {
 
                     </tr>
                   </thead>
-                  
+
                   <tbody>
 
                     ${ tbody }
@@ -1643,27 +1699,27 @@ class viewVehicles extends view {
 
 }
 class viewTimeSeries extends view {
-  
+
   draw(sTabID) {
-    
+
     const DATA_OBJ = 'timeSeries';
     data.tabs = [
       {label: 'Daily Percentiles', active: false, onclick: 'app.draw(\'Daily Percentiles\');'},
       {label: 'WN8', active: false, onclick: 'app.draw(\'WN8\');'}
     ];
-    
+
     this.selectHeader('Time Series');
     this.selectTab(sTabID);
-    
+
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML = component.heroHeader() + component.nav() + component.controls() + component.timeSeries();
-    
+
     if (data[DATA_OBJ] === null) {
       let url = this.getURL(DATA_OBJ);
       let button = document.getElementById('refreshButton');
       button.classList.add('is-loading');
       fetch(url)
-        .then(function(response) { 
+        .then(function(response) {
           return response.json();
         })
         .then(function(j) {
@@ -1683,28 +1739,28 @@ class viewTimeSeries extends view {
     // Activating onclick events.
     this.activateRefreshButton(DATA_OBJ, page.timeSeries);
   }
-  
+
   refresh() {
     //Dummy
   }
 }
 class viewSessionTracker extends view {
   draw(sTabID) {
-    
+
     const DATA_OBJ = 'sessionTracker';
     data.tabs = [];
-    
+
     this.selectHeader('Session Tracker');
-    
+
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML = component.heroHeader() + component.nav() + component.stControls();
-    
+
     if (data[DATA_OBJ] === null) {
       let url = this.getURL(DATA_OBJ);
       let button = document.getElementById('refreshButton');
       button.classList.add('is-loading');
       fetch(url)
-        .then(function(response) { 
+        .then(function(response) {
           return response.json();
         })
         .then(function(j) {
@@ -1731,48 +1787,48 @@ class viewSessionTracker extends view {
     this.activateRefreshButton(DATA_OBJ, page.sessionTracker);
   }
   refresh(sTankID) {
-    
+
     const ELEMENT_ID = 'sessionTracker';
-    
+
     let body = document.getElementsByTagName('body')[0];
     let element = document.getElementById(ELEMENT_ID);
-    
+
     if (element !== null) {
         element.parentNode.removeChild(element);
     }
-    
+
     if (typeof(sTankID) == 'undefined') {
       sTankID = String(data.sessionTracker.session_tanks[0].tank_id);
     }
-    
+
     body.innerHTML += component.sessionTracker(sTankID);
-    
+
     let tank = data.sessionTracker.session_tanks.filter((x) => String(x.tank_id) == sTankID)[0];
     chart.stRadar(tank);
   }
 }
 class viewEstimates extends view {
-  
+
   draw(sTabID) {
-    
+
     const DATA_OBJ = 'wn8Estimates';
     data.tabs = [
       {label: 'WN8 Target Damage', active: false, onclick: 'app.draw(\'WN8 Target Damage\');'},
       {label: 'WN8 Player Values', active: false, onclick: 'app.draw(\'WN8 Player Values\');'}
     ];
-    
+
     this.selectHeader('WN8 Estimates');
     this.selectTab(sTabID);
-    
+
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML = component.heroHeader() + component.nav() + component.controls();
-    
+
     if (data[DATA_OBJ] === null) {
       let url = this.getURL(DATA_OBJ);
       let button = document.getElementById('refreshButton');
       button.classList.add('is-loading');
       fetch(url)
-        .then(function(response) { 
+        .then(function(response) {
           return response.json();
         })
         .then(function(j) {
@@ -1788,35 +1844,35 @@ class viewEstimates extends view {
       this.refresh();
     }
   }
-  
+
   refresh(sHeaderID) {
-    
+
     const TABLE_ID = 'table';
     const CURRENT_TAB = data.tabs.filter((x) => x.active === true).map((x) => x.label)[0];
-    
+
     // Removing the table if exists.
     let element = document.getElementById(TABLE_ID);
     if (element !== null) {
         element.parentNode.removeChild(element);
     }
-    
+
     // Preparing the data.
     if (CURRENT_TAB == 'WN8 Target Damage') {
-      this.genWn8Stats();
-    } else if (CURRENT_TAB == 'WN8 Player Values') {
       this.genTargetDamageArray();
+    } else if (CURRENT_TAB == 'WN8 Player Values') {
+      this.genWn8Stats();
     }
-    
+
     this.sortCells(sHeaderID);
 
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML += this.generateTable();
-    
+
     // Activating onclick events.
     const DATA_OBJ = 'wn8Estimates';
     this.activateRefreshButton(DATA_OBJ, page.estimates);
   }
-  
+
   // 1st tab.
   genTargetDamageArray() {
 
@@ -1824,7 +1880,7 @@ class viewEstimates extends view {
 
     this.unsortedArray = [];
     this.headers = ["Tank", "300", "450", "650", "900", "1200", "1600", "2000", "2450", "2900", "Your Damage"];
-    
+
     // Iterating through tanks.
     for(let item of DATA) {
       if (this.isFilteredOut(item) === false) {
@@ -1862,14 +1918,14 @@ class viewEstimates extends view {
       }
     }
   }
-  
+
   // Returns "true" when the tank is not allowed by filters.
   isFilteredOut(oTank) {
-      
+
       const ACTIVE = data.filters.filter((x) => x.active === true);
       const ACTIVE_TIERS = ACTIVE.filter((x) => x.type == 'tiers').map((x) => x.id );
       const ACTIVE_CLASSES = ACTIVE.filter((x) => x.type == 'class').map((x) => x.id );
-      
+
       // Tank tier.
       if (!ACTIVE_TIERS.includes(String(oTank.tier))) {
           return(true);
@@ -1881,7 +1937,7 @@ class viewEstimates extends view {
       }
       return(false);
   }
-  
+
   sortCells(sHeaderID) {
     // Looking for column to sort.
     let columnToSort = 0;
@@ -1897,17 +1953,17 @@ class viewEstimates extends view {
     });
   }
   generateTable() {
-    
+
     const TABLE_ID = 'table';
     const HEADERS = this.headers;
     const DATA = this.sortedArray;
-    
+
     let thead = '';
     HEADERS.forEach((header) => {
       let onclick = `onclick="app.refresh('${ header }')"`;
       thead += `<th><a ${ onclick }> ${ header } </a></th>`;
     });
-    
+
     let tbody = '';
     DATA.forEach((row) => {
       let cellStr = '';
@@ -1916,14 +1972,13 @@ class viewEstimates extends view {
       });
       tbody += `<tr>${ cellStr }</tr>`;
     });
-    
-    let html = `<section id='${ TABLE_ID }' class='section'>
-                  <div class='container'>
+
+    let html = `<div id='${ TABLE_ID }' class='container'>
                     <table class='table'>
                       <thead>
                         <tr>
 
-                          ${ thead }                  
+                          ${ thead }
 
                         </tr>
                       </thead>
@@ -1933,15 +1988,14 @@ class viewEstimates extends view {
 
                       </tbody>
                     </table>
-                  </div>
-                </section>`;
+                  </div>`;
     return(html);
   }
 }
 class viewAbout extends view {
-  
+
   draw(sTabID) {
-    
+
     data.tabs = [
       {label: 'Percentiles', active: false, onclick: 'app.draw(\'Percentiles\');'},
       {label: 'WN8', active: false, onclick: 'app.draw(\'WN8\');'},
@@ -1950,10 +2004,10 @@ class viewAbout extends view {
     ];
     this.selectHeader('About');
     this.selectTab(sTabID);
-    
+
     let body = document.getElementsByTagName('body')[0];
     body.innerHTML = component.heroHeader() + component.nav();
-    
+
     switch (sTabID) {
       case 'Bugs and errors':
         body.innerHTML += component.abtBugs();
@@ -1967,7 +2021,7 @@ class viewAbout extends view {
       default:
         body.innerHTML += component.abtPercentiles();
     }
-  } 
+  }
 }
 
 // Update Google Analytics
