@@ -255,26 +255,57 @@ class user_cls:
                     filtered_player_data.append(tank)
         self.player_data = filtered_player_data
 
-    def percentile_calculator(self, kind, tank_id, value):
-        #If tank is in the pre-calculated table.
-        if str(tank_id) in percentiles[kind] and value != 0:
-            percentiles_list = percentiles[kind][str(tank_id)]
-            #Requesting the list for current tank_id, looking for the closest value and its index.
-            closest_value = min(percentiles_list, key=lambda x: abs(x - value))
-            index = percentiles_list.index(closest_value)
-        #If tank is in tankopedia. Taking the value from generic percentiles.
-        elif str(tank_id) in tankopedia and value != 0:
-            temp_tank = tankopedia[str(tank_id)]
-            tier_class = str(temp_tank['tier']) + temp_tank['type']
+    #Find one closest number from sorted array and return its index.
+    def find_index_of_closest_value(self, array, number):
+        pair_found = False
+        beg = 0
+        end = len(array) - 1
 
-            percentiles_list = percentiles_generic[kind][tier_class]
-            closest_value = min(percentiles_list, key=lambda x: abs(x - value))
-            index = percentiles_list.index(closest_value)
-        #If tank not in tankopedia
+        #Looking for closest pair.
+        while abs(beg - end) != 1 and pair_found == False:
+            mid = (beg + end) // 2
+            if array[mid] == number:
+                pair_found = True
+                beg, end = mid, mid
+            elif number < array[mid]:
+                end = mid
+            elif number > array[mid]:
+                beg = mid
+            else:
+                raise
+
+        #Getting the closest index.
+        if abs(number - array[beg]) > abs(number - array[end]):
+            return(end)
         else:
+            return(beg)
+    #Calculate percentile for single tank based on parameters.
+    def percentile_calculator(self, kind, tank_id, number):
+
+        if number == 0:
             return(0)
 
-        return(index)
+        array = None
+        array = percentiles[kind].get(str(tank_id))
+
+        #If tank is in the pre-calculated table. (DEFAULT)
+        if array != None:
+            index = self.find_index_of_closest_value(array, number)
+            return(index)
+
+        #If tank in tankopedia.
+        temp_tank = None
+        temp_tank = tankopedia.get(str(tank_id))
+        if temp_tank != None:
+            tier_class = str(temp_tank['tier']) + temp_tank['type']
+            array = percentiles_generic[kind].get(tier_class)
+
+        #If generic percentile exist. (MUST EXIST!)
+        if array != None:
+            index = self.find_index_of_closest_value(array, number)
+            return(index)
+
+        return(0)
 
     def wn8_calculator(self, tank_data, WN8_dict):
         #Loading expected values

@@ -3,8 +3,6 @@ __pycache__/
 
 sql_database.db
 
-scripts/
-
 static/bulma.css.map
 
 static/bulma.css
