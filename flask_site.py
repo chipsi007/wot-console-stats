@@ -233,18 +233,6 @@ class user_cls:
 
     #Filter player data by filter input.
     def filter_data(self, filter_input, tankopedia):
-        #Processing 'filter_input'.
-        #if 15 > len(filter_input) > 0:
-
-        #Setting filtering conditions.
-        #filter_by_tiers = any(i in filter_input for i in ['1','2','3','4','5','6','7','8','9','10'])
-        #filter_by_classes = any(i in filter_input for i in ['AT-SPG', 'SPG', 'heavyTank', 'mediumTank', 'lightTank'])
-        #if filter_by_tiers == False:
-        #    filter_input = filter_input + ['1','2','3','4','5','6','7','8','9','10']
-        #if filter_by_classes == False:
-        #    filter_input = filter_input + ['AT-SPG', 'SPG', 'heavyTank', 'mediumTank', 'lightTank']
-
-        #Iterating through tanks.
         filtered_player_data = []
         for tank in self.player_data:
             #Calling tankopedia tank dictionary.
@@ -707,7 +695,7 @@ class wn8_estimates_cls(user_cls):
         #Iterating.
         result_list = []
         count = 0
-        for i in range(20, 7000):
+        for i in range(20, 4500, 5):
             temp_score = wn8_last_step(i, expDmg, rSPOT, rFRAG, rDEF, rWIN)
             if int(temp_score) > wn8_scale[count][0]:
                 result_list.append(i)
