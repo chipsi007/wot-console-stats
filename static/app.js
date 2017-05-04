@@ -40,6 +40,14 @@ const component = {
                           </div>
                         </div>
 
+                        <article class="message is-light">
+                          <div class="message-body has-text-centered">
+                            We are now using even better 
+                            <a href='https://github.com/IDDT/wot-console-playerbase-analysis'>algorithm</a>
+                            to calculate percentiles and WN8.
+                          </div>
+                        </article>
+
                     </div>
                   </div>
                 </section>`;
@@ -658,93 +666,37 @@ const component = {
     return(html);
   },
 
-
   // About page
-  abtPercentiles: function() {
-    let html = `<section class='section'><div class='container content'>
+  about: function() {
+    const HTML = `<section class='section'><div class='container content'>
+                  
+                    <p>
+                      Interested in the future of this website? Contribute to the development on 
+                      <a href='https://github.com/IDDT/wot-console-stats'>GitHub</a>
+                    </p>
+                    
+                    <p>
+                      Interested in WN8 calculation algorithm?
+                      <a href='https://github.com/IDDT/wot-console-playerbase-analysis'>Here it is</a>
+                    
+                      <br>
+                      <a href='https://github.com/IDDT/wot-console-playerbase-analysis/tree/master/wn8_results'>WN8 comparison charts</a>
 
-                <p>
-                While WN8 rating is a good measure of overall player competency in one number, percentiles can be useful when it is necessary to assess the performance of a single tank. 50th percentile is same as median and represents an average player, 100th represents the best of the best.
-                </p>
+                      <br>
+                      <a href='https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/data/processed/wn8console.json'>WN8 values in JSON</a>
+                    </p>
 
-                <p>
-                Percentiles were calculated as follows: The data of around 50,000 random WoT Console profiles was collected. To be a piece of valid data, a player must have had at least 2500 battles on the account. Then ratios were calculated for each tank of every player. To be included in the final rating, different tiers require different minimum numbers of battles. After assembling all player ratios, the percentiles for each tank were calculated using a math module. More information about percentile can be found on Wikipedia.
-                </p>
+                    <p>
+                      Latest percentiles and WN8 table update: 30 APR 2017
+                    </p>
+                  
+                    <p>
+                      Have a question? Found a bug? Send a message to my 
+                      <a href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'>WoT Console forum profile</a> or open an issue in the respective repository.
+                    </p>
 
-                </div></section>`;
-
-    return(html);
-  },
-  abtWN8: function() {
-
-    let html = `<section class='section'><div class='container content'>
-
-                <p>
-                Unlike most of other web sites which provide WN8 scores for Consoles, this site uses WN8 expected values precisely calculated for console players. With Console WN8 table it's impossible to increase the overall WN8 rating by playing on tanks that have premium matchmaking on consoles but don't have it on PC. It's also impossible to do so called "stat padding" when certain tanks are either overpowered on console or nerfed on PC.
-                </p>
-
-                <p>
-                The WN8 rating was calculated by using the same chunk of data used for percentiles. The aim was to keep the same level of WN8 scores as with PC table, but have tanks normalized according to their real Console performance. Tier by tier, starting from 10, console data was fitted inside the same slope which comes out of using WN8 PC table.
-                </p>
-
-                <p>
-                The outcome looks near identical but with Console-specific values inside. As a bonus, actual expected statistics for Console-exclusive tanks were also calculated.
-                </p>
-
-                <p>
-                Latest percentiles and WN8 table update: 19 FEB 2017
-                </p>
-
-                <div class='field'>
-                  <p class='control'>
-                    <a class='button is-primary is-outlined' href="https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/wn8_results/all_tanks.png">WN8 PC applied to console vs. newly calculated</a>
-                  </p>
-                </div>
-
-                <div class='field is-grouped'>
-                  <p class='control'>
-                    <a href="https://github.com/IDDT/wot-console-playerbase-analysis" class="button is-primary is-outlined">GitHub repo</a>
-                  </p>
-                  <p class='control'>
-                    <a href="https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/wn8_results/wn8console.json" class="button is-primary is-outlined">WN8 table in JSON</a>
-                  </p>
-                </div>
-
-                </div></section>`;
-
-    return(html);
-
-  },
-  abtData: function() {
-    let html = `<section class='section'><div class='container content'>
-
-                <p>
-                Every time user performs statistics look up, the site collects and stores the data point for caching and charting purposes. Daily snapshots are stored for the last 10 days, then deleted automatically.
-                </p>
-
-                <p>
-                Because the website performs charting and data calculations in real time, storing data for longer periods of time might be taxing on server. The advantage of this method is if the variables change (like WN8 table) old values are just recalculated as usual.
-                </p>
-
-                </div></section>`;
-
-    return(html);
-
-  },
-  abtBugs: function() {
-    let html = `<section class='section'><div class='container content'>
-
-                <p>
-                If something doesn't seem to work properly or as expected, please consider sending a message to my profile on World Of Tanks Console forum.
-                </p>
-
-                <p class='control'>
-                  <a class='button is-primary is-outlined' href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'> WoT Console Forum Profile </a>
-                </p>
-
-                </div></section>`;
-
-    return(html);
+                  </div></section>`;
+    return(HTML);
   }
 };
 
@@ -1317,7 +1269,6 @@ class viewLogin extends view {
     let loginButton = document.getElementById('loginButton');
     loginButton.addEventListener('click', function() {
 
-
       loginButton.classList.add('is-loading');
 
       let nickname = document.getElementById("nickname").value;
@@ -1351,6 +1302,7 @@ class viewLogin extends view {
             data.nickname = j.data[0].nickname;
             data.accountID = j.data[0].account_id;
             page.profile();
+              
           } else if ((j.status == 'ok') && (j.meta.count === 0)) {
             alert('No such player found');
           } else if (j.status == 'error') {
@@ -1996,31 +1948,10 @@ class viewAbout extends view {
 
   draw(sTabID) {
 
-    data.tabs = [
-      {label: 'Percentiles', active: false, onclick: 'app.draw(\'Percentiles\');'},
-      {label: 'WN8', active: false, onclick: 'app.draw(\'WN8\');'},
-      {label: 'Data Collection', active: false, onclick: 'app.draw(\'Data Collection\');'},
-      {label: 'Bugs and errors', active: false, onclick: 'app.draw(\'Bugs and errors\');'}
-    ];
+    data.tabs = [];
     this.selectHeader('About');
-    this.selectTab(sTabID);
-
     let body = document.getElementsByTagName('body')[0];
-    body.innerHTML = component.heroHeader() + component.nav();
-
-    switch (sTabID) {
-      case 'Bugs and errors':
-        body.innerHTML += component.abtBugs();
-        break;
-      case 'Data Collection':
-        body.innerHTML += component.abtData();
-        break;
-      case 'WN8':
-        body.innerHTML += component.abtWN8();
-        break;
-      default:
-        body.innerHTML += component.abtPercentiles();
-    }
+    body.innerHTML = component.heroHeader() + component.nav() + component.about();
   }
 }
 

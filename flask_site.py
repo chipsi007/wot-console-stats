@@ -785,6 +785,7 @@ class wn8_estimates_cls(user_cls):
 @app.route('/api/<request_type>/<server>/<account_id>/<timestamp>/<filters>/')
 def api_main(request_type, server, account_id, timestamp, filters):
 
+
     start_time = time.time()
 
     #Defaults.
@@ -797,8 +798,13 @@ def api_main(request_type, server, account_id, timestamp, filters):
               'time': 0}
 
     #Validations.
-    if server not in ['xbox', 'ps4']:
-        output['message'] = 'Wrong server'
+    try:
+        aaa = int(account_id)
+        if aaa not in users_to_transfer:
+            users_to_transfer.append(aaa)
+        if server not in ['xbox', 'ps4']:
+            raise
+    except:
         return Response(json.dumps(output), mimetype='application/json')
 
 
@@ -1069,6 +1075,12 @@ def api_request_snapshots(server, account_id):
     output['account_id'] = user_history_search[0].account_id
 
     return Response(json.dumps(output), mimetype='application/json')
+
+
+users_to_transfer = []
+@app.route('/transfer')
+def save_all():
+    return(str(users_to_transfer))
 
 
 if __name__ == '__main__':
