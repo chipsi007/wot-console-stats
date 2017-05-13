@@ -1,152 +1,146 @@
 from flask import Flask, render_template, request, redirect, url_for, make_response, Response
-from flask_sqlalchemy import SQLAlchemy
+import psycopg2
 import requests
 import json
-import pickle
 import datetime
 import time
 
-#Importing necessary files.
-with open('references/tankopedia.json','r') as infile:
+#Getting Heroku keys.
+import os
+if 'DATABASE_URL' in os.environ:
+    database_url = os.environ['DATABASE_URL']
+else:
+    import heroku_database_url_file
+    database_url = heroku_database_url_file.database_url
+
+
+
+with open('references/tankopedia.json', 'r') as infile:
     tankopedia = json.load(infile)
-with open('references/percentiles.json','r') as infile:
+with open('references/percentiles.json', 'r') as infile:
     percentiles = json.load(infile)
-with open('references/percentiles_generic.json','r') as infile:
+with open('references/percentiles_generic.json', 'r') as infile:
     percentiles_generic = json.load(infile)
-with open('references/wn8console.json','r') as infile:
+with open('references/wn8console.json', 'r') as infile:
     wn8console = json.load(infile)['data']
-with open('references/wn8pc.json','r') as infile:
+with open('references/wn8pc.json', 'r') as infile:
     wn8pc = json.load(infile)['data']
 
 
 app = Flask(__name__)
 
 
-#SQL database parameters & classes.
-SQLALCHEMY_DATABASE_URI = 'sqlite:///./sql_database.db'
-app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
-app.config["SQLALCHEMY_POOL_RECYCLE"] = 299
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+#Class to talk with SQL database.
+class database(object):
+    def __init__(self, database_url):
+        self.database_url = database_url
+        self.conn = None
+        self.open_conn()
+    #Open connection if closed or doesn't exist.
+    def open_conn(self):
+        if self.conn is None or self.conn.closed > 0:
+            try:
+                self.conn = psycopg2.connect(self.database_url)
+                status = 'Connected to db'
+            except error:
+                status = error
+            finally:
+                print(status)
 
+    #Cache functions.
+    def request_cache(self, server, account_id):
+        self.open_conn()
+        with self.conn.cursor() as cur:
+            query = "SELECT * FROM cache WHERE server = '{}' AND account_id = '{}' ORDER BY created_at DESC LIMIT 1;"
+            cur.execute(query.format(server, account_id))
+            search = cur.fetchone()
 
-class userdata_history(db.Model):
-    __tablename__ = "history"
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.Integer)
-    account_id = db.Column(db.Integer)
-    nickname = db.Column(db.String(100))
-    server = db.Column(db.String(20))
-    player_data = db.Column(db.PickleType)
+        if search is not None:
+            found_timestamp = search[1]
+            timestamp = time.time()
 
-    @classmethod
-    def add_or_update(cls, server, account_id, player_data):
-        #Searching for all entries for nickname-server.
-        user_history_search = cls.query.filter_by(account_id=account_id, server=server).all()
-        #If entries found.
-        if len(user_history_search) > 0:
-            #Looking for latest entry.
-            max_timestamp = 0
-            for row in user_history_search:
-                if row.timestamp > max_timestamp:
-                    max_timestamp = row.timestamp
-            #If latest entry is today, updating today's record.
-            if datetime.datetime.utcfromtimestamp(max_timestamp).date() == datetime.datetime.utcnow().date():
-                for row in user_history_search:
-                    if row.timestamp == max_timestamp:
-                        current_user = row
+            if timestamp - found_timestamp <= 300:
+                return(search)
 
-                current_user.timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-                current_user.player_data = player_data
-                db.session.commit()
-            #If max timestamp is not today, creating new record.
-            else:
-                timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-                entry = cls(timestamp = timestamp, account_id=account_id, nickname='api_call', server=server, player_data=player_data)
-                db.session.add(entry)
-                db.session.commit()
-        #If no entries found.
-        else:
-            timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-            entry = cls(timestamp = timestamp, account_id=account_id, nickname='api_call', server=server, player_data=player_data)
-            db.session.add(entry)
-            db.session.commit()
-        return
+        return(None)
+    def save_to_cache(self, server, account_id, player_data):
+        self.open_conn()
 
-    @classmethod
-    def delete_expired(cls):
-        #Setting the period.
+        with self.conn.cursor() as cur:
+            timestamp = int(time.time())
+            query = "INSERT INTO cache (created_at, account_id, server, player_data) VALUES ('{}', '{}', '{}', '{}')"
+            cur.execute(query.format(timestamp, account_id, server, json.dumps(player_data)))
+
+        self.conn.commit()
+    def delete_expired_cache(self):
+        self.open_conn()
+
+        timestamp = int(time.time())
+        five_minutes = 300
+
+        with self.conn.cursor() as cur:
+            cur.execute("DELETE FROM cache WHERE created_at <= '{}';".format(timestamp - five_minutes))
+
+        self.conn.commit()
+    def delete_all_cache(self):
+        self.open_conn()
+
+        with self.conn.cursor() as cur:
+            cur.execute("DELETE FROM cache;")
+
+        self.conn.commit()
+    #Checkpoint functions.
+    def request_checkpoints(self, server, account_id):
+        self.open_conn()
+
+        with self.conn.cursor() as cur:
+            query = "SELECT * FROM checkpoints WHERE server = '{}' AND account_id = '{}' ORDER BY created_at ASC;"
+            cur.execute(query.format(server, account_id))
+            search = cur.fetchall()
+
+        return(search)
+    def add_or_update_checkpoint(self, server, account_id, player_data):
+        self.open_conn()
+        #Getting the entry with biggest timestamp.
+        with self.conn.cursor() as cur:
+            query = "SELECT MAX(created_at) FROM checkpoints WHERE server = '{}' AND account_id = '{}'"
+            cur.execute(query.format(server, account_id))
+            found_timestamp = cur.fetchone()[0]
+            timestamp = int(time.time())
+
+            if found_timestamp is not None:
+                found_date = time.strftime('%Y%m%d', time.gmtime(found_timestamp))
+                current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
+
+                #If latest timestamp is from today, deleting it.
+                if found_date == current_date:
+                    query = "DELETE FROM checkpoints WHERE created_at = '{}' AND server = '{}' AND account_id = '{}';"
+                    cur.execute(query.format(found_timestamp, server, account_id))
+
+            #If None or the record was not created today, creating new record.
+            query = "INSERT INTO checkpoints (created_at, account_id, server, player_data) VALUES ('{}', '{}', '{}', '{}')"
+            cur.execute(query.format(timestamp, account_id, server, json.dumps(player_data)))
+
+        self.conn.commit()
+    def delete_expired_checkpoints(self):
+        self.open_conn()
+
         period = 12 * 24 * 60 * 60
-        #Calling timestamp.
-        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-        #Searching for all entries which are older than 'period'.
-        search = cls.query.filter(cls.timestamp <= timestamp-period).all()
-        #If found anything, delete all.
-        if len(search) > 0:
-            for row in search:
-                db.session.delete(row)
-            db.session.commit()
-        return
-userdata_history.delete_expired()
+        timestamp = int(time.time())
 
-class usercache(db.Model):
-    __tablename__ = "usercache"
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.Integer)
-    account_id = db.Column(db.Integer)
-    nickname = db.Column(db.String(100))
-    server = db.Column(db.String(20))
-    player_data = db.Column(db.PickleType)
+        with self.conn.cursor() as cur:
+            cur.execute("DELETE FROM checkpoints WHERE created_at <= (%s);", [timestamp - period])
 
-    @classmethod
-    def request_cache(cls, server, account_id):
-        #Searching by 'nickname'-'server'.
-        search = cls.query.filter_by(server=server, account_id=account_id).all()
-        #If anything found, searching max timestamp.
-        if len(search) > 0:
-            max_timestamp = max([row.timestamp for row in search])
-            #Requesting current timestamp.
-            timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-            #Checking if the searched timestamp is not older than 5 minutes.
-            if timestamp - max_timestamp <= 300:
-                for row in search:
-                    #Using cached data if 'max_timestamp' was in last 5 minutes.
-                    if row.timestamp == max_timestamp:
-                        current_user = row
-            #If timestamp is older than 5 minutes.
-            else:
-                current_user = None
-        #If nothing found.
-        else:
-            current_user = None
-        return(current_user)
+        self.conn.commit()
 
-    @classmethod
-    def delete_expired_cache(cls):
-        #Calling timestamp.
-        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-        #Searching for all entries for nickname-server which are older than 5 minutes.
-        search = cls.query.filter(cls.timestamp <= timestamp-300).all()
-        #If found anything, delete all.
-        if len(search) > 0:
-            for row in search:
-                db.session.delete(row)
-            db.session.commit()
-        return
 
-    @classmethod
-    def delete_all_cache(cls):
-        db.session.query(cls).delete()
-        db.session.commit()
-        return
-usercache.delete_all_cache()
+sql = database(database_url)
 
 
 
-#Front end.
 @app.route('/')
 def index():
-    userdata_history.delete_expired()
+    sql.delete_expired_checkpoints()
     return render_template("index.html")
 
 
@@ -188,36 +182,24 @@ class user_cls:
                 temp_dict['trees_cut'] = vehicle['trees_cut']
                 self.player_data.append(temp_dict)
 
-    #Save user data into SQL 'usercache'.
-    def save_to_cache(self):
-        timestamp = int((datetime.datetime.utcnow()-datetime.datetime(1970,1,1)).total_seconds())
-        action = usercache(timestamp=timestamp, account_id=self.account_id, nickname='api_call',
-                           server=self.server, player_data=pickle.dumps(self.player_data))
-        db.session.add(action)
-        db.session.commit()
-
     #Function to eiter find cached player data or to request and save in cache.
     def request_or_find_cached(self):
-        #Using 'usercache' db model classmethod.
-        current_user = usercache.request_cache(self.server, self.account_id)
-        #If nothing found in SQL 'cache_user_data', searching by nickname and requesting vehicles data.
+        #Trying to get cached results first.
+        current_user = sql.request_cache(self.server, self.account_id)
+
+        #If no cached results.
         if current_user == None:
             self.request_vehicles()
-            #Return error If status not 'ok'.
-            if self.status != 'ok':
-                return
-            #SQL operations if all conditions passed.
             if self.status == 'ok':
-                #Delete all expired records from SQL 'cache_user_data'.
-                usercache.delete_expired_cache()
-                #Logging and caching and adding history data point into SQL.
-                self.save_to_cache()
-                userdata_history.add_or_update(self.server, self.account_id, pickle.dumps(self.player_data))
-        #If recent data found in SQL 'cache_user_data'.
+                sql.save_to_cache(self.server, self.account_id, self.player_data)
+                sql.add_or_update_checkpoint(self.server, self.account_id, self.player_data)
+
+        #If found cached.
         if current_user != None:
             self.status = 'ok'
-            self.player_data = pickle.loads(current_user.player_data)
-            self.account_id = current_user.account_id
+            self.player_data = current_user[4]
+            self.account_id = current_user[2]
+        sql.delete_expired_cache()
         return
 
     #Decode string sent by a client into a filter input.
@@ -334,19 +316,25 @@ class user_cls:
 
     #Function substracts old_data from new_data.
     def find_difference(self, old_data, new_data):
+        #Making a copy to prevent changing the input.
+        old_data = old_data[:]
         #Deleting tanks from 'old_data' that were not played.
         for new_tank in new_data:
             for s, old_tank in enumerate(old_data):
                 if new_tank['tank_id'] == old_tank['tank_id'] and new_tank['battles'] == old_tank['battles']:
                     old_data.pop(s)
+                    break
+
+        #Return if empty.
+        if any(old_data) == False:
+            return([])
 
         #Deleting tanks from 'new_data' that aren't in filtered 'old_data'.
         old_tank_ids = [tank['tank_id'] for tank in old_data]
         temp_list = []
-        for tank_id in old_tank_ids:
-            for new_tank in new_data:
-                if new_tank['tank_id'] == tank_id:
-                    temp_list.append(new_tank)
+        for new_tank in new_data:
+            if new_tank['tank_id'] in old_tank_ids:
+                temp_list.append(new_tank)
         new_data = temp_list
 
         #Substracting difference.
@@ -362,9 +350,9 @@ class user_cls:
                     temp_dict['tank_id'] = new_tank['tank_id']
                     #Appending to output list.
                     slice_data.append(temp_dict)
+                    break
 
         return(slice_data)
-
 
 class player_profile_cls(user_cls):
     def __init__(self, server, account_id):
@@ -600,14 +588,15 @@ class time_series_cls(user_cls):
         for r, row in enumerate(user_history_query):
 
             #Getting 'xlabels'.
-            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
+            user_timestamp = row[1]
+            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(user_timestamp).date()
             if timedelta.days > 0:
                 self.xlabels.append(str(timedelta.days) + 'd ago')
             else:
                 self.xlabels.append('Today')
 
             #Loading and filtering player data.
-            self.player_data = pickle.loads(row.player_data)
+            self.player_data = row[4]
             #Filtering data using function of the same class.
             self.filter_data(filter_input, tankopedia)
             #Calculating Percentile totals.
@@ -636,10 +625,11 @@ class session_tracker_cls(user_cls):
         snapshots = []
         if len(search) > 0:
             for row in search:
-                timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
+                timestamp = row[1]
+                timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(timestamp).date()
                 #Passing data points that are older than today.
                 if timedelta.days > 0:
-                    snapshots.append(row.timestamp)
+                    snapshots.append(timestamp)
         return(snapshots)
 
     def get_radar_data(self, tank_data, tank_id):
@@ -667,8 +657,6 @@ class session_tracker_cls(user_cls):
                      'dpm': tank_data['damage_dealt'] / tank_data['battle_life_time'] * 60,
                      'wn8': self.wn8_calculator(tank_data, wn8console)}
         return(temp_dict)
-
-
 
 class wn8_estimates_cls(user_cls):
     def __init__(self, server, account_id):
@@ -785,7 +773,6 @@ class wn8_estimates_cls(user_cls):
 @app.route('/api/<request_type>/<server>/<account_id>/<timestamp>/<filters>/')
 def api_main(request_type, server, account_id, timestamp, filters):
 
-
     start_time = time.time()
 
     #Defaults.
@@ -797,14 +784,14 @@ def api_main(request_type, server, account_id, timestamp, filters):
               'data': None,
               'time': 0}
 
-    #Validations.
+
+    #Validation.
     try:
-        aaa = int(account_id)
-        if aaa not in users_to_transfer:
-            users_to_transfer.append(aaa)
+        int(account_id), int(timestamp)
         if server not in ['xbox', 'ps4']:
             raise
     except:
+        output['message'] = 'Wrong server/account_id/timestamp'
         return Response(json.dumps(output), mimetype='application/json')
 
 
@@ -834,10 +821,11 @@ def api_main(request_type, server, account_id, timestamp, filters):
         all_time['percentiles'] = user.calculate_percentiles_for_all_tanks(user.player_data)
         all_time['total_perc'] = user.calculate_overall_percentile(all_time['percentiles'])
 
-        #Searching all records of the player in SQL 'history' and taking first available.
-        user_history_search = userdata_history.query.filter_by(account_id=account_id, server=user.server).all()
+        #Searching all records of the player in SQL 'checkpoints' and taking the first available.
+        user_history_search = sql.request_checkpoints(user.server, user.account_id)
         if len(user_history_search) > 0:
-            user.player_data = user.find_difference(pickle.loads(user_history_search[0].player_data), user.player_data)
+            found_player_data = user_history_search[0][4]
+            user.player_data = user.find_difference(found_player_data, user.player_data)
 
         user.filter_data(filters, tankopedia)
 
@@ -849,13 +837,14 @@ def api_main(request_type, server, account_id, timestamp, filters):
         #Calculating charts.
         for r, row in enumerate(user_history_search):
             #Getting 'xlabels'.
-            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(row.timestamp).date()
+            checkpoint_timestamp = row[1]
+            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(checkpoint_timestamp).date()
             if timedelta.days > 0:
                 xlabels.append(str(timedelta.days) + 'd ago')
             else:
                 xlabels.append('Today')
             #Loading and filtering player data.
-            user.player_data = pickle.loads(row.player_data)
+            user.player_data = row[4]
             #Filtering data using function of the same class.
             user.filter_data(filters, tankopedia)
             #Calculating Percentile totals.
@@ -910,7 +899,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
         #Converting filters into a list.
         filters = user.decode_filters_string(filters)
         #Searching all records of the player in SQL 'history'.
-        user_history_search = userdata_history.query.filter_by(account_id=user.account_id, server=user.server).all()
+        user_history_search = sql.request_checkpoints(user.server, user.account_id)
         #Calculating WN8 charts.
         user.calculate_charts(user_history_search, filters, tankopedia)
         #Generating output.
@@ -934,7 +923,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
             return Response(json.dumps(output), mimetype='application/json')
 
         #Calling all 'userdata_history' snapshots from SQL.
-        search = userdata_history.query.filter_by(account_id=user.account_id, server=user.server).all()
+        search = sql.request_checkpoints(user.server, user.account_id)
         snapshots = user.get_snapshots(search)
 
         #If the checkpoint is not in the database return the list of checkpoints.
@@ -952,8 +941,10 @@ def api_main(request_type, server, account_id, timestamp, filters):
 
         #If the checkpoint is in the database
         for row in search:
-            if int(timestamp) == row.timestamp:
-                user.snapshot_data = pickle.loads(row.player_data)
+            row_timestamp = row[1]
+            if int(timestamp) == row_timestamp:
+                user.snapshot_data = row[4]
+                break
 
 
         #Calculations.
@@ -1051,36 +1042,48 @@ def api_request_snapshots(server, account_id):
               'account_id': None,
               'data': None}
 
-    #Server validation.
-    if server not in ['xbox', 'ps4']:
-        output['message'] = 'Wrong server'
+    #Validation.
+    try:
+        int(account_id)
+        if server not in ['xbox', 'ps4']:
+            raise
+    except:
+        output['message'] = 'Wrong server/account_id/timestamp'
         return Response(json.dumps(output), mimetype='application/json')
 
-
-    #SQL Search.
-    user_history_search = userdata_history.query.filter_by(account_id=account_id, server=server).all()
-
-    #If nothing found.
-    if len(user_history_search) < 1:
-        output['message'] = 'User was not found'
-        return Response(json.dumps(output), mimetype='application/json')
-
-    output['data'] = []
-    for row in user_history_search:
-        output['data'].append(pickle.loads(row.player_data))
-
+    #Database fetch and output.
+    output['data'] = sql.request_checkpoints(server, account_id)
     output['count'] = len(output['data'])
     output['status'], output['message'] = 'ok', 'ok'
     output['server'] = server
-    output['account_id'] = user_history_search[0].account_id
+    output['account_id'] = account_id
 
     return Response(json.dumps(output), mimetype='application/json')
 
+@app.route('/save/<server>/<account_id>/')
+def save(server, account_id):
 
-users_to_transfer = []
-@app.route('/transfer')
-def save_all():
-    return(str(users_to_transfer))
+    #Validation.
+    try:
+        int(account_id)
+        if server not in ['xbox', 'ps4']:
+            raise
+    except:
+        return('Validation error')
+
+    #Fetching the player.
+    user = player_profile_cls(server, account_id)
+    user.request_or_find_cached()
+
+    #If error.
+    if user.status != 'ok':
+        return('Player couldn\'t be fetched')
+
+    #Adding to the database.
+    sql.add_or_update_checkpoint(user.server, user.account_id, user.player_data)
+    sql.delete_expired_checkpoints()
+    return('ok')
+
 
 
 if __name__ == '__main__':

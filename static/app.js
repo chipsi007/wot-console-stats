@@ -42,9 +42,7 @@ const component = {
 
                         <article class="message is-light">
                           <div class="message-body has-text-centered">
-                            We are now using even better 
-                            <a href='https://github.com/IDDT/wot-console-playerbase-analysis'>algorithm</a>
-                            to calculate percentiles and WN8.
+                            Stable version: wot.pythonanywhere.com
                           </div>
                         </article>
 
@@ -1269,6 +1267,7 @@ class viewLogin extends view {
     let loginButton = document.getElementById('loginButton');
     loginButton.addEventListener('click', function() {
 
+
       loginButton.classList.add('is-loading');
 
       let nickname = document.getElementById("nickname").value;
@@ -1302,7 +1301,6 @@ class viewLogin extends view {
             data.nickname = j.data[0].nickname;
             data.accountID = j.data[0].account_id;
             page.profile();
-              
           } else if ((j.status == 'ok') && (j.meta.count === 0)) {
             alert('No such player found');
           } else if (j.status == 'error') {

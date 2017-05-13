@@ -14,3 +14,7 @@ static/Chart.min.js
 .sass-cache/
 
 static/fetch.js
+
+heroku_database_url_file.py
+
+utility/manage_database.py
