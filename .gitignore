@@ -18,3 +18,9 @@ static/fetch.js
 heroku_database_url_file.py
 
 utility/manage_database.py
+
+node_modules/
+
+static/react-dom.js
+
+static/react.js

@@ -35,7 +35,6 @@ class database(object):
     def __init__(self, database_url):
         self.database_url = database_url
         self.conn = None
-        self.open_conn()
     #Open connection if closed or doesn't exist.
     def open_conn(self):
         if self.conn is None or self.conn.closed > 0:
@@ -47,11 +46,12 @@ class database(object):
             finally:
                 print(status)
 
-    #Cache functions.
-    def request_cache(self, server, account_id):
+    #Checkpoint functions.
+    def request_latest_checkpoint(self, server, account_id):
         self.open_conn()
+
         with self.conn.cursor() as cur:
-            query = "SELECT * FROM cache WHERE server = '{}' AND account_id = '{}' ORDER BY created_at DESC LIMIT 1;"
+            query = "SELECT * FROM checkpoints WHERE server = '{}' AND account_id = '{}' ORDER BY created_at DESC LIMIT 1;"
             cur.execute(query.format(server, account_id))
             search = cur.fetchone()
 
@@ -63,33 +63,6 @@ class database(object):
                 return(search)
 
         return(None)
-    def save_to_cache(self, server, account_id, player_data):
-        self.open_conn()
-
-        with self.conn.cursor() as cur:
-            timestamp = int(time.time())
-            query = "INSERT INTO cache (created_at, account_id, server, player_data) VALUES ('{}', '{}', '{}', '{}')"
-            cur.execute(query.format(timestamp, account_id, server, json.dumps(player_data)))
-
-        self.conn.commit()
-    def delete_expired_cache(self):
-        self.open_conn()
-
-        timestamp = int(time.time())
-        five_minutes = 300
-
-        with self.conn.cursor() as cur:
-            cur.execute("DELETE FROM cache WHERE created_at <= '{}';".format(timestamp - five_minutes))
-
-        self.conn.commit()
-    def delete_all_cache(self):
-        self.open_conn()
-
-        with self.conn.cursor() as cur:
-            cur.execute("DELETE FROM cache;")
-
-        self.conn.commit()
-    #Checkpoint functions.
     def request_checkpoints(self, server, account_id):
         self.open_conn()
 
@@ -137,11 +110,17 @@ class database(object):
 sql = database(database_url)
 
 
-
+#Main page.
 @app.route('/')
 def index():
     sql.delete_expired_checkpoints()
     return render_template("index.html")
+
+#React.js test page.
+@app.route('/test')
+def test_index():
+    sql.delete_expired_checkpoints()
+    return render_template("test_index.html")
 
 
 #Root app class.
@@ -182,16 +161,15 @@ class user_cls:
                 temp_dict['trees_cut'] = vehicle['trees_cut']
                 self.player_data.append(temp_dict)
 
-    #Function to eiter find cached player data or to request and save in cache.
+    #Function to eiter find SQL cached player data or to request and save in SQL.
     def request_or_find_cached(self):
-        #Trying to get cached results first.
-        current_user = sql.request_cache(self.server, self.account_id)
+        #Trying to get results from SQL first.
+        current_user = sql.request_latest_checkpoint(self.server, self.account_id)
 
         #If no cached results.
         if current_user == None:
             self.request_vehicles()
             if self.status == 'ok':
-                sql.save_to_cache(self.server, self.account_id, self.player_data)
                 sql.add_or_update_checkpoint(self.server, self.account_id, self.player_data)
 
         #If found cached.
@@ -199,7 +177,6 @@ class user_cls:
             self.status = 'ok'
             self.player_data = current_user[4]
             self.account_id = current_user[2]
-        sql.delete_expired_cache()
         return
 
     #Decode string sent by a client into a filter input.

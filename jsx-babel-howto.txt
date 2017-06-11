@@ -1,0 +1,18 @@
+Install locally:
+  npm install --save-dev babel-cli
+
+
+Instal react preset:
+  npm install --save-dev babel-cli babel-preset-react
+
+
+Create babelrc:
+  echo '{ "presets": ["react"] }' > .babelrc
+
+
+Compile JSX:
+  ./node_modules/.bin/babel static/test_app.jsx --out-file static/test_app.js
+
+
+Complile JSX and watch:
+  ./node_modules/.bin/babel static/test_app.jsx --watch --out-file static/test_app.js
