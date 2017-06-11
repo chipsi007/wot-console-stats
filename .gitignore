@@ -3,24 +3,12 @@ __pycache__/
 
 sql_database.db
 
-static/bulma.css.map
-
-static/bulma.css
-
 test/
 
-static/Chart.min.js
-
 .sass-cache/
-
-static/fetch.js
 
 heroku_database_url_file.py
 
 utility/manage_database.py
 
 node_modules/
-
-static/react-dom.js
-
-static/react.js
