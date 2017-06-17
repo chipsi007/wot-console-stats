@@ -1,17 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, make_response, Response
-import psycopg2
+from flask import Flask, render_template, request, redirect, url_for, make_response, Response, g
+import sqlite3
 import requests
+import pickle
 import json
 import datetime
 import time
-
-#Getting Heroku keys.
-import os
-if 'DATABASE_URL' in os.environ:
-    database_url = os.environ['DATABASE_URL']
-else:
-    import heroku_database_url_file
-    database_url = heroku_database_url_file.database_url
 
 
 with open('references/tankopedia.json', 'r') as f:
@@ -29,100 +22,109 @@ with open('references/wn8pc.json', 'r') as f:
 app = Flask(__name__)
 
 
+#Sqlite connection context.
+def open_conn():
+    conn = getattr(g, '_database', None)
+    if conn is None:
+        conn = g._database = sqlite3.connect('sqlite.db')
+    return conn
+@app.teardown_appcontext
+def close_conn(exception):
+    conn = getattr(g, '_database', None)
+    if conn is not None:
+        conn.commit()
+        conn.close()
 #Data persistence interface.
-class database(object):
-    def __init__(self, database_url):
-        self.database_url = database_url
-        self.conn = None
-    #Open connection if closed or doesn't exist.
-    def open_conn(self):
-        if self.conn is None or self.conn.closed > 0:
-            try:
-                self.conn = psycopg2.connect(self.database_url)
-                status = 'Connected to db'
-            except error:
-                status = error
-            finally:
-                print(status)
-
-    ####Checkpoint functions.
-    #Returns: (table_id, timestamp, account_id, server, [data]) (int, int, int, string, []dict)
-    def request_latest_checkpoint(self, server, account_id):
-        self.open_conn()
-
-        with self.conn.cursor() as cur:
-            query = "SELECT * FROM checkpoints WHERE server = '{}' AND account_id = '{}' ORDER BY created_at DESC LIMIT 1;"
-            cur.execute(query.format(server, account_id))
-            search = cur.fetchone()
-
-        if search is not None:
-            found_timestamp = search[1]
-            timestamp = time.time()
-
-            if timestamp - found_timestamp <= 300:
-                return(search)
+class sql(object):
+    #Returns the checkpoint from today if any. None otherwise.
+    @staticmethod
+    def request_latest_checkpoint(server, account_id):
+        cur = open_conn().cursor()
+        query = '''SELECT created_at, account_id, server, data FROM checkpoints
+                   WHERE server = ? AND account_id = ? ORDER BY created_at DESC LIMIT 1;'''
+        search = cur.execute(query, [server, account_id]).fetchone()
+        #Return only if created in the last 5 minutes.
+        if search and time.time() - search[0] <= 300:
+            return([search[0], search[1], search[2], pickle.loads(search[3])])
 
         return(None)
-    #Returns list of tuples, same as above.
-    def request_checkpoints(self, server, account_id):
-        self.open_conn()
-
-        with self.conn.cursor() as cur:
-            query = "SELECT * FROM checkpoints WHERE server = '{}' AND account_id = '{}' ORDER BY created_at ASC;"
-            cur.execute(query.format(server, account_id))
-            search = cur.fetchall()
-
-        return(search)
-    def add_or_update_checkpoint(self, server, account_id, player_data):
-        self.open_conn()
+    #Returns list of 14 latest checkpoints. From earliest to latest.
+    @staticmethod
+    def request_all_recent_checkpoints(server, account_id):
+        cur = open_conn().cursor()
+        query = '''SELECT created_at, account_id, server, data FROM checkpoints
+                   WHERE server = ? AND account_id = ? ORDER BY created_at ASC LIMIT 14;'''
+        search = cur.execute(query, [server, account_id]).fetchall()
+        output = [[row[0], row[1], row[2], pickle.loads(row[3])] for row in search]
+        return(output)
+    #Add checkpoint (or replace from today) for HUMAN.
+    @staticmethod
+    def add_or_update_checkpoint(server, account_id, player_data):
         #Getting the entry with biggest timestamp.
-        with self.conn.cursor() as cur:
-            query = "SELECT MAX(created_at) FROM checkpoints WHERE server = '{}' AND account_id = '{}'"
-            cur.execute(query.format(server, account_id))
-            found_timestamp = cur.fetchone()[0]
-            timestamp = int(time.time())
+        cur = open_conn().cursor()
+        query = 'SELECT MAX(created_at) FROM checkpoints WHERE server = ? AND account_id = ?'
+        found_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
 
-            if found_timestamp is not None:
-                found_date = time.strftime('%Y%m%d', time.gmtime(found_timestamp))
-                current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
+        if found_timestamp:
+            found_date = time.strftime('%Y%m%d', time.gmtime(found_timestamp))
+            current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
 
-                #If latest timestamp is from today, deleting it.
-                if found_date == current_date:
-                    query = "DELETE FROM checkpoints WHERE created_at = '{}' AND server = '{}' AND account_id = '{}';"
-                    cur.execute(query.format(found_timestamp, server, account_id))
+            #If latest timestamp is from today, deleting it.
+            if found_date == current_date:
+                query = 'DELETE FROM checkpoints WHERE created_at = ? AND server = ? AND account_id = ?;'
+                cur.execute(query, [found_timestamp, server, account_id])
 
-            #If None or the record was not created today, creating new record.
-            query = "INSERT INTO checkpoints (created_at, account_id, server, player_data) VALUES ('{}', '{}', '{}', '{}')"
-            cur.execute(query.format(timestamp, account_id, server, json.dumps(player_data)))
-
-        self.conn.commit()
-    def delete_expired_checkpoints(self):
-        self.open_conn()
-
+        #If None or the record was not created today, creating new record.
+        query = 'INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data) VALUES (?, ?, ?, ?, ?);'
+        cur.execute(query, [time.time(), 0, account_id, server, pickle.dumps(player_data)])
+    #Old method to get rid of expired checkpoints. (not used)
+    @staticmethod
+    def delete_expired_checkpoints():
+        cur = open_conn().cursor()
         period = 12 * 24 * 60 * 60
         timestamp = int(time.time())
+        cur.execute('DELETE FROM checkpoints WHERE created_at <= ?;', [timestamp - period])
+    #Find users in the last 7 days.
+    @staticmethod
+    def find_recent_users():
+        seven_days_ago = int(time.time()) - 60 * 60 * 24 * 7
+        query = '''SELECT server, account_id FROM checkpoints
+                   WHERE created_by_bot != 1 AND created_at > ?
+                   GROUP BY server, account_id'''
+        cur = open_conn().cursor()
+        output = cur.execute(query, [seven_days_ago]).fetchall()
+        return(output)
+    #Add checkpont (or do nothing if created today) for BOT.
+    @staticmethod
+    def add_bot_checkpoint(server, account_id, player_data):
+        cur = open_conn().cursor()
+        #Getting the entry with biggest timestamp.
+        query = 'SELECT MAX(created_at) FROM checkpoints WHERE server = ? AND account_id = ?'
+        found_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
 
-        with self.conn.cursor() as cur:
-            cur.execute("DELETE FROM checkpoints WHERE created_at <= (%s);", [timestamp - period])
+        #If returned the result.
+        if found_timestamp:
+            found_date = time.strftime('%Y%m%d', time.gmtime(found_timestamp))
+            current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
 
-        self.conn.commit()
-sql = database(database_url)
+            #If latest timestamp is from today, do nothing.
+            if found_date == current_date:
+                return
 
+        #If returned nothing, or result not from today.
+        query = 'INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data) VALUES (?, ?, ?, ?, ?);'
+        cur.execute(query, [int(time.time()), 1, account_id, server, pickle.dumps(player_data)])
 
-#App ID
-app_id = 'demo'
 
 
 #Main page.
 @app.route('/')
 def index():
-    sql.delete_expired_checkpoints()
     return render_template("index.html")
 
 #React.js test page.
 @app.route('/test')
 def test_index():
-    sql.delete_expired_checkpoints()
     return render_template("test_index.html")
 
 
@@ -178,8 +180,8 @@ class user_cls:
 
         #If found cached.
         self.status = 'ok'
-        self.player_data = current_user[4]
-        self.account_id = current_user[2]
+        self.player_data = current_user[3]
+        self.account_id = current_user[1]
 
     #Decode string sent by a client into a filter input.
     def decode_filters_string(self, filters_string):
@@ -557,7 +559,7 @@ class time_series_cls(user_cls):
         for r, row in enumerate(user_history_query):
 
             #Getting 'xlabels'.
-            user_timestamp = row[1]
+            user_timestamp = row[0]
             timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(user_timestamp).date()
             if timedelta.days > 0:
                 self.xlabels.append(str(timedelta.days) + 'd ago')
@@ -565,7 +567,7 @@ class time_series_cls(user_cls):
                 self.xlabels.append('Today')
 
             #Loading and filtering player data.
-            self.player_data = row[4]
+            self.player_data = row[3]
             #Filtering data using function of the same class.
             self.filter_data(filter_input, tankopedia)
             #Calculating Percentile totals.
@@ -594,7 +596,7 @@ class session_tracker_cls(user_cls):
         snapshots = []
         if len(search) > 0:
             for row in search:
-                timestamp = row[1]
+                timestamp = row[0]
                 timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(timestamp).date()
                 #Passing data points that are older than today.
                 if timedelta.days > 0:
@@ -772,9 +774,9 @@ def api_main(request_type, server, account_id, timestamp, filters):
         all_time['total_perc'] = user.calculate_overall_percentile(all_time['percentiles'])
 
         #Searching all records of the player in SQL 'checkpoints' and taking the first available.
-        user_history_search = sql.request_checkpoints(user.server, user.account_id)
+        user_history_search = sql.request_all_recent_checkpoints(user.server, user.account_id)
         if len(user_history_search) > 0:
-            found_player_data = user_history_search[0][4]
+            found_player_data = user_history_search[0][3]
             user.player_data = user.find_difference(found_player_data, user.player_data)
 
         user.filter_data(filters, tankopedia)
@@ -787,14 +789,14 @@ def api_main(request_type, server, account_id, timestamp, filters):
         #Calculating charts.
         for r, row in enumerate(user_history_search):
             #Getting 'xlabels'.
-            checkpoint_timestamp = row[1]
+            checkpoint_timestamp = row[0]
             timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(checkpoint_timestamp).date()
             if timedelta.days > 0:
                 xlabels.append(str(timedelta.days) + 'd ago')
             else:
                 xlabels.append('Today')
             #Loading and filtering player data.
-            user.player_data = row[4]
+            user.player_data = row[3]
             #Filtering data using function of the same class.
             user.filter_data(filters, tankopedia)
             #Calculating Percentile totals.
@@ -849,7 +851,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
         #Converting filters into a list.
         filters = user.decode_filters_string(filters)
         #Searching all records of the player in SQL 'history'.
-        user_history_search = sql.request_checkpoints(user.server, user.account_id)
+        user_history_search = sql.request_all_recent_checkpoints(user.server, user.account_id)
         #Calculating WN8 charts.
         user.calculate_charts(user_history_search, filters, tankopedia)
         #Generating output.
@@ -873,7 +875,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
             return Response(json.dumps(output), mimetype='application/json')
 
         #Calling all 'userdata_history' snapshots from SQL.
-        search = sql.request_checkpoints(user.server, user.account_id)
+        search = sql.request_all_recent_checkpoints(user.server, user.account_id)
         snapshots = user.get_snapshots(search)
 
         #If the checkpoint is not in the database return the list of checkpoints.
@@ -891,9 +893,9 @@ def api_main(request_type, server, account_id, timestamp, filters):
 
         #If the checkpoint is in the database
         for row in search:
-            row_timestamp = row[1]
+            row_timestamp = row[0]
             if int(timestamp) == row_timestamp:
-                user.snapshot_data = row[4]
+                user.snapshot_data = row[3]
                 break
 
 
@@ -1000,7 +1002,7 @@ def api_request_snapshots(server, account_id):
         return Response(json.dumps(output), mimetype='application/json')
 
     #Database fetch and output.
-    output['data'] = sql.request_checkpoints(server, account_id)
+    output['data'] = sql.request_all_recent_checkpoints(server, account_id)
     output['count'] = len(output['data'])
     output['status'], output['message'] = 'ok', 'ok'
     output['server'] = server
@@ -1008,8 +1010,23 @@ def api_request_snapshots(server, account_id):
 
     return Response(json.dumps(output), mimetype='application/json')
 
-@app.route('/save/<server>/<account_id>/')
-def save(server, account_id):
+
+#Returns (server, account_id) users in the last 7 days.
+@app.route('/recent-users/')
+def recent_users():
+    start = time.time()
+    users = sql.find_recent_users()
+    output = {
+        'status': 'ok',
+        'time': time.time() - start,
+        'count': len(users),
+        'data': users
+    }
+    return Response(json.dumps(output), mimetype='application/json')
+
+#Creates a bot-checkpoint in the database.
+@app.route('/add-checkpoint/<server>/<account_id>/')
+def add_checkpoint(server, account_id):
 
     #Validation.
     try:
@@ -1028,8 +1045,7 @@ def save(server, account_id):
         return('Player couldn\'t be fetched')
 
     #Adding to the database.
-    sql.add_or_update_checkpoint(user.server, user.account_id, user.player_data)
-    sql.delete_expired_checkpoints()
+    sql.add_bot_checkpoint(user.server, user.account_id, user.player_data)
     return('ok')
 
 

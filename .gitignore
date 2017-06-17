@@ -1,14 +1,8 @@
 
 __pycache__/
 
-sql_database.db
-
-test/
-
-.sass-cache/
-
-heroku_database_url_file.py
-
-utility/manage_database.py
-
 node_modules/
+
+sqlite.db
+
+utility/test_db.py
