@@ -76,7 +76,7 @@ class sql(object):
 
         #If None or the record was not created today, creating new record.
         query = 'INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data) VALUES (?, ?, ?, ?, ?);'
-        cur.execute(query, [time.time(), 0, account_id, server, pickle.dumps(player_data)])
+        cur.execute(query, [int(time.time()), 0, account_id, server, pickle.dumps(player_data)])
     #Old method to get rid of expired checkpoints. (not used)
     @staticmethod
     def delete_expired_checkpoints():
@@ -84,6 +84,8 @@ class sql(object):
         period = 12 * 24 * 60 * 60
         timestamp = int(time.time())
         cur.execute('DELETE FROM checkpoints WHERE created_at <= ?;', [timestamp - period])
+
+    #Methods for the bot to create auto-checkpoints.
     #Find users in the last 7 days.
     @staticmethod
     def find_recent_users():
@@ -94,6 +96,23 @@ class sql(object):
         cur = open_conn().cursor()
         output = cur.execute(query, [seven_days_ago]).fetchall()
         return(output)
+    #Check if checkpoint was created today. Returns bool.
+    @staticmethod
+    def is_created_today(server, account_id):
+        cur = open_conn().cursor()
+        #Getting the entry with biggest timestamp.
+        query = 'SELECT MAX(created_at) FROM checkpoints WHERE server = ? AND account_id = ?'
+        found_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
+
+        #If returned the result.
+        if found_timestamp:
+            found_date = time.strftime('%Y%m%d', time.gmtime(found_timestamp))
+            current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
+            #If latest timestamp is from today.
+            if found_date == current_date:
+                return(True)
+
+        return(False)
     #Add checkpont (or do nothing if created today) for BOT.
     @staticmethod
     def add_bot_checkpoint(server, account_id, player_data):
@@ -1036,11 +1055,13 @@ def add_checkpoint(server, account_id):
     except:
         return('Validation error')
 
+    #Checking if the checkpoint already was created today.
+    if sql.is_created_today(server, account_id) == True:
+        return('ok')
+
     #Fetching the player.
     user = player_profile_cls(server, account_id)
-    user.request_or_find_cached()
-
-    #If error.
+    user.request_vehicles()
     if user.status != 'ok':
         return('Player couldn\'t be fetched')
 

@@ -6,3 +6,5 @@ node_modules/
 sqlite.db
 
 utility/test_db.py
+
+nightly_task.txt
