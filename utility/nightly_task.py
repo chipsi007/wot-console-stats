@@ -13,13 +13,13 @@ def iterate(users):
     for server, account_id in users:
         try:
             url = 'http://wot.pythonanywhere.com/add-checkpoint/{}/{}/'.format(server, account_id)
-            resp = requests.get(url).text()
+            resp = requests.get(url).text
             if resp == 'ok':
                 success_counter += 1
         except:
             pass
 
-        time.sleep(5)
+        time.sleep(3)
 
     return(success_counter)
 
@@ -30,7 +30,7 @@ def write_log(log):
 def main():
     ###############
     msg = time.strftime('%c') + ': Task started.\n'
-    log += msg
+    log = msg
     print(msg)
     ###############
 

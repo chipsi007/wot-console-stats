@@ -35,60 +35,60 @@ def close_conn(exception):
         conn.commit()
         conn.close()
 #Data persistence interface.
-class sql(object):
-    #Returns the checkpoint from today if any. None otherwise.
+class sql():
+    #Main functions.
     @staticmethod
-    def request_latest_checkpoint(server, account_id):
+    def get_cached_checkpoint(server, account_id):
+        #Returns the most recent checkpoint created by user from last 5 minutes. None otherwise.
+        five_minutes_ago = int(time.time()) - 300
         cur = open_conn().cursor()
         query = '''SELECT created_at, account_id, server, data FROM checkpoints
-                   WHERE server = ? AND account_id = ? ORDER BY created_at DESC LIMIT 1;'''
-        search = cur.execute(query, [server, account_id]).fetchone()
-        #Return only if created in the last 5 minutes.
-        if search and time.time() - search[0] <= 300:
+                   WHERE server = ? AND account_id = ? AND created_by_bot != 1 AND created_at >= ?
+                   ORDER BY created_at DESC LIMIT 1;'''
+        search = cur.execute(query, (server, account_id, five_minutes_ago)).fetchone()
+        if search:
             return([search[0], search[1], search[2], pickle.loads(search[3])])
-
         return(None)
-    #Returns list of 14 latest checkpoints. From earliest to latest.
     @staticmethod
-    def request_all_recent_checkpoints(server, account_id):
+    def get_all_recent_checkpoints(server, account_id):
+        #Returns the list of checkpoints for the last 14 days. Ordered from earliest to latest.
+        fourteen_days = int(time.time()) - 60 * 60 * 24 * 14
         cur = open_conn().cursor()
         query = '''SELECT created_at, account_id, server, data FROM checkpoints
-                   WHERE server = ? AND account_id = ? ORDER BY created_at ASC LIMIT 14;'''
-        search = cur.execute(query, [server, account_id]).fetchall()
+                   WHERE server = ? AND account_id = ? AND created_at >= ?
+                   ORDER BY created_at ASC;'''
+        search = cur.execute(query, [server, account_id, fourteen_days]).fetchall()
         output = [[row[0], row[1], row[2], pickle.loads(row[3])] for row in search]
         return(output)
-    #Add checkpoint (or replace from today) for HUMAN.
     @staticmethod
     def add_or_update_checkpoint(server, account_id, player_data):
-        #Getting the entry with biggest timestamp.
+        #Add checkpoint by HUMAN if none were created today.
+        #Update checkpoing (and conver to HUMAN-made) if already was created today.
         cur = open_conn().cursor()
         query = 'SELECT MAX(created_at) FROM checkpoints WHERE server = ? AND account_id = ?'
-        found_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
+        biggest_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
 
-        if found_timestamp:
-            found_date = time.strftime('%Y%m%d', time.gmtime(found_timestamp))
-            current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
+        now = int(time.time())
 
-            #If latest timestamp is from today, deleting it.
+        if biggest_timestamp:
+            found_date = time.strftime('%Y%m%d', time.gmtime(biggest_timestamp))
+            current_date = time.strftime('%Y%m%d', time.gmtime(now))
+
+            #Updating if the biggest_timestamp is from today.
             if found_date == current_date:
-                query = 'DELETE FROM checkpoints WHERE created_at = ? AND server = ? AND account_id = ?;'
-                cur.execute(query, [found_timestamp, server, account_id])
+                query = '''UPDATE checkpoints SET created_at = ?, created_by_bot = ?, data = ?
+                           WHERE created_at = ? AND account_id = ? AND server = ?;'''
+                cur.execute(query, (now, 0, pickle.dumps(player_data), biggest_timestamp, account_id, server))
+                return
 
-        #If None or the record was not created today, creating new record.
+        #If None or the record was not created today.
         query = 'INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data) VALUES (?, ?, ?, ?, ?);'
-        cur.execute(query, [int(time.time()), 0, account_id, server, pickle.dumps(player_data)])
-    #Old method to get rid of expired checkpoints. (not used)
-    @staticmethod
-    def delete_expired_checkpoints():
-        cur = open_conn().cursor()
-        period = 12 * 24 * 60 * 60
-        timestamp = int(time.time())
-        cur.execute('DELETE FROM checkpoints WHERE created_at <= ?;', [timestamp - period])
+        cur.execute(query, [now, 0, account_id, server, pickle.dumps(player_data)])
 
     #Methods for the bot to create auto-checkpoints.
-    #Find users in the last 7 days.
     @staticmethod
-    def find_recent_users():
+    def get_recent_users():
+        #Find users in the last 7 days.
         seven_days_ago = int(time.time()) - 60 * 60 * 24 * 7
         query = '''SELECT server, account_id FROM checkpoints
                    WHERE created_by_bot != 1 AND created_at > ?
@@ -96,9 +96,9 @@ class sql(object):
         cur = open_conn().cursor()
         output = cur.execute(query, [seven_days_ago]).fetchall()
         return(output)
-    #Check if checkpoint was created today. Returns bool.
     @staticmethod
     def is_created_today(server, account_id):
+        #Check if checkpoint was created today. Returns bool.
         cur = open_conn().cursor()
         #Getting the entry with biggest timestamp.
         query = 'SELECT MAX(created_at) FROM checkpoints WHERE server = ? AND account_id = ?'
@@ -113,26 +113,59 @@ class sql(object):
                 return(True)
 
         return(False)
-    #Add checkpont (or do nothing if created today) for BOT.
     @staticmethod
     def add_bot_checkpoint(server, account_id, player_data):
+        #Add checkpont by BOT or do nothing if already exist today.
         cur = open_conn().cursor()
-        #Getting the entry with biggest timestamp.
         query = 'SELECT MAX(created_at) FROM checkpoints WHERE server = ? AND account_id = ?'
-        found_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
+        biggest_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
 
-        #If returned the result.
-        if found_timestamp:
-            found_date = time.strftime('%Y%m%d', time.gmtime(found_timestamp))
+        if biggest_timestamp:
+            found_date = time.strftime('%Y%m%d', time.gmtime(biggest_timestamp))
             current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
-
-            #If latest timestamp is from today, do nothing.
             if found_date == current_date:
                 return
 
-        #If returned nothing, or result not from today.
-        query = 'INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data) VALUES (?, ?, ?, ?, ?);'
+        #If returned None, or result is not from today.
+        query = '''INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data)
+                   VALUES (?, ?, ?, ?, ?);'''
         cur.execute(query, [int(time.time()), 1, account_id, server, pickle.dumps(player_data)])
+
+    #Database optimization and cleaning up.
+    @staticmethod
+    def leave_first_checkpoint_a_week(server, account_id):
+        #Scans through all user checkpoints and leaves 1st checkpont in a week. Leaves last 21 days untouched.
+        period = int(time.time()) - (60 * 60 * 24 * 21)
+        query = '''SELECT id, created_at FROM checkpoints
+                   WHERE server = ? AND account_id = ? AND created_at <= ?
+                   ORDER BY created_at ASC;'''
+        old_checkpoints = cur.execute(query, [server, account_id, period]).fetchall()
+
+        #Get unique years.
+        years = [time.gmtime(row[1]).tm_year for row in old_checkpoints]
+        years = list(set(years))
+
+        #Collecting row ids to remove.
+        ids_to_remove = []
+        for year in years:
+            #Disregard week 0.
+            weeks = [0]
+            for row in old_checkpoints:
+                if time.gmtime(row[1]).tm_year == year:
+                    row_week = int(time.strftime('%W', time.gmtime(row[1])))
+                    #Allowing to pass only the first checkpoint in a week.
+                    if row_week in weeks:
+                        ids_to_remove.append(row[0])
+                    else:
+                        weeks.append(row_week)
+
+        if len(ids_to_remove) == 0:
+            return
+
+        #Deleting selected ids.
+        tuples = [(row_id,) for row_id in ids_to_remove]
+        cur.executemany('DELETE FROM checkpoints WHERE id = ?', tuples)
+        conn.commit()
 
 
 
@@ -148,7 +181,7 @@ def test_index():
 
 
 #Root app class.
-class user_cls:
+class base():
     def __init__(self, server, account_id):
         self.app_id = 'demo'
         self.server = server
@@ -188,7 +221,7 @@ class user_cls:
     #Function to eiter find SQL cached player data or to request and save in SQL.
     def request_or_find_cached(self):
         #Trying to get results from SQL first.
-        current_user = sql.request_latest_checkpoint(self.server, self.account_id)
+        current_user = sql.get_cached_checkpoint(self.server, self.account_id)
 
         #If no cached results, requesting from WG API.
         if current_user == None:
@@ -203,7 +236,8 @@ class user_cls:
         self.account_id = current_user[1]
 
     #Decode string sent by a client into a filter input.
-    def decode_filters_string(self, filters_string):
+    @staticmethod
+    def decode_filters_string(filters_string):
         #'ab&cd&ef&' -> ['ab', 'cd', 'ef']
         output = []
         new_list = filters_string.split('&')
@@ -223,7 +257,8 @@ class user_cls:
         self.player_data = filtered_player_data
 
     #Find one closest number from sorted array and return its index.
-    def find_index_of_closest_value(self, array, number):
+    @staticmethod
+    def find_index_of_closest_value(array, number):
         pair_found = False
         beg = 0
         end = len(array) - 1
@@ -246,6 +281,7 @@ class user_cls:
             return(end)
         else:
             return(beg)
+
     #Calculate percentile for single tank based on parameters.
     def percentile_calculator(self, kind, tank_id, number):
 
@@ -273,7 +309,8 @@ class user_cls:
 
         return(0)
 
-    def wn8_calculator(self, tank_data, WN8_dict):
+    @staticmethod
+    def wn8_calculator(tank_data, WN8_dict):
         #Loading expected values
         exp_values = {}
         for item in WN8_dict:
@@ -310,7 +347,8 @@ class user_cls:
         return(WN8)
 
     #Function substracts old_data from new_data.
-    def find_difference(self, old_data, new_data):
+    @staticmethod
+    def find_difference(old_data, new_data):
         #Making a copy to prevent changing the input.
         old_data = old_data[:]
         #Deleting tanks from 'old_data' that were not played.
@@ -349,11 +387,12 @@ class user_cls:
 
         return(slice_data)
 
-class player_profile_cls(user_cls):
+class pageProfile(base):
     def __init__(self, server, account_id):
-        user_cls.__init__(self, server, account_id)
+        base.__init__(self, server, account_id)
 
-    def calculate_general_account_stats(self, userdata):
+    @staticmethod
+    def calculate_general_account_stats(userdata):
         battles, hits, shots, dmgc, rass, dmgr, frags, survived, wins = (0 for i in range(9))
         for tank in userdata:
 
@@ -416,7 +455,8 @@ class player_profile_cls(user_cls):
                            'acc':   round(acc / battle_counter, 2)}
         return(output_dict)
 
-    def calculate_overall_percentile(self, percentile_dict):
+    @staticmethod
+    def calculate_overall_percentile(percentile_dict):
         total = sum([value for _, value in percentile_dict.items()])
         #There are 5 percentiles.
         output = total / 5
@@ -436,9 +476,9 @@ class player_profile_cls(user_cls):
         else:
             return(0.0)
 
-class vehicles_cls(user_cls):
+class pageVehicles(base):
     def __init__(self, server, account_id):
-        user_cls.__init__(self, server, account_id)
+        base.__init__(self, server, account_id)
 
     def extract_vehicle_data(self):
         extracted_data = []
@@ -515,57 +555,9 @@ class vehicles_cls(user_cls):
             extracted_data.append(temp_dict)
         self.player_data = extracted_data
 
-class time_series_cls(user_cls):
+class pageTimeSeries(pageProfile):
     def __init__(self, server, account_id):
-        user_cls.__init__(self, server, account_id)
-
-    def calculate_percentiles_for_all_tanks(self, userdata):
-        dmgc_temp, wr_temp, rass_temp, dmgr_temp, acc_temp = ([] for i in range(5))
-        output_dict = {}
-        #Iterating through vehicles.
-        dmgc, wr, rass, dmgr, acc = (0 for i in range(5))
-        battle_counter = 0
-        for vehicle in userdata:
-            if vehicle['battles'] > 0:
-                battle_counter = battle_counter + vehicle['battles']
-
-                dmgc = dmgc + self.percentile_calculator('dmgc', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']) * vehicle['battles']
-                wr = wr + self.percentile_calculator('wr', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100) * vehicle['battles']
-                rass = rass + self.percentile_calculator('rass', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']) * vehicle['battles']
-                dmgr = dmgr + self.percentile_calculator('dmgr', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']) * vehicle['battles']
-
-                #If no hits, percentile would be 0 anyways.
-                if vehicle['hits'] > 0:
-                    acc = acc + self.percentile_calculator('acc', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100) * vehicle['battles']
-
-        #Preparing output.
-        if battle_counter == 0:
-            #In case nothing found.
-            output_dict = {'dmgc': 0.0, 'wr': 0.0, 'rass': 0.0, 'dmgr': 0.0, 'acc': 0.0}
-        else:
-            #If at least one vehicle with "vehicle['battles'] > 0"
-            output_dict = {'dmgc': round(dmgc / battle_counter, 2),
-                           'wr': round(wr / battle_counter, 2),
-                           'rass': round(rass / battle_counter, 2),
-                           'dmgr': abs(round(dmgr / battle_counter, 2)-100),
-                           'acc': round(acc / battle_counter, 2)}
-        return(output_dict)
-
-    def calculate_wn8_for_all_tanks(self, userdata):
-        battle_counter, wn8_counter = 0, 0
-        for tank in userdata:
-            wn8_temp = self.wn8_calculator(tank, wn8console) * tank['battles']
-            #Adding up only if WN8 value is more than 0.
-            if wn8_temp > 0:
-                battle_counter = battle_counter + tank['battles']
-                wn8_counter = wn8_counter + wn8_temp
-
-        if battle_counter > 0:
-            output_wn8 = int(wn8_counter/battle_counter)
-        else:
-            output_wn8 = 0.0
-
-        return(output_wn8)
+        base.__init__(self, server, account_id)
 
     def calculate_charts(self, user_history_query, filter_input, tankopedia):
 
@@ -607,20 +599,20 @@ class time_series_cls(user_cls):
             self.snapshot_data = self.player_data
         return
 
-class session_tracker_cls(user_cls):
+class pageSessionTracker(base):
     def __init__(self, server, account_id):
-        user_cls.__init__(self, server, account_id)
+        base.__init__(self, server, account_id)
 
-    def get_snapshots(self, search):
-        snapshots = []
-        if len(search) > 0:
-            for row in search:
-                timestamp = row[0]
-                timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(timestamp).date()
-                #Passing data points that are older than today.
-                if timedelta.days > 0:
-                    snapshots.append(timestamp)
-        return(snapshots)
+    @staticmethod
+    def get_snapshots(search):
+        output = []
+        for row in search:
+            timestamp = row[0]
+            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(timestamp).date()
+            #Passing data points that are older than today.
+            if timedelta.days > 0:
+                output.append(timestamp)
+        return(output)
 
     def get_radar_data(self, tank_data, tank_id):
         temp_dict = {'dmgc': tank_data['damage_dealt'] / tank_data['battles'],
@@ -635,8 +627,11 @@ class session_tracker_cls(user_cls):
         dmgr_perc = self.percentile_calculator('dmgr', tank_id, temp_dict['dmgr'])
         acc_perc =  self.percentile_calculator('acc', tank_id, temp_dict['acc'])
 
-        temp_dict['radar'] = [round(acc_perc, 2), round(dmgc_perc, 2), round(rass_perc, 2), round(exp_perc, 2),
-                  abs(round(dmgr_perc, 2) - 100)]
+        temp_dict['radar'] = [round(acc_perc, 2),
+                              round(dmgc_perc, 2),
+                              round(rass_perc, 2),
+                              round(exp_perc, 2),
+                              abs(round(dmgr_perc, 2) - 100)]
 
         return(temp_dict)
 
@@ -648,11 +643,37 @@ class session_tracker_cls(user_cls):
                      'wn8':      self.wn8_calculator(tank_data, wn8console)}
         return(temp_dict)
 
-class wn8_estimates_cls(user_cls):
-    def __init__(self, server, account_id):
-        user_cls.__init__(self, server, account_id)
+    def get_session_tanks(self, slice_data, player_data):
+        output = []
 
-    def calculate_wn8_damage_targets(self, tank_data, WN8_dict):
+        for slice_tank in slice_data:
+            tank_id = slice_tank['tank_id']
+
+            for player_tank in player_data:
+                if tank_id == player_tank['tank_id']:
+                    temp_tank = {
+                        'all': {
+                            **self.get_radar_data(player_tank, tank_id),
+                            **self.get_other_data(player_tank)
+                        },
+                        'session': {
+                            **self.get_radar_data(slice_tank, tank_id),
+                            **self.get_other_data(slice_tank)
+                        },
+                        'tank_id': tank_id,
+                        'tank_name': tankopedia.get(str(tank_id)).get('short_name', 'Unknown')
+                    }
+                    output.append(temp_tank)
+                    break
+
+        return(output)
+
+class pageWn8Estimates(base):
+    def __init__(self, server, account_id):
+        base.__init__(self, server, account_id)
+
+    @staticmethod
+    def calculate_wn8_damage_targets(tank_data, WN8_dict):
         #Loading expected values
         exp_values = {}
         for item in WN8_dict:
@@ -744,7 +765,7 @@ class wn8_estimates_cls(user_cls):
 @app.route('/api/<request_type>/<server>/<account_id>/<timestamp>/<filters>/')
 def api_main(request_type, server, account_id, timestamp, filters):
 
-    start_time = time.time()
+    start = start_time = time.time()
 
     #Defaults.
     output = {'status':     'error',
@@ -768,7 +789,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
 
     #Processing according to request type.
     if request_type == 'profile':
-        user = player_profile_cls(server, account_id)
+        user = pageProfile(server, account_id)
         user.request_or_find_cached()
         #Return error If status != 'ok'.
         if user.status != 'ok':
@@ -793,7 +814,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
         all_time['total_perc'] = user.calculate_overall_percentile(all_time['percentiles'])
 
         #Searching all records of the player in SQL 'checkpoints' and taking the first available.
-        user_history_search = sql.request_all_recent_checkpoints(user.server, user.account_id)
+        user_history_search = sql.get_all_recent_checkpoints(user.server, user.account_id)
         if len(user_history_search) > 0:
             found_player_data = user_history_search[0][3]
             user.player_data = user.find_difference(found_player_data, user.player_data)
@@ -841,7 +862,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
         output['account_id'] = user.account_id
 
     elif request_type == 'vehicles':
-        user = vehicles_cls(server, account_id)
+        user = pageVehicles(server, account_id)
         user.request_or_find_cached()
         #Return error If status != 'ok'.
         if user.status != 'ok':
@@ -859,7 +880,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
         output['account_id'] = user.account_id
 
     elif request_type == 'time_series':
-        user = time_series_cls(server, account_id)
+        user = pageTimeSeries(server, account_id)
         user.request_or_find_cached()
         #Return error If status != 'ok'.
         if user.status != 'ok':
@@ -870,7 +891,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
         #Converting filters into a list.
         filters = user.decode_filters_string(filters)
         #Searching all records of the player in SQL 'history'.
-        user_history_search = sql.request_all_recent_checkpoints(user.server, user.account_id)
+        user_history_search = sql.get_all_recent_checkpoints(user.server, user.account_id)
         #Calculating WN8 charts.
         user.calculate_charts(user_history_search, filters, tankopedia)
         #Generating output.
@@ -885,7 +906,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
         output['account_id'] = user.account_id
 
     elif request_type == 'session_tracker':
-        user = session_tracker_cls(server, account_id)
+        user = pageSessionTracker(server, account_id)
         user.request_or_find_cached()
         #Return error If status != 'ok'.
         if user.status != 'ok':
@@ -894,62 +915,43 @@ def api_main(request_type, server, account_id, timestamp, filters):
             return Response(json.dumps(output), mimetype='application/json')
 
         #Calling all 'userdata_history' snapshots from SQL.
-        search = sql.request_all_recent_checkpoints(user.server, user.account_id)
+        search = sql.get_all_recent_checkpoints(user.server, user.account_id)
         snapshots = user.get_snapshots(search)
 
         #If the checkpoint is not in the database return the list of checkpoints.
         if int(timestamp) not in snapshots:
-            output['data'] = {
-                'timestamp': None,
-                'snapshots': snapshots,
-            }
-            output['count'] = len(output['data'])
-            output['status'] = 'ok'
-            output['message'] = 'Timestamp is not present'
-            output['account_id'] = user.account_id
-            output['server'] = user.server
+            output = {'status':     'ok',
+                      'message':    'timestamp not present',
+                      'count':      0,
+                      'server':     user.server,
+                      'account_id': user.account_id,
+                      'data':       {'timestamp': None, 'snapshots': snapshots},
+                      'time':       time.time() - start}
             return Response(json.dumps(output), mimetype='application/json')
 
-        #If the checkpoint is in the database
+        #Get the snapshot_data.
         for row in search:
             row_timestamp = row[0]
             if int(timestamp) == row_timestamp:
-                user.snapshot_data = row[3]
+                snapshot_data = row[3]
                 break
 
-
-        #Calculations.
-        user.slice_data = user.find_difference(user.snapshot_data, user.player_data)
-
-        #List for output.
-        session_tanks = []
-        #Calculating data.
-        for session_tank in user.slice_data:
-            tank_id = session_tank['tank_id']
-
-            for alltime_tank in user.player_data:
-                if tank_id == alltime_tank['tank_id']:
-
-                    current_tank = {'all': {**user.get_radar_data(alltime_tank, tank_id),
-                                            **user.get_other_data(alltime_tank)},
-                                    'session': {**user.get_radar_data(session_tank, tank_id),
-                                                **user.get_other_data(session_tank)},
-                                    'tank_id': tank_id,
-                                    'tank_name': tankopedia[str(tank_id)]['name'] if str(tank_id) in tankopedia else 'Unknown'}
-
-                    session_tanks.append(current_tank)
-                    break
+        #Slicing and calculating output.
+        slice_data = user.find_difference(snapshot_data, user.player_data)
+        session_tanks = user.get_session_tanks(slice_data, user.player_data)
 
         #Preparing output.
-        output['status'], output['message'] = 'ok', 'ok'
-        output['account_id'], output['server'] = user.account_id, user.server
-        output['data'] = {'session_tanks': session_tanks,
-                          'timestamp':     timestamp,
-                          'snapshots':     snapshots}
-        output['count'] = len(output['data'])
+        output = {
+            'status':       'ok',
+            'message':      'ok',
+            'count':        len(session_tanks),
+            'server':       user.server,
+            'account_id':   user.account_id,
+            'data':         {'session_tanks': session_tanks, 'timestamp': timestamp, 'snapshots': snapshots}
+        }
 
     elif request_type == 'wn8_estimates':
-        user = wn8_estimates_cls(server, account_id)
+        user = pageWn8Estimates(server, account_id)
         user.request_or_find_cached()
         #Return error If status != 'ok'.
         if user.status != 'ok':
@@ -969,7 +971,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
     output['time'] = time.time() - start_time
     return Response(json.dumps(output), mimetype='application/json')
 
-#Request different files.
+#Request various files.
 @app.route('/api-request-file/<file_type>/')
 def api_request_file(file_type):
 
@@ -1021,7 +1023,7 @@ def api_request_snapshots(server, account_id):
         return Response(json.dumps(output), mimetype='application/json')
 
     #Database fetch and output.
-    output['data'] = sql.request_all_recent_checkpoints(server, account_id)
+    output['data'] = sql.get_all_recent_checkpoints(server, account_id)
     output['count'] = len(output['data'])
     output['status'], output['message'] = 'ok', 'ok'
     output['server'] = server
@@ -1034,13 +1036,9 @@ def api_request_snapshots(server, account_id):
 @app.route('/recent-users/')
 def recent_users():
     start = time.time()
-    users = sql.find_recent_users()
-    output = {
-        'status': 'ok',
-        'time': time.time() - start,
-        'count': len(users),
-        'data': users
-    }
+    users = sql.get_recent_users()
+    output = {'status': 'ok', 'count': len(users), 'data': users}
+    output['time'] = time.time() - start
     return Response(json.dumps(output), mimetype='application/json')
 
 #Creates a bot-checkpoint in the database.
@@ -1060,7 +1058,7 @@ def add_checkpoint(server, account_id):
         return('ok')
 
     #Fetching the player.
-    user = player_profile_cls(server, account_id)
+    user = base(server, account_id)
     user.request_vehicles()
     if user.status != 'ok':
         return('Player couldn\'t be fetched')
