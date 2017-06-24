@@ -22,7 +22,7 @@ with open('references/wn8pc.json', 'r') as f:
 app = Flask(__name__)
 
 
-#Sqlite connection context.
+#Sqlite connection context & data persistence.
 def open_conn():
     conn = getattr(g, '_database', None)
     if conn is None:
@@ -34,7 +34,6 @@ def close_conn(exception):
     if conn is not None:
         conn.commit()
         conn.close()
-#Data persistence interface.
 class sql():
     #Main functions.
     @staticmethod
@@ -168,7 +167,6 @@ class sql():
         conn.commit()
 
 
-
 #Frontend.
 @app.route('/')
 def index():
@@ -181,38 +179,37 @@ def index_dev():
     return render_template("index_dev.html")
 
 
+#Class to hold APP_ID and make requests.
+class wgapiCls():
+    def __init__(self, app_id):
+        self.app_id = app_id
 
-#React.js test page.
-@app.route('/test')
-def test_index():
-    return render_template("test_index.html")
-
-
-#Root app class.
-class base():
-    def __init__(self, server, account_id):
-        self.app_id = 'demo'
-        self.server = server
-        self.account_id = account_id
-
-    #Request player data by account_id.
-    def request_vehicles(self):
+    #Request player data from WG API. Output: ('status', 'message', [data])
+    def get_player_data(self, server, account_id):
         url = 'https://api-{}-console.worldoftanks.com/wotx/tanks/stats/?application_id={}&account_id={}'\
-            .format(self.server, self.app_id, self.account_id)
-        request = requests.get(url)
-        vehicles = request.json()
-        #If no vehicles on the account
-        if vehicles['status'] == 'error':
-            self.status = 'error'
-            self.message = 'ERROR: ' + str(vehicles['error']['message'])
-        elif vehicles['data'][str(self.account_id)] == None:
-            self.status = 'error'
-            self.message = 'ERROR: No vehicles found on the account'
-        else:
-            self.status = 'ok'
-            #Extracting into dictionaries.
-            self.player_data = []
-            for vehicle in vehicles['data'][str(self.account_id)]:
+               .format(server, self.app_id, account_id)
+
+        #Making 2 tries.
+        fetched, counter = False, 0
+        while fetched == False and counter < 2:
+            try:
+                resp = requests.get(url).json()
+                fetched = True
+            except:
+                counter += 1
+        if fetched is False:
+            return('error', 'Failed to request the data from WG API', None)
+
+        status = resp.get('status')
+        vehicles = resp.get('data').get(str(account_id))
+
+        if status == 'error':
+            status, message, data = 'error', resp.get('error').get('message'), None
+        elif status == 'ok' and vehicles is None:
+            status, message, data = 'error', 'No vehicles on the account', None
+        elif status == 'ok':
+            status, message, data = 'ok', 'ok', []
+            for vehicle in vehicles:
                 #Dictionary from main values.
                 temp_dict = vehicle['all']
                 #Adding other values.
@@ -224,24 +221,43 @@ class base():
                 temp_dict['max_xp'] = vehicle['max_xp']
                 temp_dict['tank_id'] = vehicle['tank_id']
                 temp_dict['trees_cut'] = vehicle['trees_cut']
-                self.player_data.append(temp_dict)
+                #Adding to output.
+                data.append(temp_dict)
+        else:
+            #Unknown status
+            raise
 
-    #Function to eiter find SQL cached player data or to request and save in SQL.
-    def request_or_find_cached(self):
+        return(status, message, data)
+
+    #Find SQL cached player data or to request and save in SQL. Output: ('status', 'message', [data])
+    def find_cached_or_request(self, server, account_id):
         #Trying to get results from SQL first.
-        current_user = sql.get_cached_checkpoint(self.server, self.account_id)
+        player_data = sql.get_cached_checkpoint(server, account_id)
+
+        if player_data is not None:
+            return('ok', 'ok', player_data[3])
 
         #If no cached results, requesting from WG API.
-        if current_user == None:
-            self.request_vehicles()
-            if self.status == 'ok':
-                sql.add_or_update_checkpoint(self.server, self.account_id, self.player_data)
-            return
+        status, message, data = self.get_player_data(server, account_id)
 
-        #If found cached.
-        self.status = 'ok'
-        self.player_data = current_user[3]
-        self.account_id = current_user[1]
+        #Fallback to 'demo' app_id.
+        if status == 'error' and message in ['INVALID_APPLICATION_ID', 'INVALID_IP_ADDRESS']:
+            self.app_id = 'demo'
+            status, message, data = self.get_player_data(server, account_id)
+
+        #Updating (or creating) SQL checkpoint if went fine.
+        if status == 'ok':
+            sql.add_or_update_checkpoint(server, account_id, data)
+
+        return(status, message, data)
+wgapi = wgapiCls('demo')
+
+
+#Root app class.
+class base():
+    def __init__(self, server, account_id):
+        self.server = server
+        self.account_id = account_id
 
     #Decode string sent by a client into a filter input.
     @staticmethod
@@ -484,6 +500,72 @@ class pageProfile(base):
         else:
             return(0.0)
 
+    def calculate_page_profile(self, filters, recent_checkpoints):
+
+        #Converting filters into a list.
+        filters = self.decode_filters_string(filters)
+
+        #Getting player data from first checkpont.
+        first_recent_checkpoint = []
+        if len(recent_checkpoints) > 0:
+            first_recent_data = recent_checkpoints[0][3]
+
+
+        #Placeholders.
+        all_time, recent, difference = ({} for i in range(3))
+        xlabels, percentiles_totals, wn8_totals = ([] for i in range(3))
+
+
+        #Calculating all-time player performance.
+        self.filter_data(filters, tankopedia)
+        all_time =                  self.calculate_general_account_stats(self.player_data)
+        all_time['wn8'] =           self.calculate_wn8_for_all_tanks(self.player_data)
+        all_time['percentiles'] =   self.calculate_percentiles_for_all_tanks(self.player_data)
+        all_time['total_perc'] =    self.calculate_overall_percentile(all_time['percentiles'])
+
+
+        #Calculating recent player performance.
+        self.player_data = self.find_difference(first_recent_data, self.player_data)
+        self.filter_data(filters, tankopedia)
+        recent =                self.calculate_general_account_stats(self.player_data)
+        recent['wn8'] =         self.calculate_wn8_for_all_tanks(self.player_data)
+        recent['percentiles'] = self.calculate_percentiles_for_all_tanks(self.player_data)
+        recent['total_perc'] =  self.calculate_overall_percentile(recent['percentiles'])
+
+
+        #Calculating charts.
+        for r, row in enumerate(recent_checkpoints):
+            #Getting 'xlabels'.
+            checkpoint_timestamp = row[0]
+            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(checkpoint_timestamp).date()
+            if timedelta.days > 0:
+                xlabels.append(str(timedelta.days) + 'd ago')
+            else:
+                xlabels.append('Today')
+            #Loading and filtering player data.
+            self.player_data = row[3]
+            #Filtering data using function of the same class.
+            self.filter_data(filters, tankopedia)
+            #Calculating Percentile totals.
+            percentiles_totals.append(self.calculate_percentiles_for_all_tanks(self.player_data))
+            #Calculating WN8 totals.
+            wn8_totals.append(self.calculate_wn8_for_all_tanks(self.player_data))
+
+
+        #Calculating overall percentile.
+        new_list = []
+        for item in percentiles_totals:
+            new_list.append(sum([value for key, value in item.items()]) / 5)
+        percentiles_totals = new_list
+
+        return({
+            'all_time':             all_time,
+            'recent':               recent,
+            'xlabels':              xlabels,
+            'percentiles_totals':   percentiles_totals,
+            'wn8_totals':           wn8_totals
+        })
+
 class pageVehicles(base):
     def __init__(self, server, account_id):
         base.__init__(self, server, account_id)
@@ -612,14 +694,20 @@ class pageSessionTracker(base):
         base.__init__(self, server, account_id)
 
     @staticmethod
-    def get_snapshots(search):
+    def get_timestamps(search):
+        #Return list of timestamps excluding today.
+        now = time.gmtime()
+        today = (now.tm_year, now.tm_yday)
+
         output = []
         for row in search:
             timestamp = row[0]
-            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(timestamp).date()
-            #Passing data points that are older than today.
-            if timedelta.days > 0:
+            time_struct = time.gmtime(timestamp)
+            date = (time_struct.tm_year, time_struct.tm_yday)
+
+            if today != date:
                 output.append(timestamp)
+
         return(output)
 
     def get_radar_data(self, tank_data, tank_id):
@@ -629,37 +717,63 @@ class pageSessionTracker(base):
                      'dmgr': tank_data['damage_received'] / tank_data['battles'],
                      'acc':  tank_data['hits'] / tank_data['shots'] * 100 if tank_data['shots'] > 0 else 0.0}
 
-        dmgc_perc = self.percentile_calculator('dmgc', tank_id, temp_dict['dmgc'])
-        exp_perc =  self.percentile_calculator('exp', tank_id, temp_dict['exp'])
-        rass_perc = self.percentile_calculator('rass', tank_id, temp_dict['rass'])
-        dmgr_perc = self.percentile_calculator('dmgr', tank_id, temp_dict['dmgr'])
-        acc_perc =  self.percentile_calculator('acc', tank_id, temp_dict['acc'])
-
-        temp_dict['radar'] = [round(acc_perc, 2),
-                              round(dmgc_perc, 2),
-                              round(rass_perc, 2),
-                              round(exp_perc, 2),
-                              abs(round(dmgr_perc, 2) - 100)]
+        temp_dict['radar'] = [
+            self.percentile_calculator('acc', tank_id, temp_dict['acc']),
+            self.percentile_calculator('dmgc', tank_id, temp_dict['dmgc']),
+            self.percentile_calculator('rass', tank_id, temp_dict['rass']),
+            self.percentile_calculator('exp', tank_id, temp_dict['exp']),
+            abs(self.percentile_calculator('dmgr', tank_id, temp_dict['dmgr']) - 100)
+        ]
 
         return(temp_dict)
 
     def get_other_data(self, tank_data):
-        temp_dict = {'battles':  tank_data['battles'],
-                     'wins':     tank_data['wins'],
-                     'lifetime': tank_data['battle_life_time'] / tank_data['battles'],
-                     'dpm':      tank_data['damage_dealt'] / tank_data['battle_life_time'] * 60,
-                     'wn8':      self.wn8_calculator(tank_data, wn8console)}
-        return(temp_dict)
+        return({
+            'battles':  tank_data['battles'],
+            'wins':     tank_data['wins'],
+            'lifetime': tank_data['battle_life_time'] / tank_data['battles'],
+            'dpm':      tank_data['damage_dealt'] / tank_data['battle_life_time'] * 60,
+            'wn8':      self.wn8_calculator(tank_data, wn8console)
+        })
 
-    def get_session_tanks(self, slice_data, player_data):
+    def calculateSessionTracker(self, timestamp, search):
+
+        timestamps = self.get_timestamps(search)
+
+        #If nothing to compare with (no checkpoints not from today).
+        if len(timestamps) == 0:
+            return({
+                'session_tanks': [],
+                'timestamps': [],
+                'timestamp': 0
+            })
+
+        #Timestamp comes as str in url.
+        timestamp = int(timestamp)
+
+        #If wrong timestamp.
+        if timestamp not in timestamps:
+            timestamp = timestamps[0]
+
+        #Get the snapshot_data.
+        for row in search:
+            row_timestamp = row[0]
+            if timestamp == row_timestamp:
+                snapshot_data = row[3]
+                break
+
+        #Slicing.
+        slice_data = self.find_difference(snapshot_data, self.player_data)
+
+        #Calculating output.
         output = []
-
         for slice_tank in slice_data:
             tank_id = slice_tank['tank_id']
-
-            for player_tank in player_data:
+            for player_tank in self.player_data:
                 if tank_id == player_tank['tank_id']:
-                    temp_tank = {
+                    output.append({
+                        'tank_id': tank_id,
+                        'tank_name': tankopedia.get(str(tank_id)).get('short_name', 'Unknown'),
                         'all': {
                             **self.get_radar_data(player_tank, tank_id),
                             **self.get_other_data(player_tank)
@@ -667,14 +781,15 @@ class pageSessionTracker(base):
                         'session': {
                             **self.get_radar_data(slice_tank, tank_id),
                             **self.get_other_data(slice_tank)
-                        },
-                        'tank_id': tank_id,
-                        'tank_name': tankopedia.get(str(tank_id)).get('short_name', 'Unknown')
-                    }
-                    output.append(temp_tank)
+                        }
+                    })
                     break
 
-        return(output)
+        return({
+            'session_tanks':    output,
+            'timestamps':       self.get_timestamps(search),
+            'timestamp':        timestamp
+        })
 
 class pageWn8Estimates(base):
     def __init__(self, server, account_id):
@@ -727,7 +842,7 @@ class pageWn8Estimates(base):
 
         return(output)
 
-    def extract_data_for_wn8(self, wn8_list, tankopedia_dict):
+    def calculate_wn8_estimates(self, wn8_list, tankopedia_dict):
         output = []
         #Iterating through tanks in player data.
         for vehicle in self.player_data:
@@ -766,23 +881,25 @@ class pageWn8Estimates(base):
 
             output.append(tank_dict)
 
-        self.player_data = output
+        return(output)
 
 
 #Main API.
 @app.route('/api/<request_type>/<server>/<account_id>/<timestamp>/<filters>/')
 def api_main(request_type, server, account_id, timestamp, filters):
 
-    start = start_time = time.time()
+    start = time.time()
 
     #Defaults.
-    output = {'status':     'error',
-              'message':    'Bad request',
-              'count':      0,
-              'server':     None,
-              'account_id': None,
-              'data':       None,
-              'time':       0}
+    output = {
+        'status':     'error',
+        'message':    'bad request',
+        'count':      0,
+        'server':     None,
+        'account_id': None,
+        'data':       None,
+        'time':       0
+    }
 
 
     #Validation.
@@ -791,192 +908,96 @@ def api_main(request_type, server, account_id, timestamp, filters):
         if server not in ['xbox', 'ps4']:
             raise
     except:
-        output['message'] = 'Wrong server/account_id/timestamp'
+        output['message'] = 'Invalid server/account_id/timestamp'
         return Response(json.dumps(output), mimetype='application/json')
 
+    #Request player data or find cached.
+    status, message, data = wgapi.find_cached_or_request(server, account_id)
+    if status != 'ok':
+        output['status'], output['message'] = status, message
+        return Response(json.dumps(output), mimetype='application/json')
 
     #Processing according to request type.
     if request_type == 'profile':
+        #Initiating the class.
         user = pageProfile(server, account_id)
-        user.request_or_find_cached()
-        #Return error If status != 'ok'.
-        if user.status != 'ok':
-            output['status'] = 'error'
-            output['message'] = user.message
-            return Response(json.dumps(output), mimetype='application/json')
-
-
-        #Placeholders.
-        all_time, recent, difference = ({} for i in range(3))
-        xlabels, percentiles_totals, wn8_totals = ([] for i in range(3))
-
-        #Converting filters into a list.
-        filters = user.decode_filters_string(filters)
-
-        #Calculations.
-        user.filter_data(filters, tankopedia)
-
-        all_time = user.calculate_general_account_stats(user.player_data)
-        all_time['wn8'] = user.calculate_wn8_for_all_tanks(user.player_data)
-        all_time['percentiles'] = user.calculate_percentiles_for_all_tanks(user.player_data)
-        all_time['total_perc'] = user.calculate_overall_percentile(all_time['percentiles'])
+        user.player_data = data
 
         #Searching all records of the player in SQL 'checkpoints' and taking the first available.
-        user_history_search = sql.get_all_recent_checkpoints(user.server, user.account_id)
-        if len(user_history_search) > 0:
-            found_player_data = user_history_search[0][3]
-            user.player_data = user.find_difference(found_player_data, user.player_data)
-
-        user.filter_data(filters, tankopedia)
-
-        recent = user.calculate_general_account_stats(user.player_data)
-        recent['wn8'] = user.calculate_wn8_for_all_tanks(user.player_data)
-        recent['percentiles'] = user.calculate_percentiles_for_all_tanks(user.player_data)
-        recent['total_perc'] = user.calculate_overall_percentile(recent['percentiles'])
-
-        #Calculating charts.
-        for r, row in enumerate(user_history_search):
-            #Getting 'xlabels'.
-            checkpoint_timestamp = row[0]
-            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(checkpoint_timestamp).date()
-            if timedelta.days > 0:
-                xlabels.append(str(timedelta.days) + 'd ago')
-            else:
-                xlabels.append('Today')
-            #Loading and filtering player data.
-            user.player_data = row[3]
-            #Filtering data using function of the same class.
-            user.filter_data(filters, tankopedia)
-            #Calculating Percentile totals.
-            percentiles_totals.append(user.calculate_percentiles_for_all_tanks(user.player_data))
-            #Calculating WN8 totals.
-            wn8_totals.append(user.calculate_wn8_for_all_tanks(user.player_data))
-
-        #Calculating overall percentile.
-        new_list = []
-        for item in percentiles_totals:
-            new_list.append(sum([value for key, value in item.items()])/5)
-        percentiles_totals = new_list
+        recent_checkpoints = sql.get_all_recent_checkpoints(server, account_id)
 
         #Generating output.
-        output['data'] = {'all_time': all_time,
-                          'recent': recent,
-                          'xlabels': xlabels,
-                          'percentiles_totals': percentiles_totals,
-                          'wn8_totals': wn8_totals}
-        output['count'] = len(output['data'])
         output['status'], output['message'] = 'ok', 'ok'
-        output['server'] = user.server
-        output['account_id'] = user.account_id
+        output['server'], output['account_id'] = server, account_id
+        output['data'] = user.calculate_page_profile(filters, recent_checkpoints)
+        output['count'] = len(output['data'])
 
     elif request_type == 'vehicles':
+        #Initiating the class.
         user = pageVehicles(server, account_id)
-        user.request_or_find_cached()
-        #Return error If status != 'ok'.
-        if user.status != 'ok':
-            output['status'] = 'error'
-            output['message'] = user.message
-            return Response(json.dumps(output), mimetype='application/json')
+        user.player_data = data
 
         #Calculations.
         user.extract_vehicle_data()
+
         #Generating output.
+        output['status'], output['message'] = 'ok', 'ok'
+        output['server'], output['account_id'] = server, account_id
         output['data'] = user.player_data
         output['count'] = len(user.player_data)
-        output['status'], output['message'] = 'ok', 'ok'
-        output['server'] =  user.server
-        output['account_id'] = user.account_id
 
     elif request_type == 'time_series':
+        #Initiating the class.
         user = pageTimeSeries(server, account_id)
-        user.request_or_find_cached()
-        #Return error If status != 'ok'.
-        if user.status != 'ok':
-            output['status'] = 'error'
-            output['message'] = user.message
-            return Response(json.dumps(output), mimetype='application/json')
+        user.player_data = data
 
         #Converting filters into a list.
         filters = user.decode_filters_string(filters)
+
         #Searching all records of the player in SQL 'history'.
-        user_history_search = sql.get_all_recent_checkpoints(user.server, user.account_id)
+        user_history_search = sql.get_all_recent_checkpoints(server, account_id)
+
         #Calculating WN8 charts.
         user.calculate_charts(user_history_search, filters, tankopedia)
+
         #Generating output.
-        output['data'] = {'xlabels':            user.xlabels,
-                          'percentiles_change': user.percentiles_change,
-                          'wn8_totals':         user.wn8_totals[1:],
-                          'wn8_change':         user.wn8_change,
-                          'wn8_labels':         user.xlabels[1:]}
-        output['count'] = len(output['data'])
         output['status'], output['message'] = 'ok', 'ok'
-        output['server'] = user.server
-        output['account_id'] = user.account_id
+        output['server'], output['account_id'] = server, account_id
+        output['data'] = {
+            'xlabels':            user.xlabels,
+            'percentiles_change': user.percentiles_change,
+            'wn8_totals':         user.wn8_totals[1:],
+            'wn8_change':         user.wn8_change,
+            'wn8_labels':         user.xlabels[1:]
+        }
+        output['count'] = len(output['data'])
 
     elif request_type == 'session_tracker':
+        #Initiating the class.
         user = pageSessionTracker(server, account_id)
-        user.request_or_find_cached()
-        #Return error If status != 'ok'.
-        if user.status != 'ok':
-            output['status'] = 'error'
-            output['message'] = user.message
-            return Response(json.dumps(output), mimetype='application/json')
+        user.player_data = data
 
         #Calling all 'userdata_history' snapshots from SQL.
-        search = sql.get_all_recent_checkpoints(user.server, user.account_id)
-        snapshots = user.get_snapshots(search)
-
-        #If the checkpoint is not in the database return the list of checkpoints.
-        if int(timestamp) not in snapshots:
-            output = {'status':     'ok',
-                      'message':    'timestamp not present',
-                      'count':      0,
-                      'server':     user.server,
-                      'account_id': user.account_id,
-                      'data':       {'timestamp': None, 'snapshots': snapshots},
-                      'time':       time.time() - start}
-            return Response(json.dumps(output), mimetype='application/json')
-
-        #Get the snapshot_data.
-        for row in search:
-            row_timestamp = row[0]
-            if int(timestamp) == row_timestamp:
-                snapshot_data = row[3]
-                break
-
-        #Slicing and calculating output.
-        slice_data = user.find_difference(snapshot_data, user.player_data)
-        session_tanks = user.get_session_tanks(slice_data, user.player_data)
+        search = sql.get_all_recent_checkpoints(server, account_id)
 
         #Preparing output.
-        output = {
-            'status':       'ok',
-            'message':      'ok',
-            'count':        len(session_tanks),
-            'server':       user.server,
-            'account_id':   user.account_id,
-            'data':         {'session_tanks': session_tanks, 'timestamp': timestamp, 'snapshots': snapshots}
-        }
+        output['status'], output['message'] = 'ok', 'ok'
+        output['server'], output['account_id'] = server, account_id
+        output['data'] = user.calculateSessionTracker(timestamp, search)
+        output['count'] = len(output['data']['session_tanks'])
 
     elif request_type == 'wn8_estimates':
+        #Initiating the class.
         user = pageWn8Estimates(server, account_id)
-        user.request_or_find_cached()
-        #Return error If status != 'ok'.
-        if user.status != 'ok':
-            output['status'] = 'error'
-            output['message'] = user.message
-            return Response(json.dumps(output), mimetype='application/json')
-        #Extracting data.
-        user.extract_data_for_wn8(wn8console, tankopedia)
+        user.player_data = data
         #Generating output.
-        output['data'] = user.player_data
-        output['count'] = len(user.player_data)
+        output['data'] = user.calculate_wn8_estimates(wn8console, tankopedia)
+        output['count'] = len(output['data'])
         output['status'], output['message'] = 'ok', 'ok'
-        output['server'] = user.server
-        output['account_id'] = user.account_id
+        output['server'] = server
+        output['account_id'] = account_id
 
-
-    output['time'] = time.time() - start_time
+    output['time'] = time.time() - start
     return Response(json.dumps(output), mimetype='application/json')
 
 #Request various files.
@@ -1039,8 +1060,7 @@ def api_request_snapshots(server, account_id):
 
     return Response(json.dumps(output), mimetype='application/json')
 
-
-#Returns (server, account_id) users in the last 7 days.
+#Returns users in the last 7 days. Output: [(server, account_id)]
 @app.route('/recent-users/')
 def recent_users():
     start = time.time()
@@ -1066,15 +1086,14 @@ def add_checkpoint(server, account_id):
         return('ok')
 
     #Fetching the player.
-    user = base(server, account_id)
-    user.request_vehicles()
-    if user.status != 'ok':
-        return('Player couldn\'t be fetched')
+    status, message, data = wgapi.get_player_data(server, account_id)
+
+    if status != 'ok':
+        return('Player couldnt be fetched')
 
     #Adding to the database.
-    sql.add_bot_checkpoint(user.server, user.account_id, user.player_data)
+    sql.add_bot_checkpoint(server, account_id, data)
     return('ok')
-
 
 
 if __name__ == '__main__':

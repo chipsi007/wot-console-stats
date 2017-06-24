@@ -488,39 +488,6 @@ class Main extends React.Component {
               </a>
             </div>);
   }
-  genSnapshots() {
-
-    // Return nothing if property doesnt exist.
-    if (!this.state.sessionTracker) { return(null) }
-
-    const SNAPSHOTS = this.state.sessionTracker.snapshots;
-
-    // In case there are 0 snapshots.
-    if (SNAPSHOTS.length === 0) {
-      return( <div className='column'>
-                <div className='notification'>
-                  There are currently no snapshots available for comparison, but your today's data is saved. Come back tomorrow to see how your recent performace compares to your all-time stats in the tanks that you played.
-                </div>
-              </div>);
-    }
-
-    let output = [];
-    SNAPSHOTS.forEach((timestamp) => {
-      const DAYS_AGO = Math.round((Date.now() / 1000 - timestamp) / 60 / 60 / 24);
-
-      output.push(  <div className='column' key={ timestamp }>
-                      <p className='control'>
-                        <a className='button is-light is-fullwidth' onClick={ () => this.setTimestamp(timestamp) }>
-                          { DAYS_AGO + ' days ago' }
-                        </a>
-                      </p>
-                    </div>);
-    });
-
-    return( <div className='columns is-mobile is-multiline'>
-              { output }
-            </div>);
-  }
 
   render() {
 
@@ -547,8 +514,8 @@ class Main extends React.Component {
                             fetchData={ this.fetchData } />);
         break;
       case 'Session Tracker':
-        body = (<SessionTracker data={ this.state.sessionTracker }
-                                fetchData={ this.fetchData } />);
+        body = (<SessionTracker server={ this.props.server }
+                                accountID={ this.props.accountID } />);
         break;
       case 'WN8 Estimates':
         body = (<Estimates data={ this.state.wn8Estimates }
@@ -587,12 +554,8 @@ class Main extends React.Component {
                         { this.genRefreshButton() }
                       </div>);
         break;
-      case 'Session Tracker':
-        controls = (  <div className='container' style={{marginTop: 15 + 'px', marginBottom: 15 + 'px'}}>
-                        { this.genSnapshots() }
-                        { this.genRefreshButton() }
-                      </div>);
-        break;
+      default:
+        controls = null;
     }
 
     return( <div>
@@ -1252,9 +1215,15 @@ class SessionTracker extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      selectedTankID: 9999999
+      timestamps: null,
+      timestamp: 0,
+      data: null,
+      tankID: 9999999
     };
     this.convertTime = this.convertTime.bind(this);
+    this.fetchData = this.fetchData.bind(this);
+    this.setTimestamp = this.setTimestamp.bind(this);
+    this.genControls = this.genControls.bind(this);
     this.miniTable = this.miniTable.bind(this);
     this.mainBody = this.mainBody.bind(this);
   }
@@ -1269,8 +1238,76 @@ class SessionTracker extends React.Component {
     }
   }
 
+  fetchData() {
+    // Empty the data.
+    this.setState({data: null});
+
+    // Assembling the url.
+    const SERVER = this.props.server;
+    const ACCOUNT_ID = this.props.accountID;
+    const TIMESTAMP = this.state.timestamp;
+    const FILTERS = '&';
+    const TYPE = 'session_tracker';
+    const URL = '/api/' + TYPE + '/' + SERVER + '/' + ACCOUNT_ID + '/' + TIMESTAMP + '/' + FILTERS + '/';
+    // Fetching.
+    fetch(URL)
+      .then(response => { return response.json() })
+      .then(j => {
+        if (j.status != 'ok') { window.alert('Server returned an error: ' + j.message) }
+        this.setState({
+          timestamp: j.data.timestamp,
+          timestamps: j.data.timestamps,
+          data: j.data.session_tanks
+        });
+      })
+      .catch(error => {
+        alert('There has been a problem with your fetch operation: ' + error.message);
+      });
+  }
+
+  setTimestamp(iTimestamp) {
+    // Passing as a callback function so the data fetched after the state has changed.
+    this.setState({timestamp: iTimestamp}, () => this.fetchData());
+  }
+
   componentDidMount() {
-    if (!this.props.data) this.props.fetchData();
+    if (!this.state.data) { this.fetchData() }
+  }
+
+  genControls() {
+
+    const TIMESTAMPS = this.state.timestamps;
+    const SELECTED_TIMESTAMP = this.state.timestamp;
+
+    // Blank if no snapshots.
+    if (!TIMESTAMPS) { return(null) }
+
+    // Message if 0 snapshots.
+    if (TIMESTAMPS.length == 0) {
+      return( <div className='column'>
+                <div className='notification'>
+                  There are currently no snapshots available for comparison, but your today's data is saved. Come back tomorrow to see how your recent performace compares to your all-time statistics.
+                </div>
+              </div>);
+    }
+
+    let output = [];
+    TIMESTAMPS.forEach((timestamp) => {
+      const DAYS_AGO = Math.round((Date.now() / 1000 - timestamp) / 60 / 60 / 24);
+      let className = 'pagination-link';
+      if (timestamp == SELECTED_TIMESTAMP) { className += ' is-current' }
+
+      output.push(<li key={ timestamp }>
+                    <a className={ className } onClick={ () => this.setTimestamp(timestamp) }>{ DAYS_AGO }</a>
+                  </li>);
+    });
+
+    return( <nav className="pagination">
+              <a className="pagination-previous" disabled>View statistics for the last days</a>
+              <ul className="pagination-list" style={{'overflowX': 'scroll'}}>
+                { output }
+              </ul>
+            </nav>);
   }
 
   miniTable(oTank) {
@@ -1334,22 +1371,41 @@ class SessionTracker extends React.Component {
 
   mainBody() {
 
-    const TANKS = this.props.data.session_tanks;
-    let selectedTank = TANKS.filter((x) => x.tank_id == this.state.selectedTankID)[0];
+    // Loading indicator if data property is null.
+    if (this.state.data === null) { return(<Loading />) }
+
+    // Message if data.length = 0 and number of timestamps more than 0.
+    if ((this.state.data.length == 0) && (this.state.timestamps.length > 0)) {
+      return( <div className="container">
+                <div className="notification">
+                  No tanks were played.
+                </div>
+              </div>);
+    }
+
+    // Blank if data.length = 0.
+    if (this.state.data.length == 0) { return(null); }
+
+    // Assuming property exists and length > 0
+    const TANKS = this.state.data;
+    let tankID = this.state.tankID;
+    let selectedTank = TANKS.filter((x) => x.tank_id == this.state.tankID)[0];
 
     // If no tanks selected in the array.
-    if (!selectedTank) { selectedTank = TANKS[0] }
+    if (!selectedTank) {
+      selectedTank = TANKS[0];
+      tankID = selectedTank.tank_id;
+    }
 
-    const SELECTED_TANK_ID = selectedTank.tank_id;
-
+    // Menu elements.
     let menu = [];
     TANKS.forEach((tank) => {
       let className = '';
-      if (tank.tank_id == SELECTED_TANK_ID) { className = 'is-active' }
+      if (tank.tank_id == tankID) { className = 'is-active' }
 
       menu.push(  <li key={ tank.tank_id }>
                     <a className={ className }
-                       onClick={ () => this.setState({selectedTankID: tank.tank_id }) }>
+                       onClick={ () => this.setState({tankID: tank.tank_id }) }>
                       { tank.tank_name }
                     </a>
                   </li>);
@@ -1388,22 +1444,15 @@ class SessionTracker extends React.Component {
 
   render() {
 
-    // Return nothing if no data.
-    if (!this.props.data) { return(null) }
+    return( <div>
 
-    // Return nothing if property doesn't exist. (timestamp == 0).
-    if (!this.props.data.hasOwnProperty('session_tanks')) { return(null) }
+              <div className='container' style={{marginTop: 15 + 'px', marginBottom: 15 + 'px'}}>
+                { this.genControls() }
+              </div>
 
-    // Return message if array length == 0.
-    if (this.props.data.session_tanks.length == 0) {
-      return( <div className="container">
-                <div className="notification">
-                  No tanks were played.
-                </div>
-              </div>);
-    }
+              { this.mainBody() }
 
-    return(this.mainBody());
+            </div>);
   }
 }
 class Estimates extends React.Component {
@@ -1722,6 +1771,21 @@ class Nav extends React.Component {
                 </div>
               </div>
             </nav>);
+  }
+}
+class Loading extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    return( <section className='section is-medium'>
+                <div className='columns'>
+                  <div className='column is-4 is-offset-4'>
+                    <a className='button is-large is-white is-loading is-fullwidth'></a>
+                  </div>
+                </div>
+            </section>);
   }
 }
 
