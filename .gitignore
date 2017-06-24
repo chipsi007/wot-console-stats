@@ -8,3 +8,5 @@ sqlite.db
 utility/test_db.py
 
 nightly_task.txt
+
+static/app.js

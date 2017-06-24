@@ -1,29 +1,22 @@
 ###### Description:
 
-Advanced World of Tanks Console player statistics with charts, trends, evaluations.
+Advanced player statistics for World of Tanks Console.
 
-Wrapped up into SPA - style frontend, communicates with the server via JSON API. Heavily relies on ES6 methods and Fetch API (polyfill included for Safari).
+SPA - style frontend written in React, communicates with the server via JSON API and Fetch API.
 
-Collects raw daily user snapshots in pickletype SQL fields, performs real time calculations based on the stored data.
+Performs real time calculations based on the stored data.
 
-Utilizes data analysis insights from data of around 50,000 players. [Github repo](https://github.com/IDDT/wot-console-playerbase-analysis)
+Utilizes data analysis insights from the records of more than 100,000 players. [Github repo](https://github.com/IDDT/wot-console-playerbase-analysis)
 
 
 ###### Dependencies:
-- Python:
-  - flask
-  - flask_sqlalchemy
-  - requests
-  - json
-  - pickle
-  - datetime
-- JavaScript:
-  - [Chart.js 2.50](https://github.com/chartjs/Chart.js)
-  - [Fetch 2.0.3 (Polyfill)](https://github.com/github/fetch)
-- CSS
-  - [Bulma 0.4.0](https://github.com/jgthms/bulma)
-- SQL
-  - SQLite3
+- Backend: [Flask](https://github.com/pallets/flask)
+- frontend: [React](https://github.com/facebook/react)
+- Charts [Chart.js](https://github.com/chartjs/Chart.js)
+- AJAX [Fetch (Polyfill)](https://github.com/github/fetch)
+- CSS [Bulma](https://github.com/jgthms/bulma)
+- Database [SQLite](https://www.sqlite.org)
+- Assets [Simple-icons](https://github.com/danleech/simple-icons)
 
 
 ###### Bulma SASS Changes:
@@ -48,17 +41,10 @@ components/tabs.sass - .tabs &.is-boxed &.is-active a
 background-color: $white !important
 ```
 
-###### Initial SQL database setup:
+###### Other files:
 
-```Python
-from flask_site import db
+`/utility/create_db.py` - Database setup
 
-#Create all tables
-db.create_all()
+`/utility/nightly_task.py` - Maintenance script
 
-#Remove all tables
-db.drop_all()
-
-db.session.commit()
-db.session.close()
-```
+`/utility/request_tankopedia.py` - Update tankopedia

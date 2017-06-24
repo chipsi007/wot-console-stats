@@ -42,7 +42,7 @@ const component = {
 
                         <article class="message is-light">
                           <div class="message-body has-text-centered">
-                            Stable version: wot.pythonanywhere.com
+                            This is a legacy version.
                           </div>
                         </article>
 
@@ -610,7 +610,7 @@ const component = {
       ["DPM",                oTank.session.dpm,      oTank.all.dpm],
       ["WN8",                oTank.session.wn8,     oTank.all.wn8]
     ];
-    
+
     function convertTime(seconds) {
         if (seconds >= 60) {
           const M = parseInt(seconds / 60);
@@ -667,16 +667,16 @@ const component = {
   // About page
   about: function() {
     const HTML = `<section class='section'><div class='container content'>
-                  
+
                     <p>
-                      Interested in the future of this website? Contribute to the development on 
+                      Interested in the future of this website? Contribute to the development on
                       <a href='https://github.com/IDDT/wot-console-stats'>GitHub</a>
                     </p>
-                    
+
                     <p>
                       Interested in WN8 calculation algorithm?
                       <a href='https://github.com/IDDT/wot-console-playerbase-analysis'>Here it is</a>
-                    
+
                       <br>
                       <a href='https://github.com/IDDT/wot-console-playerbase-analysis/tree/master/wn8_results'>WN8 comparison charts</a>
 
@@ -687,9 +687,9 @@ const component = {
                     <p>
                       Latest percentiles and WN8 table update: 30 APR 2017
                     </p>
-                  
+
                     <p>
-                      Have a question? Found a bug? Send a message to my 
+                      Have a question? Found a bug? Send a message to my
                       <a href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'>WoT Console forum profile</a> or open an issue in the respective repository.
                     </p>
 

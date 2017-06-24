@@ -139,7 +139,7 @@ class Login extends React.Component {
 
                   <article className="message is-light">
                     <div className="message-body has-text-centered">
-                      Stable version: wot.pythonanywhere.com
+                      This is the release of the frontend written with React. In case of issues use <a href="/legacy">legacy frontend</a> (soon to be discontinued) and report bugs to <a href='https://discord.gg/XjK8tZb'>Discord</a> or <a href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'>WOT profile</a>.
                     </div>
                   </article>
 
@@ -234,6 +234,12 @@ class Main extends React.Component {
 
   // Functions
   switchPage(sPage) {
+
+    //Google Analytics tracking.
+    if (typeof(ga) == 'function') {
+      ga('set', 'page', sPage);
+      ga('send', 'pageview');
+    }
 
     let newPages = this.state.pages;
 
@@ -611,6 +617,7 @@ class Profile extends React.Component {
   constructor(props) {
     super(props);
     this.getArrowTag = this.getArrowTag.bind(this);
+    this.getSmallArrowTag = this.getSmallArrowTag.bind(this);
     this.getWn8Color = this.getWn8Color.bind(this);
   }
 
@@ -629,6 +636,18 @@ class Profile extends React.Component {
     } else {
       // Arrow straight.
       return(<p className="title" style={{color: 'BLACK'}}> &#9654; </p>);
+    }
+  }
+  getSmallArrowTag(recentNumber, alltimeNumber) {
+    if (recentNumber > alltimeNumber) {
+      //Arrow up.
+      return(<p style={{color: '#89b891'}}> &#9650; </p>);
+    } else if (recentNumber < alltimeNumber) {
+      // Arrow down.
+      return(<p style={{color: '#c28080'}}> &#9660; </p>);
+    } else {
+      // Arrow straight.
+      return(<p style={{color: 'BLACK'}}> &#9654; </p>);
     }
   }
   getWn8Color(wn8Score) {
@@ -688,7 +707,7 @@ class Profile extends React.Component {
       const ALL_TIME = DATA.all_time[item.attr];
 
       tbody.push( <tr key={ item.attr }>
-                    <td>{ this.getArrowTag(RECENT, ALL_TIME) }</td>
+                    <td>{ this.getSmallArrowTag(RECENT, ALL_TIME) }</td>
                     <td>{ item.label }</td>
                     <td>{ ALL_TIME + item.addon }</td>
                     <td>{ RECENT + item.addon }</td>
@@ -1542,25 +1561,63 @@ class About extends React.Component {
   render() {
     return( <div>
               <section className='section'>
-                <div className='container content'>
-                  <p>
-                    Interested in the future of this website? Contribute to the development on <a href='https://github.com/IDDT/wot-console-stats'>GitHub</a>
-                  </p>
-                  <p>
-                    Interested in WN8 calculation algorithm?
-                    <a href='https://github.com/IDDT/wot-console-playerbase-analysis'>Here it is</a>
-                    <br />
-                    <a href='https://github.com/IDDT/wot-console-playerbase-analysis/tree/master/wn8_results'>WN8 comparison charts</a>
-                    <br />
-                    <a href='https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/data/processed/wn8console.json'>WN8 values in JSON</a>
-                  </p>
-                  <p>
-                    Latest percentiles and WN8 table update: 30 APR 2017
-                  </p>
-                  <p>
-                    Have a question? Found a bug? Send a message to my
-                    <a href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'>WoT Console forum profile</a> or open an issue in the respective repository.
-                  </p>
+                <div className='container'>
+
+                  <article className="media box">
+                    <figure className="media-left">
+                      <p className="image is-64x64">
+                        <img src='/static/discord.svg' />
+                      </p>
+                    </figure>
+                    <div className="media-content">
+                      <div className="content">
+                        <p>
+                          <strong><a href='https://discord.gg/XjK8tZb'>Discord server</a></strong>
+                          <br />
+                          Probably the fastest and easiest way to get in touch.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="media box">
+                    <figure className="media-left">
+                      <p className="image is-64x64">
+                        <img src='/static/github.svg' />
+                      </p>
+                    </figure>
+                    <div className="media-content">
+                      <div className="content">
+                        <p>
+                          <strong><a href='https://github.com/IDDT/wot-console-stats'>Development repository</a></strong>
+                          <br />
+                          Changelog with sources.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="media box">
+                    <figure className="media-left">
+                      <p className="image is-64x64">
+                        <img src='/static/github.svg' />
+                      </p>
+                    </figure>
+                    <div className="media-content">
+                      <div className="content">
+                        <p>
+                          <strong>
+                            <a href='https://github.com/IDDT/wot-console-playerbase-analysis'>
+                            WN8 / Percentiles repository
+                            </a>
+                          </strong>
+                          <br />
+                          WN8 / Percentiles calculation algorithms. <a href='https://github.com/IDDT/wot-console-playerbase-analysis/tree/master/wn8_results'>WN8 comparison charts.</a> <a href='https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/data/processed/wn8console.json'>WN8 console values in JSON.</a>
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+
                 </div>
               </section>
             </div>);

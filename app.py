@@ -169,10 +169,18 @@ class sql():
 
 
 
-#Main page.
+#Frontend.
 @app.route('/')
 def index():
     return render_template("index.html")
+@app.route('/legacy')
+def index_legacy():
+    return render_template("index_legacy.html")
+@app.route('/dev')
+def index_dev():
+    return render_template("index_dev.html")
+
+
 
 #React.js test page.
 @app.route('/test')
