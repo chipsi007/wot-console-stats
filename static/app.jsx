@@ -11,22 +11,22 @@ class App extends React.Component {
   }
 
   updateRootInfo(Obj) {
-    this.setState({server: Obj.server,
-                   nickname: Obj.nickname,
-                   accountID: Obj.accountID
+    this.setState({
+      server: Obj.server,
+      nickname: Obj.nickname,
+      accountID: Obj.accountID
     });
   }
 
   render() {
-
     if ((this.state.accountID === null) || (this.state.server === null)) {
       return(<Login updateRootInfo={ this.updateRootInfo } />);
-    } else {
-      return(<Main nickname={ this.state.nickname }
-                   accountID={ this.state.accountID }
-                   server={ this.state.server }
-                   updateRootInfo={ this.updateRootInfo }  />);
     }
+
+    return(<Main nickname={ this.state.nickname }
+                 accountID={ this.state.accountID }
+                 server={ this.state.server }
+                 updateRootInfo={ this.updateRootInfo } />);
   }
 }
 
@@ -34,35 +34,79 @@ class Login extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      server: null,
-      loading: false
+      loading: false,
+      warningMsg: null,
+
+      loggedBefore: false,
+      nickname: null,
+      server: null
     };
+    this.updateLocalStorage = this.updateLocalStorage.bind(this);
+    this.clearLocalStorage = this.clearLocalStorage.bind(this);
+    this.fetchAccountInfo = this.fetchAccountInfo.bind(this);
   }
 
-  fetchAccountID() {
+  componentWillMount() {
 
-    let nickname = this.refs.nickname.value;
+    // Getting local storage.
+    if (!window.localStorage) { return }
+    const NICKNAME = window.localStorage.getItem('nickname');
+    const SERVER = window.localStorage.getItem('server');
+    if (NICKNAME && SERVER) {
+      this.setState({
+        loggedBefore: true,
+        nickname: NICKNAME,
+        server: SERVER
+      });
+    }
+  }
+
+  updateLocalStorage(nickname, server) {
+    if (!window.localStorage) { return }
+    try {
+      window.localStorage.clear();
+      window.localStorage.setItem('nickname', nickname);
+      window.localStorage.setItem('server', server);
+    }
+    catch(error) {
+      return;
+    }
+
+  }
+
+  clearLocalStorage() {
+    this.setState({loggedBefore: false});
+    if (!window.localStorage) { return }
+    window.localStorage.clear();
+  }
+
+  fetchAccountInfo() {
+
+    // Clear warning message.
+    this.setState({warningMsg: null});
+
+    // Getting variables based on the form.
+    let nickname = this.state.nickname;
+    let server = this.state.server;
+
+    // If new user, getting variables from refs.
+    if (!this.state.loggedBefore) {
+      nickname = this.refs.nickname.value;
+      server = this.refs.server.value;
+    }
 
     // Validation.
-    if (this.state.server === null) {
-      alert('Server is not selected');
-      return;
-    }
     if (nickname == '') {
-      alert('Please enter your playername');
+      this.setState({warningMsg: 'Please enter your playername'});
       return;
     }
 
-    // Loading indicator.
+    // Loading indication.
     this.setState({loading: true});
 
-    // Preparing the url for the request.
-    let url;
-    if (this.state.server == 'xbox') {
-      url = 'https://api-xbox-console.worldoftanks.com/wotx/account/list/?application_id=demo&search=' + nickname;
-    } else {
-      url = 'https://api-ps4-console.worldoftanks.com/wotx/account/list/?application_id=demo&search=' + nickname;
-    }
+    // Preparing the url.
+    let url = 'https://api-' + server + '-console.worldoftanks.com/wotx/account/list/?application_id=demo&search=';
+    url += nickname;
 
     // Requesting the info.
     fetch(url)
@@ -70,79 +114,112 @@ class Login extends React.Component {
       .then(j => {
         // Disable loading indicator.
         this.setState({loading: false});
-        // Conditions.
+        // Everythyng OK.
         if ((j.status == 'ok') && (j.meta.count > 0)) {
-          const OBJ = {nickname: j.data[0].nickname,
-                       accountID: j.data[0].account_id,
-                       server: this.state.server};
+          const OBJ = {
+            nickname: j.data[0].nickname,
+            accountID: j.data[0].account_id,
+            server: server
+          };
+          this.updateLocalStorage(OBJ.nickname, OBJ.server);
           this.props.updateRootInfo(OBJ);
+        // No players found.
         } else if ((j.status == 'ok') && (j.meta.count === 0)) {
-          alert('No such player found');
+          this.setState({warningMsg: 'The player was not found'});
+        // WG API returned error.
         } else if (j.status == 'error') {
-          alert(j.error.message);
+          this.setState({warningMsg: j.error.message});
         }
       })
       .catch(error => {
-        // Disable loading indicator.
-        this.setState({loading: false});
-        alert('Failed to contact Wargaming API services, error message: ' + error.message);
+        // Disable loading indicator & show warning message.
+        this.setState({
+          loading: false,
+          warningMsg: 'Failed to contact Wargaming API services. Error message: ' + error.message
+        });
+        // Clear local storage and return to new login form.
+        this.clearLocalStorage();
       });
   }
 
+  warningMsg() {
+    if (!this.state.warningMsg) { return }
+    return( <p className="help is-danger has-text-centered">
+              { this.state.warningMsg }
+            </p>);
+  }
+
+  newUser() {
+
+    return( <div className="field has-addons">
+              <p className='control has-icons-left is-expanded'>
+                <input className='input has-text-centered' type='text' ref='nickname' />
+                <span className='icon is-left'>
+                  <i className="fa fa-user"></i>
+                </span>
+              </p>
+              <p className="control has-icons-left">
+                <span className="select">
+                  <select ref='server'>
+                    <option value='xbox'>XBOX</option>
+                    <option value='ps4'>PS4</option>
+                  </select>
+                </span>
+                <span className="icon is-left">
+                  <i className="fa fa-gamepad"></i>
+                </span>
+              </p>
+            </div>);
+  }
+
+  returningUser() {
+
+    return( <div className='field is-grouped'>
+              <p className='control is-expanded'>
+                <span className='button is-static is-fullwidth'>
+                  <span className="icon"><i className='fa fa-user'></i></span>
+                  <span>{ this.state.nickname }</span>
+                </span>
+              </p>
+              <p className='control'>
+                <a className='button is-danger' onClick={ this.clearLocalStorage }>
+                  <span className='icon'><i className='fa fa-times'></i></span>
+                </a>
+              </p>
+            </div>);
+  }
+
   render() {
-    // Assigning classnames for buttons based on state.
-    let xboxCls = 'button is-fullwidth';
-    let ps4Cls = 'button is-fullwidth';
-    if (this.state.server == 'xbox') xboxCls += ' is-active';
-    if (this.state.server == 'ps4') ps4Cls += ' is-active';
 
     // Loading indication for login button.
-    let loginButtonClassName = 'button is-primary is-fullwidth';
-    if (this.state.loading) loginButtonClassName += ' is-loading';
+    let loginClsName = 'button is-primary is-fullwidth' + (this.state.loading ? ' is-loading' : '');
 
-    return( <section className="section is-large">
-              <div className="columns">
-                <div className="column is-4 is-offset-4">
+    return( <section className='hero is-fullheight is-light is-bold is-medium'>
+              <div className='hero-body'>
+                <div className='container'>
+                  <div className='columns is-centered'>
 
-                  <div className="card">
-                    <div className="card-content">
+                    <article className='card'>
+                      <div className='card-content'>
 
-                      <div className="field">
-                        <p className="control">
-                          <input ref="nickname" className="input has-text-centered" type="text" placeholder="Playername" />
-                        </p>
+                        { (this.state.loggedBefore) ? this.returningUser() : this.newUser() }
+
+                        <div className='field'>
+                          <p className='control'>
+                            <a className={ loginClsName } onClick={ this.fetchAccountInfo }>
+                              <span className="icon"><i className='fa fa-sign-in'></i></span>
+                              <span>Login</span>
+                            </a>
+                          </p>
+                        </div>
+
+                        { this.warningMsg() }
+
                       </div>
 
-                      <div className="field is-grouped">
-                        <p className="control is-expanded">
-                          <a className={xboxCls} onClick={() => {this.setState({server: 'xbox'})}}>
-                            XBOX
-                          </a>
-                        </p>
-                        <p className="control is-expanded">
-                          <a className={ps4Cls} onClick={() => {this.setState({server: 'ps4'})}}>
-                            PLAYSTATION
-                          </a>
-                        </p>
-                      </div>
+                    </article>
 
-                      <div className="field">
-                        <p className="control">
-                          <a className={loginButtonClassName} onClick={ () => this.fetchAccountID() }>
-                            Login
-                          </a>
-                        </p>
-                      </div>
-
-                    </div>
                   </div>
-
-                  <article className="message is-light">
-                    <div className="message-body has-text-centered">
-                      This is the release of the frontend written with React. In case of issues use <a href="/legacy">legacy frontend</a> (soon to be discontinued) and report bugs to <a href='https://discord.gg/XjK8tZb'>Discord</a> or <a href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'>WOT profile</a>.
-                    </div>
-                  </article>
-
                 </div>
               </div>
             </section>);
@@ -155,12 +232,12 @@ class Main extends React.Component {
     this.state = {
 
       pages: [
-        { label: 'Profile',         active: true },
-        { label: 'Vehicles',        active: false },
-        { label: 'Time Series',     active: false },
-        { label: 'Session Tracker', active: false },
-        { label: 'WN8 Estimates',   active: false },
-        { label: 'About',           active: false }
+        { label: 'Profile',         iconClass: "fa fa-user",            active: true },
+        { label: 'Vehicles',        iconClass: "fa fa-table",           active: false },
+        { label: 'Time Series',     iconClass: "fa fa-line-chart",      active: false },
+        { label: 'Session Tracker', iconClass: "fa fa-calendar",        active: false },
+        { label: 'WN8 Estimates',   iconClass: "fa fa-calculator",      active: false },
+        { label: 'About',           iconClass: "fa fa-question-circle", active: false }
       ],
       tabs: [
         {label: 'Dashboard', active: true},
@@ -1302,9 +1379,10 @@ class SessionTracker extends React.Component {
                   </li>);
     });
 
+    const DAYS_AGO = Math.round((Date.now() / 1000 - SELECTED_TIMESTAMP) / 60 / 60 / 24);
     return( <nav className="pagination">
-              <a className="pagination-previous" disabled>View statistics for the last days</a>
-              <ul className="pagination-list" style={{'overflowX': 'scroll'}}>
+              <a className="pagination-previous" disabled>Snapshot between { DAYS_AGO } days ago and now</a>
+              <ul className="pagination-list">
                 { output }
               </ul>
             </nav>);
@@ -1608,6 +1686,12 @@ class About extends React.Component {
     super(props);
   }
   render() {
+
+    const DISCORD_SVG = (<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd" strokeLinejoin="round" strokeMiterlimit="1.414"><path d="M13.487-.002c.936 0 1.693.758 1.738 1.65v14.35l-1.783-1.515-.98-.892-1.07-.93.446 1.47h-9.36c-.935 0-1.693-.71-1.693-1.65V1.65C.785.76 1.543 0 2.48 0h11zm-4.08 3.788h-.02l-.134.134c1.382.4 2.05 1.025 2.05 1.025-.89-.446-1.694-.668-2.496-.758-.58-.09-1.16-.044-1.65 0h-.132c-.312 0-.98.134-1.872.49-.312.134-.49.223-.49.223s.668-.668 2.14-1.025l-.09-.09s-1.115-.043-2.318.848c0 0-1.203 2.095-1.203 4.68 0 0 .668 1.158 2.495 1.203 0 0 .268-.356.535-.668-1.025-.312-1.426-.936-1.426-.936s.09.044.223.133h.04c.02 0 .03.01.04.02v.005c.01.01.02.02.04.02.22.09.44.178.62.267.31.134.71.268 1.2.357.62.09 1.33.134 2.14 0 .4-.09.8-.178 1.2-.357.26-.133.58-.267.93-.49 0 0-.4.624-1.47.936.22.312.53.668.53.668 1.83-.04 2.54-1.2 2.58-1.15 0-2.58-1.21-4.68-1.21-4.68-1.09-.81-2.11-.84-2.29-.84zm.113 2.942c.468 0 .847.4.847.89 0 .493-.38.892-.847.892-.467 0-.846-.4-.846-.89 0-.493.38-.892.846-.892zm-3.03 0c.467 0 .846.4.846.89 0 .493-.38.892-.846.892-.468 0-.847-.4-.847-.89 0-.493.38-.892.847-.892z"/></svg>);
+
+    const GITHUB_SVG = (<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd" strokeLinejoin="round" strokeMiterlimit="1.414"><path d="M8 0C3.58 0 0 3.582 0 8c0 3.535 2.292 6.533 5.47 7.59.4.075.547-.172.547-.385 0-.19-.007-.693-.01-1.36-2.226.483-2.695-1.073-2.695-1.073-.364-.924-.89-1.17-.89-1.17-.725-.496.056-.486.056-.486.803.056 1.225.824 1.225.824.714 1.223 1.873.87 2.33.665.072-.517.278-.87.507-1.07-1.777-.2-3.644-.888-3.644-3.953 0-.873.31-1.587.823-2.147-.09-.202-.36-1.015.07-2.117 0 0 .67-.215 2.2.82.64-.178 1.32-.266 2-.27.68.004 1.36.092 2 .27 1.52-1.035 2.19-.82 2.19-.82.43 1.102.16 1.915.08 2.117.51.56.82 1.274.82 2.147 0 3.073-1.87 3.75-3.65 3.947.28.24.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.14.46.55.38C13.71 14.53 16 11.53 16 8c0-4.418-3.582-8-8-8"/></svg>);
+
+
     return( <div>
               <section className='section'>
                 <div className='container'>
@@ -1615,7 +1699,7 @@ class About extends React.Component {
                   <article className="media box">
                     <figure className="media-left">
                       <p className="image is-64x64">
-                        <img src='/static/discord.svg' />
+                        { DISCORD_SVG }
                       </p>
                     </figure>
                     <div className="media-content">
@@ -1632,7 +1716,7 @@ class About extends React.Component {
                   <article className="media box">
                     <figure className="media-left">
                       <p className="image is-64x64">
-                        <img src='/static/github.svg' />
+                        { GITHUB_SVG }
                       </p>
                     </figure>
                     <div className="media-content">
@@ -1649,7 +1733,7 @@ class About extends React.Component {
                   <article className="media box">
                     <figure className="media-left">
                       <p className="image is-64x64">
-                        <img src='/static/github.svg' />
+                        { GITHUB_SVG }
                       </p>
                     </figure>
                     <div className="media-content">
@@ -1677,7 +1761,22 @@ class About extends React.Component {
 class Hero extends React.Component {
   constructor(props) {
     super(props);
+    this.logout = this.logout.bind(this);
   }
+
+  logout() {
+    // Empty browser local storage.
+    if (window.localStorage) {
+      window.localStorage.clear();
+    }
+    // Updating root component.
+    this.props.updateRootInfo({
+      server: null,
+      nickname: null,
+      accountID: null
+    });
+  }
+
   genHeroFoot() {
 
     let pages = [];
@@ -1691,7 +1790,10 @@ class Hero extends React.Component {
       pages.push( <li className={ isActive }
                       onClick={ () => this.props.switchPage(page.label) }
                       key={ page.label }>
-                    <a>{ page.label }</a>
+                    <a>
+                      <span className="icon"><i className={ page.iconClass }></i></span>
+                      <span>{ page.label }</span>
+                    </a>
                   </li>);
     });
     return( <div className="hero-foot">
@@ -1704,6 +1806,7 @@ class Hero extends React.Component {
               </nav>
             </div>);
   }
+
   genHeroHead() {
     return( <div className="hero-head">
               <header className="nav">
@@ -1711,20 +1814,15 @@ class Hero extends React.Component {
 
                   <div className="nav-left">
                     <span className="nav-item">
-
                       <strong>
                         {this.props.nickname}
                       </strong>
-
                     </span>
                   </div>
 
                   <div className="nav-right">
                     <span className="nav-item">
-                      <a className="button is-primary is-inverted"
-                         onClick={ () => this.props.updateRootInfo({server: null,
-                                                                    nickname: null,
-                                                                    accountID: null }) }>
+                      <a className="button is-primary is-inverted" onClick={ this.logout }>
                         Logout
                       </a>
                     </span>
@@ -1734,8 +1832,9 @@ class Hero extends React.Component {
               </header>
             </div>);
   }
+
   render() {
-    return( <section className="hero is-primary is-bold">
+    return( <section className="hero is-primary">
               { this.genHeroHead() }
               { this.genHeroFoot() }
             </section>);

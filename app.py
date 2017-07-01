@@ -171,9 +171,6 @@ class sql():
 @app.route('/')
 def index():
     return render_template("index.html")
-@app.route('/legacy')
-def index_legacy():
-    return render_template("index_legacy.html")
 @app.route('/dev')
 def index_dev():
     return render_template("index_dev.html")
@@ -773,7 +770,7 @@ class pageSessionTracker(base):
                 if tank_id == player_tank['tank_id']:
                     output.append({
                         'tank_id': tank_id,
-                        'tank_name': tankopedia.get(str(tank_id)).get('short_name', 'Unknown'),
+                        'tank_name': tankopedia.get(str(tank_id), {}).get('short_name', 'Unknown'),
                         'all': {
                             **self.get_radar_data(player_tank, tank_id),
                             **self.get_other_data(player_tank)
