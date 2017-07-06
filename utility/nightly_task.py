@@ -2,9 +2,12 @@ import requests
 import time
 
 
-
+#Get users in specified period.
 def get_users():
-    resp = requests.get('http://wot.pythonanywhere.com/recent-users/')
+    seven_days_ago = int(time.time()) - 60 * 60 * 24 * 7
+    now = int(time.time())
+    url = 'http://wot.pythonanywhere.com/users-in-period/{}/{}/'.format(seven_days_ago, now)
+    resp = requests.get(url)
     output = resp.json()['data']
     return(output)
 
@@ -12,7 +15,7 @@ def iterate(users):
     success_counter = 0
     for server, account_id in users:
         try:
-            url = 'http://wot.pythonanywhere.com/add-checkpoint/{}/{}/'.format(server, account_id)
+            url = 'http://wot.pythonanywhere.com/add-bot-checkpoint/{}/{}/'.format(server, account_id)
             resp = requests.get(url).text
             if resp == 'ok':
                 success_counter += 1

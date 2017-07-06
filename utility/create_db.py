@@ -6,20 +6,20 @@ c = conn.cursor()
 c.execute('''DROP TABLE IF EXISTS checkpoints;''')
 conn.commit()
 
-#id                 autoincrementing serial
-#created_at         timestamp
-#created_by_bot     1 if bot, 0 otherwise
-#account_id         WG id
-#server             'ps4' or 'xbox'
-#data               pickled data
+#rowid              INTEGER     hidden autoincrementing serial
+#created_at         INTEGER     timestamp
+#created_by_bot     INTEGER     1 if bot, 0 otherwise
+#account_id         INTEGER     WG id
+#server             TEXT        'ps4' or 'xbox'
+#data               BLOB        pickled data
 
-c.execute('''CREATE TABLE IF NOT EXISTS checkpoints (
-                id INTEGER PRIMARY KEY,
+c1.execute('''CREATE TABLE IF NOT EXISTS checkpoints (
                 created_at INTEGER,
-                created_by_bot INT,
+                created_by_bot INTEGER,
                 account_id INTEGER,
                 server TEXT,
-                data BLOB);''')
+                data BLOB,
+                PRIMARY KEY (account_id, server, created_at));''')
 
 conn.commit()
 conn.close()

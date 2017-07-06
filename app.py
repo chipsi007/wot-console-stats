@@ -82,18 +82,19 @@ class sql():
 
         #If None or the record was not created today.
         query = 'INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data) VALUES (?, ?, ?, ?, ?);'
-        cur.execute(query, [now, 0, account_id, server, pickle.dumps(player_data)])
+        cur.execute(query, (now, 0, account_id, server, pickle.dumps(player_data)))
 
     #Methods for the bot to create auto-checkpoints.
     @staticmethod
-    def get_recent_users():
-        #Find users in the last 7 days.
-        seven_days_ago = int(time.time()) - 60 * 60 * 24 * 7
+    def get_users_in_period(start_timestamp, end_timestamp):
+        #Find unique non-bot account ids in between timestamps.
+        #Out: [](server:str, account_id:int)
         query = '''SELECT server, account_id FROM checkpoints
-                   WHERE created_by_bot != 1 AND created_at > ?
-                   GROUP BY server, account_id'''
+                   WHERE created_by_bot != 1 AND created_at >= ? AND created_at <= ?
+                   GROUP BY account_id, server
+                   ORDER BY account_id, server'''
         cur = open_conn().cursor()
-        output = cur.execute(query, [seven_days_ago]).fetchall()
+        output = cur.execute(query, (start_timestamp, end_timestamp)).fetchall()
         return(output)
     @staticmethod
     def is_created_today(server, account_id):
@@ -110,62 +111,66 @@ class sql():
             #If latest timestamp is from today.
             if found_date == current_date:
                 return(True)
-
         return(False)
     @staticmethod
     def add_bot_checkpoint(server, account_id, player_data):
         #Add checkpont by BOT or do nothing if already exist today.
         cur = open_conn().cursor()
         query = 'SELECT MAX(created_at) FROM checkpoints WHERE server = ? AND account_id = ?'
-        biggest_timestamp = cur.execute(query, [server, account_id]).fetchone()[0]
+        biggest_timestamp = cur.execute(query, (server, account_id)).fetchone()[0]
+
+        now = int(time.time())
 
         if biggest_timestamp:
             found_date = time.strftime('%Y%m%d', time.gmtime(biggest_timestamp))
-            current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
+            current_date = time.strftime('%Y%m%d', time.gmtime(now))
             if found_date == current_date:
                 return
 
         #If returned None, or result is not from today.
         query = '''INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data)
                    VALUES (?, ?, ?, ?, ?);'''
-        cur.execute(query, [int(time.time()), 1, account_id, server, pickle.dumps(player_data)])
+        cur.execute(query, (now, 1, account_id, server, pickle.dumps(player_data)))
 
     #Database optimization and cleaning up.
     @staticmethod
-    def leave_first_checkpoint_a_week(server, account_id):
-        #Scans through all user checkpoints and leaves 1st checkpont in a week. Leaves last 21 days untouched.
-        period = int(time.time()) - (60 * 60 * 24 * 21)
-        query = '''SELECT id, created_at FROM checkpoints
-                   WHERE server = ? AND account_id = ? AND created_at <= ?
+    def leave_first_checkpoint_per_week(server, account_id):
+        #Scans through all user checkpoints and leaves 1st checkpont in a week. Leaves last 14 days untouched.
+        cur = open_conn().cursor()
+        fourteen_days = int(time.time()) - (60 * 60 * 24 * 14)
+        query = '''SELECT created_at FROM checkpoints
+                   WHERE server = ? AND account_id = ? AND created_at < ?
                    ORDER BY created_at ASC;'''
-        old_checkpoints = cur.execute(query, [server, account_id, period]).fetchall()
+        timestamps = cur.execute(query, (server, account_id, fourteen_days)).fetchall()
+        timestamps = [item[0] for item in timestamps]
 
         #Get unique years.
-        years = [time.gmtime(row[1]).tm_year for row in old_checkpoints]
-        years = list(set(years))
+        unique_years = list(set([time.gmtime(item).tm_year for item in timestamps]))
 
-        #Collecting row ids to remove.
-        ids_to_remove = []
-        for year in years:
+        #Collecting timestamps to remove.
+        to_remove = []
+        for year in unique_years:
             #Disregard week 0.
             weeks = [0]
-            for row in old_checkpoints:
-                if time.gmtime(row[1]).tm_year == year:
-                    row_week = int(time.strftime('%W', time.gmtime(row[1])))
-                    #Allowing to pass only the first checkpoint in a week.
-                    if row_week in weeks:
-                        ids_to_remove.append(row[0])
-                    else:
-                        weeks.append(row_week)
+            for item in timestamps:
+                if time.gmtime(item).tm_year != year:
+                    continue
 
-        if len(ids_to_remove) == 0:
+                #Allowing to pass only the first checkpoint in a week.
+                week_num = int(time.strftime('%W', time.gmtime(item)))
+                if week_num in weeks:
+                    to_remove.append(item)
+                else:
+                    weeks.append(week_num)
+
+        #Do nothing if empty.
+        if any(to_remove) == False:
             return
 
         #Deleting selected ids.
-        tuples = [(row_id,) for row_id in ids_to_remove]
-        cur.executemany('DELETE FROM checkpoints WHERE id = ?', tuples)
-        conn.commit()
-
+        tuples = [(server, account_id, created_at) for created_at in to_remove]
+        query = 'DELETE FROM checkpoints WHERE server = ? AND account_id = ? AND created_at = ?'
+        cur.executemany(query, tuples)
 
 #Frontend.
 @app.route('/')
@@ -197,20 +202,23 @@ class wgapiCls():
         if fetched is False:
             return('error', 'Failed to request the data from WG API', None)
 
+        #If request went through.
         status = resp.get('status')
-        vehicles = resp.get('data').get(str(account_id))
+        message = resp.get('error', {}).get('message')
+        vehicles = resp.get('data', {}).get(str(account_id))
+        data = None
 
         if status == 'error':
-            status, message, data = 'error', resp.get('error').get('message'), None
+            pass
         elif status == 'ok' and vehicles is None:
-            status, message, data = 'error', 'No vehicles on the account', None
+            status, message = 'error', 'No vehicles on the account'
         elif status == 'ok':
-            status, message, data = 'ok', 'ok', []
+            message, data = 'ok', []
             for vehicle in vehicles:
                 #Dictionary from main values.
                 temp_dict = vehicle['all']
                 #Adding other values.
-                temp_dict['account_id'] = vehicle['account_id']
+                #temp_dict['account_id'] = vehicle['account_id']
                 temp_dict['battle_life_time'] = vehicle['battle_life_time']
                 temp_dict['last_battle_time'] = vehicle['last_battle_time']
                 temp_dict['mark_of_mastery'] = vehicle['mark_of_mastery']
@@ -1057,18 +1065,31 @@ def api_request_snapshots(server, account_id):
 
     return Response(json.dumps(output), mimetype='application/json')
 
-#Returns users in the last 7 days. Output: [(server, account_id)]
-@app.route('/recent-users/')
-def recent_users():
+@app.route('/users-in-period/<start_timestamp>/<end_timestamp>/')
+def users_in_period(start_timestamp, end_timestamp):
     start = time.time()
-    users = sql.get_recent_users()
-    output = {'status': 'ok', 'count': len(users), 'data': users}
-    output['time'] = time.time() - start
-    return Response(json.dumps(output), mimetype='application/json')
+    #Validation.
+    try:
+        int(start_timestamp), int(end_timestamp)
+    except:
+        return Response(json.dumps({
+            'status': 'error',
+            'message': 'timestamp cant be converted to integer',
+        }), mimetype='application/json')
 
-#Creates a bot-checkpoint in the database.
-@app.route('/add-checkpoint/<server>/<account_id>/')
-def add_checkpoint(server, account_id):
+    users = sql.get_users_in_period(start_timestamp, end_timestamp)
+
+    return Response(json.dumps({
+        'status': 'ok',
+        'message': 'ok',
+        'data': users,
+        'count': len(users),
+        'time': time.time() - start
+    }), mimetype='application/json')
+
+#Add checkpoint marked as bot-created if was not created today already.
+@app.route('/add-bot-checkpoint/<server>/<account_id>/')
+def add_bot_checkpoint(server, account_id):
 
     #Validation.
     try:
@@ -1076,9 +1097,9 @@ def add_checkpoint(server, account_id):
         if server not in ['xbox', 'ps4']:
             raise
     except:
-        return('Validation error')
+        return('error: wrong server or account id')
 
-    #Checking if the checkpoint already was created today.
+    #Checking if the checkpoint already was created today before sending http request for data.
     if sql.is_created_today(server, account_id) == True:
         return('ok')
 
@@ -1086,10 +1107,25 @@ def add_checkpoint(server, account_id):
     status, message, data = wgapi.get_player_data(server, account_id)
 
     if status != 'ok':
-        return('Player couldnt be fetched')
+        return('error: player couldnt be fetched')
 
     #Adding to the database.
     sql.add_bot_checkpoint(server, account_id, data)
+    return('ok')
+
+#Leave 1 checkpoint a week for a user. Only for checkpoints older than 14 days.
+@app.route('/cleanup/<server>/<account_id>/')
+def cleanup(server, account_id):
+
+    #Validation.
+    try:
+        int(account_id)
+        if server not in ['xbox', 'ps4']:
+            raise
+    except:
+        return('error: wrong server or account id')
+
+    sql.leave_first_checkpoint_per_week(server, account_id)
     return('ok')
 
 
