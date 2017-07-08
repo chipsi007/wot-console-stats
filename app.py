@@ -172,6 +172,7 @@ class sql():
         query = 'DELETE FROM checkpoints WHERE server = ? AND account_id = ? AND created_at = ?'
         cur.executemany(query, tuples)
 
+
 #Frontend.
 @app.route('/')
 def index():
@@ -260,9 +261,10 @@ wgapi = wgapiCls('demo')
 
 #Root app class.
 class base():
-    def __init__(self, server, account_id):
+    def __init__(self, server, account_id, player_data):
         self.server = server
         self.account_id = account_id
+        self.player_data = player_data
 
     #Decode string sent by a client into a filter input.
     @staticmethod
@@ -341,14 +343,16 @@ class base():
     @staticmethod
     def wn8_calculator(tank_data, WN8_dict):
         #Loading expected values
-        exp_values = {}
+        exp_values = None
         for item in WN8_dict:
-            if len(item) > 0 and tank_data['tank_id'] == item['IDNum']:
+            if any(item) and tank_data['tank_id'] == item['IDNum']:
                 exp_values = item
+                break
 
-        #If there are no expected values in the table, return 0
-        if len(exp_values) == 0:
+        #If not found.
+        if exp_values is None:
             return(0)
+
         #step 0 - assigning the variables
         expDmg      = exp_values['expDamage']
         expSpot     = exp_values['expSpot']
@@ -417,8 +421,8 @@ class base():
         return(slice_data)
 
 class pageProfile(base):
-    def __init__(self, server, account_id):
-        base.__init__(self, server, account_id)
+    def __init__(self, server, account_id, player_data):
+        base.__init__(self, server, account_id, player_data)
 
     @staticmethod
     def calculate_general_account_stats(userdata):
@@ -572,8 +576,8 @@ class pageProfile(base):
         })
 
 class pageVehicles(base):
-    def __init__(self, server, account_id):
-        base.__init__(self, server, account_id)
+    def __init__(self, server, account_id, player_data):
+        base.__init__(self, server, account_id, player_data)
 
     def extract_vehicle_data(self):
         extracted_data = []
@@ -651,8 +655,8 @@ class pageVehicles(base):
         self.player_data = extracted_data
 
 class pageTimeSeries(pageProfile):
-    def __init__(self, server, account_id):
-        base.__init__(self, server, account_id)
+    def __init__(self, server, account_id, player_data):
+        base.__init__(self, server, account_id, player_data)
 
     def calculate_charts(self, user_history_query, filter_input, tankopedia):
 
@@ -695,8 +699,8 @@ class pageTimeSeries(pageProfile):
         return
 
 class pageSessionTracker(base):
-    def __init__(self, server, account_id):
-        base.__init__(self, server, account_id)
+    def __init__(self, server, account_id, player_data):
+        base.__init__(self, server, account_id, player_data)
 
     @staticmethod
     def get_timestamps(search):
@@ -797,8 +801,8 @@ class pageSessionTracker(base):
         })
 
 class pageWn8Estimates(base):
-    def __init__(self, server, account_id):
-        base.__init__(self, server, account_id)
+    def __init__(self, server, account_id, player_data):
+        base.__init__(self, server, account_id, player_data)
 
     @staticmethod
     def calculate_wn8_damage_targets(tank_data, WN8_dict):
@@ -895,115 +899,73 @@ def api_main(request_type, server, account_id, timestamp, filters):
 
     start = time.time()
 
-    #Defaults.
-    output = {
-        'status':     'error',
-        'message':    'bad request',
-        'count':      0,
-        'server':     None,
-        'account_id': None,
-        'data':       None,
-        'time':       0
-    }
-
 
     #Validation.
     try:
         int(account_id), int(timestamp)
         if server not in ['xbox', 'ps4']:
             raise
+        if request_type not in ['profile', 'vehicles', 'time_series', 'session_tracker', 'wn8_estimates']:
+            raise
     except:
-        output['message'] = 'Invalid server/account_id/timestamp'
-        return Response(json.dumps(output), mimetype='application/json')
+        return Response(json.dumps({
+            'status': 'error',
+            'message': 'invalid server / account_id / timestamp'
+        }), mimetype='application/json')
+
 
     #Request player data or find cached.
     status, message, data = wgapi.find_cached_or_request(server, account_id)
     if status != 'ok':
-        output['status'], output['message'] = status, message
-        return Response(json.dumps(output), mimetype='application/json')
+        return Response(json.dumps({
+            'status': status,
+            'message': message
+        }), mimetype='application/json')
+
 
     #Processing according to request type.
     if request_type == 'profile':
-        #Initiating the class.
-        user = pageProfile(server, account_id)
-        user.player_data = data
-
-        #Searching all records of the player in SQL 'checkpoints' and taking the first available.
+        user = pageProfile(server, account_id, data)
         recent_checkpoints = sql.get_all_recent_checkpoints(server, account_id)
-
-        #Generating output.
-        output['status'], output['message'] = 'ok', 'ok'
-        output['server'], output['account_id'] = server, account_id
-        output['data'] = user.calculate_page_profile(filters, recent_checkpoints)
-        output['count'] = len(output['data'])
+        output = user.calculate_page_profile(filters, recent_checkpoints)
 
     elif request_type == 'vehicles':
-        #Initiating the class.
-        user = pageVehicles(server, account_id)
-        user.player_data = data
-
-        #Calculations.
+        user = pageVehicles(server, account_id, data)
         user.extract_vehicle_data()
-
-        #Generating output.
-        output['status'], output['message'] = 'ok', 'ok'
-        output['server'], output['account_id'] = server, account_id
-        output['data'] = user.player_data
-        output['count'] = len(user.player_data)
+        output = user.player_data
 
     elif request_type == 'time_series':
-        #Initiating the class.
-        user = pageTimeSeries(server, account_id)
-        user.player_data = data
-
-        #Converting filters into a list.
+        user = pageTimeSeries(server, account_id, data)
         filters = user.decode_filters_string(filters)
-
-        #Searching all records of the player in SQL 'history'.
         user_history_search = sql.get_all_recent_checkpoints(server, account_id)
-
-        #Calculating WN8 charts.
         user.calculate_charts(user_history_search, filters, tankopedia)
-
-        #Generating output.
-        output['status'], output['message'] = 'ok', 'ok'
-        output['server'], output['account_id'] = server, account_id
-        output['data'] = {
+        output = {
             'xlabels':            user.xlabels,
             'percentiles_change': user.percentiles_change,
             'wn8_totals':         user.wn8_totals[1:],
             'wn8_change':         user.wn8_change,
             'wn8_labels':         user.xlabels[1:]
         }
-        output['count'] = len(output['data'])
 
     elif request_type == 'session_tracker':
-        #Initiating the class.
-        user = pageSessionTracker(server, account_id)
-        user.player_data = data
-
-        #Calling all 'userdata_history' snapshots from SQL.
+        user = pageSessionTracker(server, account_id, data)
         search = sql.get_all_recent_checkpoints(server, account_id)
-
-        #Preparing output.
-        output['status'], output['message'] = 'ok', 'ok'
-        output['server'], output['account_id'] = server, account_id
-        output['data'] = user.calculateSessionTracker(timestamp, search)
-        output['count'] = len(output['data']['session_tanks'])
+        output = user.calculateSessionTracker(timestamp, search)
 
     elif request_type == 'wn8_estimates':
-        #Initiating the class.
-        user = pageWn8Estimates(server, account_id)
-        user.player_data = data
-        #Generating output.
-        output['data'] = user.calculate_wn8_estimates(wn8console, tankopedia)
-        output['count'] = len(output['data'])
-        output['status'], output['message'] = 'ok', 'ok'
-        output['server'] = server
-        output['account_id'] = account_id
+        user = pageWn8Estimates(server, account_id, data)
+        output = user.calculate_wn8_estimates(wn8console, tankopedia)
 
-    output['time'] = time.time() - start
-    return Response(json.dumps(output), mimetype='application/json')
+
+    return Response(json.dumps({
+        'status':     'ok',
+        'message':    'ok',
+        'count':      len(output),
+        'server':     server,
+        'account_id': account_id,
+        'data':       output,
+        'time':       time.time() - start
+    }), mimetype='application/json')
 
 #Request various files.
 @app.route('/api-request-file/<file_type>/')
