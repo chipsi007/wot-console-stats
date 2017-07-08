@@ -444,25 +444,29 @@ class Main extends React.Component {
       .then(response => { return response.json() })
       .then(j => {
         this.setState({loading: false});
-        const RESULT = j.data;
-        switch (CURRENT_PAGE) {
-          case 'Profile':
-            this.setState({profile: RESULT});
-            break;
-          case 'Vehicles':
-            this.setState({vehicles: RESULT});
-            break;
-          case 'Time Series':
-            this.setState({timeSeries: RESULT});
-            break;
-          case 'Session Tracker':
-            this.setState({sessionTracker: RESULT});
-            break;
-          case 'WN8 Estimates':
-            this.setState({wn8Estimates: RESULT});
-            break;
-          default:
-            break;
+        if (j.status != 'ok') {
+          alert(j.message);
+        } else {
+          const RESULT = j.data;
+          switch (CURRENT_PAGE) {
+            case 'Profile':
+              this.setState({profile: RESULT});
+              break;
+            case 'Vehicles':
+              this.setState({vehicles: RESULT});
+              break;
+            case 'Time Series':
+              this.setState({timeSeries: RESULT});
+              break;
+            case 'Session Tracker':
+              this.setState({sessionTracker: RESULT});
+              break;
+            case 'WN8 Estimates':
+              this.setState({wn8Estimates: RESULT});
+              break;
+            default:
+              break;
+          }
         }
       })
       .catch(error => {
@@ -792,7 +796,7 @@ class Profile extends React.Component {
     const DATA = this.props.data;
 
     const WR_SCORE = DATA.all_time.wr;
-    const WN8_SCORE = DATA.all_time.wn8;
+    const WN8_SCORE = parseInt(DATA.all_time.wn8);
     const PERC_SCORE = DATA.all_time.total_perc;
 
     const WR_TAG = this.getArrowTag(DATA.recent.wr, DATA.all_time.wr);
@@ -1330,12 +1334,15 @@ class SessionTracker extends React.Component {
     fetch(URL)
       .then(response => { return response.json() })
       .then(j => {
-        if (j.status != 'ok') { window.alert('Server returned an error: ' + j.message) }
-        this.setState({
-          timestamp: j.data.timestamp,
-          timestamps: j.data.timestamps,
-          data: j.data.session_tanks
-        });
+        if (j.status != 'ok') {
+          window.alert('Server returned an error: ' + j.message)
+        } else {
+          this.setState({
+            timestamp: j.data.timestamp,
+            timestamps: j.data.timestamps,
+            data: j.data.session_tanks
+          });
+        }
       })
       .catch(error => {
         alert('There has been a problem with your fetch operation: ' + error.message);

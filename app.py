@@ -7,22 +7,17 @@ import datetime
 import time
 
 
+from secret import app_id
+
+
 with open('references/tankopedia.json', 'r') as f:
     tankopedia = json.load(f)
-with open('references/percentiles.json', 'r') as f:
-    percentiles = json.load(f)
-with open('references/percentiles_generic.json', 'r') as f:
-    percentiles_generic = json.load(f)
-with open('references/wn8console.json', 'r') as f:
-    wn8console = json.load(f)['data']
-with open('references/wn8pc.json', 'r') as f:
-    wn8pc = json.load(f)['data']
 
 
 app = Flask(__name__)
 
 
-#Sqlite connection context & data persistence.
+#Sqlite3 singleton + connection opener + connection teardown.
 def open_conn():
     conn = getattr(g, '_database', None)
     if conn is None:
@@ -38,8 +33,8 @@ class sql():
     #Main functions.
     @staticmethod
     def get_cached_checkpoint(server, account_id):
-        #Returns the most recent checkpoint created by user from last 5 minutes. None otherwise.
-        five_minutes_ago = int(time.time()) - 300
+        #Returns the most recent checkpoint created by user from last 10 minutes. None otherwise.
+        five_minutes_ago = int(time.time()) - 600
         cur = open_conn().cursor()
         query = '''SELECT created_at, account_id, server, data FROM checkpoints
                    WHERE server = ? AND account_id = ? AND created_by_bot != 1 AND created_at >= ?
@@ -83,6 +78,24 @@ class sql():
         #If None or the record was not created today.
         query = 'INSERT INTO checkpoints (created_at, created_by_bot, account_id, server, data) VALUES (?, ?, ?, ?, ?);'
         cur.execute(query, (now, 0, account_id, server, pickle.dumps(player_data)))
+    @staticmethod
+    def get_first_checkoint_per_week(server, account_id):
+        #SQLite3:"strftime('%H%M', timestamp, 'unixepoch')" ==  Python:"time.strftime('%H%M', time.gmtime(timestamp))"
+        query = '''
+            SELECT created_at, data
+            FROM checkpoints
+            WHERE server = ? AND account_id = ? AND created_at IN (
+                SELECT MIN(created_at)
+                FROM checkpoints
+                WHERE server = ? AND account_id = ?
+                GROUP BY
+                    strftime('%Y', created_at, 'unixepoch'),
+                    strftime('%W', created_at, 'unixepoch')
+            )
+            ORDER BY created_at ASC;
+        '''
+        cur.execute(query, (server, account_id, server, account_id))
+        return([{'created_at': row[0], 'data': pickle.loads(row[1])} for row in cur])
 
     #Methods for the bot to create auto-checkpoints.
     @staticmethod
@@ -137,40 +150,19 @@ class sql():
     def leave_first_checkpoint_per_week(server, account_id):
         #Scans through all user checkpoints and leaves 1st checkpont in a week. Leaves last 14 days untouched.
         cur = open_conn().cursor()
-        fourteen_days = int(time.time()) - (60 * 60 * 24 * 14)
-        query = '''SELECT created_at FROM checkpoints
-                   WHERE server = ? AND account_id = ? AND created_at < ?
-                   ORDER BY created_at ASC;'''
-        timestamps = cur.execute(query, (server, account_id, fourteen_days)).fetchall()
-        timestamps = [item[0] for item in timestamps]
-
-        #Get unique years.
-        unique_years = list(set([time.gmtime(item).tm_year for item in timestamps]))
-
-        #Collecting timestamps to remove.
-        to_remove = []
-        for year in unique_years:
-            #Disregard week 0.
-            weeks = [0]
-            for item in timestamps:
-                if time.gmtime(item).tm_year != year:
-                    continue
-
-                #Allowing to pass only the first checkpoint in a week.
-                week_num = int(time.strftime('%W', time.gmtime(item)))
-                if week_num in weeks:
-                    to_remove.append(item)
-                else:
-                    weeks.append(week_num)
-
-        #Do nothing if empty.
-        if any(to_remove) == False:
-            return
-
-        #Deleting selected ids.
-        tuples = [(server, account_id, created_at) for created_at in to_remove]
-        query = 'DELETE FROM checkpoints WHERE server = ? AND account_id = ? AND created_at = ?'
-        cur.executemany(query, tuples)
+        fourteen_days_ago = int(time.time()) - (60 * 60 * 24 * 14)
+        query = '''
+            DELETE FROM checkpoints
+            WHERE server = ? AND account_id = ? AND created_at < ? AND created_at NOT IN (
+                SELECT MIN(created_at)
+                FROM checkpoints
+                WHERE server = ? AND account_id = ?
+                GROUP BY
+                    strftime('%Y', created_at, 'unixepoch'),
+                    strftime('%W', created_at, 'unixepoch')
+                );
+        '''
+        cur.execute(query, (server, account_id, fourteen_days_ago, server, account_id))
 
 
 #Frontend.
@@ -182,26 +174,18 @@ def index_dev():
     return render_template("index_dev.html")
 
 
-#Class to hold APP_ID and make requests.
-class wgapiCls():
-    def __init__(self, app_id):
-        self.app_id = app_id
+#Singletons.
+class wgapi:
+    @staticmethod
+    def get_player_data(server, account_id, app_id):
+        #Request player data from WG API. Output: ('status', 'message', [data])
 
-    #Request player data from WG API. Output: ('status', 'message', [data])
-    def get_player_data(self, server, account_id):
         url = 'https://api-{}-console.worldoftanks.com/wotx/tanks/stats/?application_id={}&account_id={}'\
-               .format(server, self.app_id, account_id)
-
-        #Making 2 tries.
-        fetched, counter = False, 0
-        while fetched == False and counter < 2:
-            try:
-                resp = requests.get(url).json()
-                fetched = True
-            except:
-                counter += 1
-        if fetched is False:
-            return('error', 'Failed to request the data from WG API', None)
+               .format(server, app_id, account_id)
+        try:
+            resp = requests.get(url, timeout=15).json()
+        except requests.exceptions.ReadTimeout:
+            return('error', 'couldnt connect to WG API within specified time', None)
 
         #If request went through.
         status = resp.get('status')
@@ -219,7 +203,6 @@ class wgapiCls():
                 #Dictionary from main values.
                 temp_dict = vehicle['all']
                 #Adding other values.
-                #temp_dict['account_id'] = vehicle['account_id']
                 temp_dict['battle_life_time'] = vehicle['battle_life_time']
                 temp_dict['last_battle_time'] = vehicle['last_battle_time']
                 temp_dict['mark_of_mastery'] = vehicle['mark_of_mastery']
@@ -234,9 +217,11 @@ class wgapiCls():
             raise
 
         return(status, message, data)
+    @classmethod
+    def find_cached_or_request(cls, server, account_id, app_id):
+        #Find SQL cached player data or to request and save in SQL. Output: ('status', 'message', [data])
 
-    #Find SQL cached player data or to request and save in SQL. Output: ('status', 'message', [data])
-    def find_cached_or_request(self, server, account_id):
+
         #Trying to get results from SQL first.
         player_data = sql.get_cached_checkpoint(server, account_id)
 
@@ -244,49 +229,42 @@ class wgapiCls():
             return('ok', 'ok', player_data[3])
 
         #If no cached results, requesting from WG API.
-        status, message, data = self.get_player_data(server, account_id)
+        status, message, data = cls.get_player_data(server, account_id, app_id)
 
         #Fallback to 'demo' app_id.
-        if status == 'error' and message in ['INVALID_APPLICATION_ID', 'INVALID_IP_ADDRESS']:
-            self.app_id = 'demo'
-            status, message, data = self.get_player_data(server, account_id)
+        #if status == 'error' and message in ['INVALID_APPLICATION_ID', 'INVALID_IP_ADDRESS']:
+        #    self.app_id = 'demo'
+        #    status, message, data = cls.get_player_data(server, account_id)
 
         #Updating (or creating) SQL checkpoint if went fine.
         if status == 'ok':
             sql.add_or_update_checkpoint(server, account_id, data)
 
         return(status, message, data)
-wgapi = wgapiCls('demo')
+class percentile:
+    with open('references/percentiles.json', 'r') as f:
+        percentiles = json.load(f)
+    with open('references/percentiles_generic.json', 'r') as f:
+        percentiles_generic = json.load(f)
+    #Find array for specified kind and tank_id.
+    @classmethod
+    def get_percentiles_array(cls, kind, tank_id):
+        # Checking if the tank in percentiles dictionary.
+        array = cls.percentiles[kind].get(str(tank_id))
 
+        #If tank is in the pre-calculated table. (DEFAULT)
+        if array:
+            return(array)
 
-#Root app class.
-class base():
-    def __init__(self, server, account_id, player_data):
-        self.server = server
-        self.account_id = account_id
-        self.player_data = player_data
+        #If tank in tankopedia, getting generic percentile (tier-class).
+        temp_tank = tankopedia.get(str(tank_id))
+        if temp_tank:
+            tier_class = str(temp_tank['tier']) + temp_tank['type']
+            array = cls.percentiles_generic[kind].get(tier_class)
+            return(array)
 
-    #Decode string sent by a client into a filter input.
-    @staticmethod
-    def decode_filters_string(filters_string):
-        #'ab&cd&ef&' -> ['ab', 'cd', 'ef']
-        output = []
-        new_list = filters_string.split('&')
-        output = [item for item in new_list if len(item) > 0]
-        return(output)
-
-    #Filter player data by filter input.
-    def filter_data(self, filter_input, tankopedia):
-        filtered_player_data = []
-        for tank in self.player_data:
-            #Calling tankopedia tank dictionary.
-            if str(tank['tank_id']) in tankopedia:
-                tp_dict = tankopedia[str(tank['tank_id'])]
-                #Filtering.
-                if tp_dict['type'] in filter_input and str(tp_dict['tier']) in filter_input:
-                    filtered_player_data.append(tank)
-        self.player_data = filtered_player_data
-
+        #If not in percentiles dictionary and not in tankopedia.
+        return(None)
     #Find one closest number from sorted array and return its index.
     @staticmethod
     def find_index_of_closest_value(array, number):
@@ -312,42 +290,41 @@ class base():
             return(end)
         else:
             return(beg)
-
     #Calculate percentile for single tank based on parameters.
-    def percentile_calculator(self, kind, tank_id, number):
-
-        if number == 0:
-            return(0)
-
-        # Checking if the tank in percentiles dictionary.
-        array = percentiles[kind].get(str(tank_id))
-
-        #If tank is in the pre-calculated table. (DEFAULT)
-        if array:
-            index = self.find_index_of_closest_value(array, number)
-            return(index)
-
-        #If tank in tankopedia, getting generic percentile (tier-class).
-        temp_tank = tankopedia.get(str(tank_id))
-        if temp_tank:
-            tier_class = str(temp_tank['tier']) + temp_tank['type']
-            array = percentiles_generic[kind].get(tier_class)
-
-        #If generic percentile exist. (MUST EXIST!)
-        if array:
-            index = self.find_index_of_closest_value(array, number)
-            return(index)
-
+    @classmethod
+    def calculate(cls, kind, tank_id, number):
+        if number > 0:
+            array = cls.get_percentiles_array(kind, tank_id)
+            if array is not None:
+                return(cls.find_index_of_closest_value(array, number))
         return(0)
-
-    @staticmethod
-    def wn8_calculator(tank_data, WN8_dict):
+class wn8:
+    with open('references/wn8console.json', 'r') as f:
+        wn8console = json.load(f)['data']
+    with open('references/wn8pc.json', 'r') as f:
+        wn8pc = json.load(f)['data']
+    @classmethod
+    def get_console_values(cls, tank_id):
+        for item in cls.wn8console:
+            if tank_id == item.get('IDNum'):
+                return(item)
+        return(None)
+    @classmethod
+    def get_pc_values(cls, tank_id):
+        for item in cls.wn8pc:
+            if tank_id == item.get('IDNum'):
+                return(item)
+        return(None)
+    @classmethod
+    def calculate_for_tank(cls, tank_data, wn8_type):
         #Loading expected values
         exp_values = None
-        for item in WN8_dict:
-            if any(item) and tank_data['tank_id'] == item['IDNum']:
-                exp_values = item
-                break
+        if wn8_type == 'console':
+            exp_values = cls.get_console_values(tank_data['tank_id'])
+        elif wn8_type == 'pc':
+            exp_values = cls.get_pc_values(tank_data['tank_id'])
+        else:
+            raise
 
         #If not found.
         if exp_values is None:
@@ -378,6 +355,49 @@ class base():
         WN8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
 
         return(WN8)
+    @classmethod
+    def calculate_for_all_tanks(cls, player_data, wn8_type):
+        battle_counter, wn8_counter = 0, 0
+        for tank in player_data:
+            wn8_temp = cls.calculate_for_tank(tank, wn8_type) * tank['battles']
+            #Adding up only if WN8 value is more than 0.
+            if wn8_temp > 0:
+                battle_counter += tank['battles']
+                wn8_counter += wn8_temp
+
+        if battle_counter > 0:
+            return(wn8_counter / battle_counter)
+        else:
+            return(0.0)
+
+
+#Root app class.
+class base():
+    def __init__(self, server, account_id, player_data):
+        self.server = server
+        self.account_id = account_id
+        self.player_data = player_data
+
+    #Decode string sent by a client into a filter input.
+    @staticmethod
+    def decode_filters_string(filters_string):
+        #'ab&cd&ef&' -> ['ab', 'cd', 'ef']
+        output = []
+        new_list = filters_string.split('&')
+        output = [item for item in new_list if len(item) > 0]
+        return(output)
+
+    #Filter player data by filter input.
+    def filter_data(self, filter_input, tankopedia):
+        filtered_player_data = []
+        for tank in self.player_data:
+            #Calling tankopedia tank dictionary.
+            if str(tank['tank_id']) in tankopedia:
+                tp_dict = tankopedia[str(tank['tank_id'])]
+                #Filtering.
+                if tp_dict['type'] in filter_input and str(tp_dict['tier']) in filter_input:
+                    filtered_player_data.append(tank)
+        self.player_data = filtered_player_data
 
     #Function substracts old_data from new_data.
     @staticmethod
@@ -427,34 +447,32 @@ class pageProfile(base):
     @staticmethod
     def calculate_general_account_stats(userdata):
         battles, hits, shots, dmgc, rass, dmgr, frags, survived, wins = (0 for i in range(9))
-        for tank in userdata:
 
-            battles     += tank['battles']
-            hits        += tank['hits']
-            shots       += tank['shots']
-            dmgc        += tank['damage_dealt']
-            rass        += tank['damage_assisted_radio']
-            dmgr        += tank['damage_received']
-            frags       += tank['frags']
-            survived    += tank['survived_battles']
-            wins        += tank['wins']
+        for tank in userdata:
+            battles  += tank['battles']
+            hits     += tank['hits']
+            shots    += tank['shots']
+            dmgc     += tank['damage_dealt']
+            rass     += tank['damage_assisted_radio']
+            dmgr     += tank['damage_received']
+            frags    += tank['frags']
+            survived += tank['survived_battles']
+            wins     += tank['wins']
 
         if battles > 0:
-            acc =       hits / shots * 100            if shots > 0                else 0
-            k_d =       frags / (battles - survived)  if (battles - survived) > 0 else 100
-            dmgc_dmgr = dmgc / dmgr                   if dmgr > 0                 else 100
+            acc =       hits / shots * 100           if shots > 0                else 0
+            k_d =       frags / (battles - survived) if (battles - survived) > 0 else 100
+            dmgc_dmgr = dmgc / dmgr                  if dmgr > 0                 else 100
 
-            output_dict = {'acc':       round(acc, 2),
-                           'dmgc':      round(dmgc / battles, 2),
-                           'rass':      round(rass / battles, 2),
-                           'dmgr':      round(dmgr / battles, 2),
-                           'k_d':       round(k_d, 2),
-                           'dmgc_dmgr': round(dmgc_dmgr, 2),
-                           'wr':        round(wins / battles * 100, 2)}
-        else:
-            output_dict = {'acc': 0, 'dmgc': 0, 'rass': 0, 'dmgr': 0, 'k_d': 0, 'dmgc_dmgr': 0, 'wr': 0}
+            return({'acc':       round(acc, 2),
+                    'dmgc':      round(dmgc / battles, 2),
+                    'rass':      round(rass / battles, 2),
+                    'dmgr':      round(dmgr / battles, 2),
+                    'k_d':       round(k_d, 2),
+                    'dmgc_dmgr': round(dmgc_dmgr, 2),
+                    'wr':        round(wins / battles * 100, 2)})
 
-        return(output_dict)
+        return({'acc': 0, 'dmgc': 0, 'rass': 0, 'dmgr': 0, 'k_d': 0, 'dmgc_dmgr': 0, 'wr': 0})
 
     def calculate_percentiles_for_all_tanks(self, userdata):
         dmgc_temp, wr_temp, rass_temp, dmgr_temp, acc_temp = ([] for i in range(5))
@@ -466,14 +484,14 @@ class pageProfile(base):
             if vehicle['battles'] > 0:
                 battle_counter += vehicle['battles']
 
-                dmgc += self.percentile_calculator('dmgc', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']) * vehicle['battles']
-                wr +=   self.percentile_calculator('wr', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100) * vehicle['battles']
-                rass += self.percentile_calculator('rass', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']) * vehicle['battles']
-                dmgr += self.percentile_calculator('dmgr', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']) * vehicle['battles']
+                dmgc += percentile.calculate('dmgc', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']) * vehicle['battles']
+                wr +=   percentile.calculate('wr', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100) * vehicle['battles']
+                rass += percentile.calculate('rass', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']) * vehicle['battles']
+                dmgr += percentile.calculate('dmgr', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']) * vehicle['battles']
 
                 #If no hits, percentile would be 0 anyways.
                 if vehicle['hits'] > 0:
-                    acc += self.percentile_calculator('acc', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100) * vehicle['battles']
+                    acc += percentile.calculate('acc', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100) * vehicle['battles']
 
         #Preparing output.
         if battle_counter == 0:
@@ -495,20 +513,6 @@ class pageProfile(base):
         output = total / 5
         return(round(output, 2))
 
-    def calculate_wn8_for_all_tanks(self, userdata):
-        battle_counter, wn8_counter = 0, 0
-        for tank in userdata:
-            wn8_temp = self.wn8_calculator(tank, wn8console) * tank['battles']
-            #Adding up only if WN8 value is more than 0.
-            if wn8_temp > 0:
-                battle_counter += tank['battles']
-                wn8_counter += wn8_temp
-
-        if battle_counter > 0:
-            return(int(wn8_counter / battle_counter))
-        else:
-            return(0.0)
-
     def calculate_page_profile(self, filters, recent_checkpoints):
 
         #Converting filters into a list.
@@ -528,7 +532,7 @@ class pageProfile(base):
         #Calculating all-time player performance.
         self.filter_data(filters, tankopedia)
         all_time =                  self.calculate_general_account_stats(self.player_data)
-        all_time['wn8'] =           self.calculate_wn8_for_all_tanks(self.player_data)
+        all_time['wn8'] =           wn8.calculate_for_all_tanks(self.player_data, 'console')
         all_time['percentiles'] =   self.calculate_percentiles_for_all_tanks(self.player_data)
         all_time['total_perc'] =    self.calculate_overall_percentile(all_time['percentiles'])
 
@@ -537,7 +541,7 @@ class pageProfile(base):
         self.player_data = self.find_difference(first_recent_data, self.player_data)
         self.filter_data(filters, tankopedia)
         recent =                self.calculate_general_account_stats(self.player_data)
-        recent['wn8'] =         self.calculate_wn8_for_all_tanks(self.player_data)
+        recent['wn8'] =         wn8.calculate_for_all_tanks(self.player_data, 'console')
         recent['percentiles'] = self.calculate_percentiles_for_all_tanks(self.player_data)
         recent['total_perc'] =  self.calculate_overall_percentile(recent['percentiles'])
 
@@ -558,7 +562,7 @@ class pageProfile(base):
             #Calculating Percentile totals.
             percentiles_totals.append(self.calculate_percentiles_for_all_tanks(self.player_data))
             #Calculating WN8 totals.
-            wn8_totals.append(self.calculate_wn8_for_all_tanks(self.player_data))
+            wn8_totals.append(round(wn8.calculate_for_all_tanks(self.player_data, 'console'), 2))
 
 
         #Calculating overall percentile.
@@ -606,8 +610,8 @@ class pageVehicles(base):
                 temp_dict['type'] = 'Unknown'
 
             #WN8
-            temp_dict['wn8'] = self.wn8_calculator(vehicle, wn8console)
-            temp_dict['wn8pc'] = self.wn8_calculator(vehicle, wn8pc)
+            temp_dict['wn8'] = wn8.calculate_for_tank(vehicle, 'console')
+            temp_dict['wn8pc'] = wn8.calculate_for_tank(vehicle, 'pc')
 
             temp_dict['avg_dmg'] = vehicle['damage_dealt'] / vehicle['battles']
             temp_dict['avg_frags'] = vehicle['frags'] / vehicle['battles']
@@ -624,13 +628,13 @@ class pageVehicles(base):
 
             #Percentiles
             temp_dict['avg_dmg'] = vehicle['damage_dealt'] / vehicle['battles']
-            temp_dict['dmg_perc'] = self.percentile_calculator('dmgc', vehicle['tank_id'], temp_dict['avg_dmg'])
+            temp_dict['dmg_perc'] = percentile.calculate('dmgc', vehicle['tank_id'], temp_dict['avg_dmg'])
 
             temp_dict['wr'] = vehicle['wins'] / vehicle['battles'] * 100
-            temp_dict['wr_perc'] = self.percentile_calculator('wr', vehicle['tank_id'], temp_dict['wr'])
+            temp_dict['wr_perc'] = percentile.calculate('wr', vehicle['tank_id'], temp_dict['wr'])
 
             temp_dict['avg_exp'] = vehicle['xp'] / vehicle['battles']
-            temp_dict['exp_perc'] = self.percentile_calculator('exp', vehicle['tank_id'], temp_dict['avg_exp'])
+            temp_dict['exp_perc'] = percentile.calculate('exp', vehicle['tank_id'], temp_dict['avg_exp'])
 
 
             #'pen_hits_ratio'
@@ -683,7 +687,7 @@ class pageTimeSeries(pageProfile):
             #Calculating Percentile totals.
             self.percentiles_totals.append(self.calculate_percentiles_for_all_tanks(self.player_data))
             #Calculating WN8 totals.
-            self.wn8_totals.append(self.calculate_wn8_for_all_tanks(self.player_data))
+            self.wn8_totals.append(wn8.calculate_for_all_tanks(self.player_data, 'console'))
 
             #Calculating day-to-day change. Skipping the first item.
             if r != 0:
@@ -692,7 +696,7 @@ class pageTimeSeries(pageProfile):
                 #Calculating day-to-day percentiles.
                 self.percentiles_change.append(self.calculate_percentiles_for_all_tanks(self.slice_data))
                 #Calculating day-to-day WN8.
-                self.wn8_change.append(self.calculate_wn8_for_all_tanks(self.slice_data))
+                self.wn8_change.append(wn8.calculate_for_all_tanks(self.slice_data, 'console'))
 
             #Assigning snapshot.
             self.snapshot_data = self.player_data
@@ -701,7 +705,6 @@ class pageTimeSeries(pageProfile):
 class pageSessionTracker(base):
     def __init__(self, server, account_id, player_data):
         base.__init__(self, server, account_id, player_data)
-
     @staticmethod
     def get_timestamps(search):
         #Return list of timestamps excluding today.
@@ -718,7 +721,6 @@ class pageSessionTracker(base):
                 output.append(timestamp)
 
         return(output)
-
     def get_radar_data(self, tank_data, tank_id):
         temp_dict = {'dmgc': tank_data['damage_dealt'] / tank_data['battles'],
                      'exp':  tank_data['xp'] / tank_data['battles'],
@@ -727,24 +729,23 @@ class pageSessionTracker(base):
                      'acc':  tank_data['hits'] / tank_data['shots'] * 100 if tank_data['shots'] > 0 else 0.0}
 
         temp_dict['radar'] = [
-            self.percentile_calculator('acc', tank_id, temp_dict['acc']),
-            self.percentile_calculator('dmgc', tank_id, temp_dict['dmgc']),
-            self.percentile_calculator('rass', tank_id, temp_dict['rass']),
-            self.percentile_calculator('exp', tank_id, temp_dict['exp']),
-            abs(self.percentile_calculator('dmgr', tank_id, temp_dict['dmgr']) - 100)
+            percentile.calculate('acc', tank_id, temp_dict['acc']),
+            percentile.calculate('dmgc', tank_id, temp_dict['dmgc']),
+            percentile.calculate('rass', tank_id, temp_dict['rass']),
+            percentile.calculate('exp', tank_id, temp_dict['exp']),
+            abs(percentile.calculate('dmgr', tank_id, temp_dict['dmgr']) - 100)
         ]
 
         return(temp_dict)
-
-    def get_other_data(self, tank_data):
+    @staticmethod
+    def get_other_data(tank_data):
         return({
             'battles':  tank_data['battles'],
             'wins':     tank_data['wins'],
             'lifetime': tank_data['battle_life_time'] / tank_data['battles'],
             'dpm':      tank_data['damage_dealt'] / tank_data['battle_life_time'] * 60,
-            'wn8':      self.wn8_calculator(tank_data, wn8console)
+            'wn8':      wn8.calculate_for_tank(tank_data, 'console')
         })
-
     def calculateSessionTracker(self, timestamp, search):
 
         timestamps = self.get_timestamps(search)
@@ -799,23 +800,15 @@ class pageSessionTracker(base):
             'timestamps':       self.get_timestamps(search),
             'timestamp':        timestamp
         })
-
 class pageWn8Estimates(base):
     def __init__(self, server, account_id, player_data):
         base.__init__(self, server, account_id, player_data)
-
     @staticmethod
-    def calculate_wn8_damage_targets(tank_data, WN8_dict):
-        #Loading expected values
-        exp_values = {}
-        for item in WN8_dict:
-            if item.get('IDNum') == tank_data['tank_id']:
-                exp_values = item
-                break
-
-        #If there are no expected values in the table, return 0
-        if len(exp_values) == 0:
-            return(0)
+    def calculate_wn8_damage_targets(tank_data):
+        #Loading expected values.
+        exp_values = wn8.get_console_values(tank_data['tank_id'])
+        if any(exp_values) == False:
+            return([0 for i in range(9)])
 
         #step 0 - WN8 calculation algo - assigning the variables.
         expDmg      = exp_values['expDamage']
@@ -850,8 +843,7 @@ class pageWn8Estimates(base):
                     break
 
         return(output)
-
-    def calculate_wn8_estimates(self, wn8_list, tankopedia_dict):
+    def calculate_wn8_estimates(self):
         output = []
         #Iterating through tanks in player data.
         for vehicle in self.player_data:
@@ -859,22 +851,16 @@ class pageWn8Estimates(base):
             if vehicle['battles'] == 0:
                 continue
 
-            tank_id = vehicle['tank_id']
-            tank_dict = {}
-
             #Get WN8 expected values.
-            for wn8_item in wn8_list:
-                if wn8_item.get('IDNum') == tank_id:
-                    tank_dict.update(wn8_item)
-                    break
+            tank_dict = wn8.get_console_values(vehicle['tank_id'])
 
             #Skip if tank not in WN8 expected values.
-            if len(tank_dict) == 0:
+            if tank_dict is None:
                 continue
 
             #Skip if tank not in tankopedia.
-            tankopedia_item = tankopedia_dict.get(str(tank_id))
-            if not tankopedia_item:
+            tankopedia_item = tankopedia.get(str(vehicle['tank_id']))
+            if tankopedia_item is None:
                 continue
             tank_dict.update(tankopedia_item)
 
@@ -886,7 +872,7 @@ class pageWn8Estimates(base):
             tank_dict['WinRate']    = vehicle['wins'] / vehicle['battles'] * 100
 
             #Calculating damage targets.
-            tank_dict['dmgTargets'] = self.calculate_wn8_damage_targets(vehicle, wn8_list)
+            tank_dict['dmgTargets'] = self.calculate_wn8_damage_targets(vehicle)
 
             output.append(tank_dict)
 
@@ -915,7 +901,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
 
 
     #Request player data or find cached.
-    status, message, data = wgapi.find_cached_or_request(server, account_id)
+    status, message, data = wgapi.find_cached_or_request(server, account_id, app_id)
     if status != 'ok':
         return Response(json.dumps({
             'status': status,
@@ -954,7 +940,7 @@ def api_main(request_type, server, account_id, timestamp, filters):
 
     elif request_type == 'wn8_estimates':
         user = pageWn8Estimates(server, account_id, data)
-        output = user.calculate_wn8_estimates(wn8console, tankopedia)
+        output = user.calculate_wn8_estimates()
 
 
     return Response(json.dumps({
@@ -1055,18 +1041,21 @@ def add_bot_checkpoint(server, account_id):
 
     #Validation.
     try:
-        int(account_id)
+        account_id = int(account_id)
         if server not in ['xbox', 'ps4']:
             raise
     except:
         return('error: wrong server or account id')
+
+    #Cleaning up.
+    sql.leave_first_checkpoint_per_week(server, account_id)
 
     #Checking if the checkpoint already was created today before sending http request for data.
     if sql.is_created_today(server, account_id) == True:
         return('ok')
 
     #Fetching the player.
-    status, message, data = wgapi.get_player_data(server, account_id)
+    status, message, data = wgapi.get_player_data(server, account_id, app_id)
 
     if status != 'ok':
         return('error: player couldnt be fetched')
@@ -1075,20 +1064,10 @@ def add_bot_checkpoint(server, account_id):
     sql.add_bot_checkpoint(server, account_id, data)
     return('ok')
 
-#Leave 1 checkpoint a week for a user. Only for checkpoints older than 14 days.
-@app.route('/cleanup/<server>/<account_id>/')
-def cleanup(server, account_id):
+@app.route('/diag')
+def diag():
+    return('nothing here yet')
 
-    #Validation.
-    try:
-        int(account_id)
-        if server not in ['xbox', 'ps4']:
-            raise
-    except:
-        return('error: wrong server or account id')
-
-    sql.leave_first_checkpoint_per_week(server, account_id)
-    return('ok')
 
 
 if __name__ == '__main__':

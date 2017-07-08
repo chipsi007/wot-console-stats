@@ -1,24 +1,17 @@
 import requests
 import json
 
-#Server doesn't matter here.
+TANKOPEDIA_PATH = '../references/tankopedia.json'
+
+#Requesting tankopedia from WG API.
 server = 'xbox'
+fields = '%2C+'.join(['short_name', 'nation', 'is_premium', 'tier', 'tank_id', 'type', 'name'])
+url = 'https://api-{}-console.worldoftanks.com/wotx/encyclopedia/vehicles/?application_id=demo&fields={}'.format(server, fields)
 
-url = 'https://api-'+server+'-console.worldoftanks.com/wotx/encyclopedia/vehicles/?application_id=demo'
-request = requests.get(url)
-vehicles = request.json()
+resp = requests.get(url, timeout=30).json()
+assert resp['status'] == 'ok'
+data = resp['data']
+assert resp['meta']['count'] == len(data)
 
-tankopedia = {}
-for key, value in vehicles['data'].items():
-    tank_dict = {'name': value['name'],
-                 'short_name': value['short_name'],
-                 'type': value['type'],
-                 'tier': value['tier'],
-                 'nation': value['nation'],
-                 'is_premium': value['is_premium']
-                }
-    tankopedia[str(value['tank_id'])] = tank_dict
-
-#Saving tankopedia data
-with open('../references/tankopedia.json','w') as myfile:
-    json.dump(tankopedia, myfile)
+with open(TANKOPEDIA_PATH, 'w') as f:
+    json.dump(data, f)
