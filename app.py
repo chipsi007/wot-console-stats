@@ -953,36 +953,6 @@ def api_main(request_type, server, account_id, timestamp, filters):
         'time':       time.time() - start
     }), mimetype='application/json')
 
-#Request various files.
-@app.route('/api-request-file/<file_type>/')
-def api_request_file(file_type):
-
-    #Defaults.
-    output = {'status': 'error',
-              'message': 'Bad request',
-              'data': None,
-              'count': 0}
-
-    #File types.
-    if file_type == 'percentiles':
-        output['data'] = percentiles
-    elif file_type == 'percentiles_generic':
-        output['data'] = percentiles_generic
-    elif file_type == 'tankopedia':
-        output['data'] = tankopedia
-    elif file_type == 'wn8console':
-        output['data'] = wn8console
-    elif file_type == 'wn8pc':
-        output['data'] = wn8pc
-    else:
-        output['message'] = 'Wrong file type'
-        return Response(json.dumps(output), mimetype='application/json')
-
-    #Output if success.
-    output['count'] = len(output['data'])
-    output['status'], output['message'] = 'ok', 'ok'
-    return Response(json.dumps(output), mimetype='application/json')
-
 #Request snapshots straight from SQL.
 @app.route('/api-request-snapshots/<server>/<account_id>/')
 def api_request_snapshots(server, account_id):
