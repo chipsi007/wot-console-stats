@@ -163,7 +163,7 @@ class sql():
 
     #Tankopedia.
     @staticmethod
-    def load_tankopedia():
+    def get_tankopedia():
         cur = open_conn().cursor()
         output = {}
         cur.execute('SELECT tank_id, name, short_name, nation, is_premium, tier, type FROM tankopedia')
@@ -178,6 +178,48 @@ class sql():
                 "type":         row[6]
             }
         return(output)
+    @staticmethod
+    def add_tankopedia_tank(tank):
+        cur = open_conn().cursor()
+
+        now = int(time.time())
+
+        found = cur.execute('SELECT 1 FROM tankopedia WHERE tank_id = ?', (tank['tank_id'],)).fetchone()
+
+        #Not in the database.
+        if not found:
+            query = '''
+                INSERT INTO tankopedia (tank_id, updated_at, name, short_name, nation, is_premium, tier, type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            '''
+            cur.execute(query, (
+                tank['tank_id'],
+                now,
+                tank['name'],
+                tank['short_name'],
+                tank['nation'],
+                1 if tank['is_premium'] == True else 0,
+                tank['tier'],
+                tank['type']
+            ))
+
+        #If in the database.
+        else:
+            query = '''
+                UPDATE tankopedia
+                SET updated_at = ?, name = ?, short_name = ?, nation = ?, is_premium = ?, tier = ?, type = ?
+                WHERE tank_id = ?;
+            '''
+            cur.execute(query, (
+                now,
+                tank['name'],
+                tank['short_name'],
+                tank['nation'],
+                1 if tank['is_premium'] == True else 0,
+                tank['tier'],
+                tank['type'],
+                tank['tank_id']
+            ))
 
 
 #Singletons.
@@ -227,7 +269,6 @@ class wgapi:
     def find_cached_or_request(cls, server, account_id, app_id):
         #Find SQL cached player data or to request and save in SQL. Output: ('status', 'message', [data])
 
-
         #Trying to get results from SQL first.
         player_data = sql.get_cached_checkpoint(server, account_id)
 
@@ -247,6 +288,21 @@ class wgapi:
             sql.add_or_update_checkpoint(server, account_id, data)
 
         return(status, message, data)
+    @staticmethod
+    def get_tankopedia(app_id):
+        fields = '%2C+'.join(['name', 'short_name', 'nation', 'is_premium', 'tier', 'type', 'tank_id'])
+        url = 'https://api-xbox-console.worldoftanks.com/wotx/encyclopedia/vehicles/?application_id=' + app_id + '&fields=' + fields
+        try:
+            resp = requests.get(url, timeout=10).json()
+            assert resp.get('status') == 'ok'
+            count = resp.get('meta', {}).get('count')
+            data = resp.get('data')
+            assert len(data) == count
+            return(data)
+        except:
+            return(None)
+
+
 class percentile:
     #(Re)load percentiles.
     @classmethod
@@ -385,7 +441,7 @@ class wn8:
 @app.before_first_request
 def before_first_request():
     global tankopedia
-    tankopedia = sql.load_tankopedia()
+    tankopedia = sql.get_tankopedia()
     percentile.load()
     wn8.load()
 
@@ -1069,14 +1125,53 @@ def api_get_player_tanks(server, account_id):
 
 @app.route('/diag/<page>/')
 def diag(page):
+    start = time.time()
 
     if page == 'show':
         return('show function')
 
-    if page == 'reload_tankopedia':
+    if page == 'reload-tankopedia':
         global tankopedia
-        tankopedia = sql.load_tankopedia()
+        tankopedia = sql.get_tankopedia()
         return('tankopedia reloaded')
+
+    if page == 'update-tankopedia':
+
+        #Getting tankopedias.
+        new_tankopedia = wgapi.get_tankopedia(app_id)
+        if not new_tankopedia:
+            return Response(json.dumps({
+                'status':     'error',
+                'message':    'couldnt download tankopedia from WG API',
+            }), mimetype='application/json')
+        old_tankopedia = sql.get_tankopedia()
+
+        #Getting keys.
+        new_keys = list(new_tankopedia.keys())
+        old_keys = list(old_tankopedia.keys())
+
+        #Looking for keys that are not in the old tankopedia.
+        new_ids = [key for key in new_keys if key not in old_keys]
+        #Looking if any of the old ids are changed.
+        diff_keys = [key for key in old_keys if old_tankopedia[key] != new_tankopedia.get(key)]
+
+        #Getting list of tank dictionaries to add / update.
+        tanks = []
+        for key in new_ids + diff_keys:
+            if new_tankopedia.get(key, False):
+                tanks.append(new_tankopedia.get(key))
+
+        #Updating SQLITE.
+        for tank in tanks:
+            sql.add_tankopedia_tank(tank)
+
+        return Response(json.dumps({
+            'status':     'ok',
+            'message':    'ok',
+            'count':      len(tanks),
+            'data':       tanks,
+            'time':       time.time() - start
+        }), mimetype='application/json')
 
     return('error')
 
