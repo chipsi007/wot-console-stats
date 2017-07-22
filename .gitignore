@@ -7,8 +7,4 @@ sqlite.db
 
 static/app.js
 
-.sass-cache/
-
-log.txt
-
 secret.py

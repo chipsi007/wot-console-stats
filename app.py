@@ -221,6 +221,55 @@ class sql():
                 tank['tank_id']
             ))
 
+    #Percentiles.
+    @staticmethod
+    def get_percentiles():
+        cur = open_conn().cursor()
+        output = {}
+        cur.execute('SELECT tank_id, data FROM percentiles;')
+        for row in cur:
+            output[row[0]] = pickle.loads(row[1])
+        return(output)
+    @staticmethod
+    def get_percentiles_generic():
+        cur = open_conn().cursor()
+        output = {}
+        cur.execute('SELECT tier, type, data FROM percentiles_generic;')
+        for row in cur:
+            output[str(row[0]) + row[1]] = pickle.loads(row[2])
+        return(output)
+
+    #WN8
+    @staticmethod
+    def get_wn8():
+        cur = open_conn().cursor()
+        output = {}
+        cur.execute('SELECT tank_id, expFrag, expDamage, expSpot, expDef, expWinRate FROM wn8;')
+        for row in cur:
+            output[row[0]] = {
+                'expFrag':    row[1],
+                'expDamage':  row[2],
+                'expSpot':    row[3],
+                'expDef':     row[4],
+                'expWinRate': row[5]
+            }
+        return(output)
+    @staticmethod
+    def get_wn8_generic():
+        cur = open_conn().cursor()
+        output = {}
+        cur.execute('SELECT tier, type, expFrag, expDamage, expSpot, expDef, expWinRate FROM wn8_generic;')
+        for row in cur:
+            output[str(row[0]) + row[1]] = {
+                'expFrag':    row[2],
+                'expDamage':  row[3],
+                'expSpot':    row[4],
+                'expDef':     row[5],
+                'expWinRate': row[6]
+            }
+        return(output)
+
+
 
 #Singletons.
 class wgapi:
@@ -301,21 +350,17 @@ class wgapi:
             return(data)
         except:
             return(None)
-
-
 class percentile:
     #(Re)load percentiles.
     @classmethod
     def load(cls):
-        with open('references/percentiles.json', 'r') as f:
-            cls.percentiles = json.load(f)
-        with open('references/percentiles_generic.json', 'r') as f:
-            cls.percentiles_generic = json.load(f)
+        cls.percentiles = sql.get_percentiles()
+        cls.percentiles_generic = sql.get_percentiles_generic()
     #Find array for specified kind and tank_id.
     @classmethod
     def get_percentiles_array(cls, kind, tank_id):
         # Checking if the tank in percentiles dictionary.
-        array = cls.percentiles[kind].get(str(tank_id))
+        array = cls.percentiles.get(tank_id, {}).get(kind)
 
         #If tank is in the pre-calculated table. (DEFAULT)
         if array:
@@ -325,7 +370,7 @@ class percentile:
         temp_tank = tankopedia.get(str(tank_id))
         if temp_tank:
             tier_class = str(temp_tank['tier']) + temp_tank['type']
-            array = cls.percentiles_generic[kind].get(tier_class)
+            array = cls.percentiles_generic.get(tier_class, {}).get(kind)
             return(array)
 
         #If not in percentiles dictionary and not in tankopedia.
@@ -366,15 +411,23 @@ class percentile:
 class wn8:
     @classmethod
     def load(cls):
-        with open('references/wn8console.json', 'r') as f:
-            cls.wn8console = json.load(f)['data']
-        with open('references/wn8pc.json', 'r') as f:
-            cls.wn8pc = json.load(f)['data']
+        cls.wn8dict = sql.get_wn8()
+        cls.wn8dict_generic = sql.get_wn8_generic()
     @classmethod
-    def get_console_values(cls, tank_id):
-        for item in cls.wn8console:
-            if tank_id == item.get('IDNum'):
-                return(item)
+    def get_values(cls, tank_id):
+        exp_values = cls.wn8dict.get(tank_id)
+
+        if exp_values:
+            return(exp_values)
+
+        tp_dict = tankopedia.get(str(tank_id))
+
+        if tp_dict:
+            exp_values = cls.wn8dict_generic.get(str(tp_dict['tier']) + tp_dict['type'])
+
+            if exp_values:
+                return(exp_values)
+
         return(None)
     @classmethod
     def get_pc_values(cls, tank_id):
@@ -383,15 +436,9 @@ class wn8:
                 return(item)
         return(None)
     @classmethod
-    def calculate_for_tank(cls, tank_data, wn8_type):
+    def calculate_for_tank(cls, tank_data):
         #Loading expected values
-        exp_values = None
-        if wn8_type == 'console':
-            exp_values = cls.get_console_values(tank_data['tank_id'])
-        elif wn8_type == 'pc':
-            exp_values = cls.get_pc_values(tank_data['tank_id'])
-        else:
-            raise
+        exp_values = cls.get_values(tank_data['tank_id'])
 
         #If not found.
         if exp_values is None:
@@ -423,10 +470,10 @@ class wn8:
 
         return(WN8)
     @classmethod
-    def calculate_for_all_tanks(cls, player_data, wn8_type):
+    def calculate_for_all_tanks(cls, player_data):
         battle_counter, wn8_counter = 0, 0
         for tank in player_data:
-            wn8_temp = cls.calculate_for_tank(tank, wn8_type) * tank['battles']
+            wn8_temp = cls.calculate_for_tank(tank) * tank['battles']
             #Adding up only if WN8 value is more than 0.
             if wn8_temp > 0:
                 battle_counter += tank['battles']
@@ -436,7 +483,6 @@ class wn8:
             return(wn8_counter / battle_counter)
         else:
             return(0.0)
-
 
 @app.before_first_request
 def before_first_request():
@@ -558,14 +604,14 @@ class pageProfile():
             if vehicle['battles'] > 0:
                 battle_counter += vehicle['battles']
 
-                dmgc += percentile.calculate('dmgc', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']) * vehicle['battles']
-                wr +=   percentile.calculate('wr', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100) * vehicle['battles']
-                rass += percentile.calculate('rass', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']) * vehicle['battles']
-                dmgr += percentile.calculate('dmgr', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']) * vehicle['battles']
+                dmgc += percentile.calculate('damage_dealt', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']) * vehicle['battles']
+                wr +=   percentile.calculate('wins', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100) * vehicle['battles']
+                rass += percentile.calculate('damage_assisted_radio', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']) * vehicle['battles']
+                dmgr += percentile.calculate('damage_received', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']) * vehicle['battles']
 
                 #If no hits, percentile would be 0 anyways.
                 if vehicle['hits'] > 0:
-                    acc += percentile.calculate('acc', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100) * vehicle['battles']
+                    acc += percentile.calculate('accuracy', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100) * vehicle['battles']
 
         #Preparing output.
         if battle_counter == 0:
@@ -599,7 +645,7 @@ class pageProfile():
         #Calculating all-time player performance.
         self.player_data =          filter_data(self.player_data, filters, tankopedia)
         all_time =                  self.calculate_general_account_stats(self.player_data)
-        all_time['wn8'] =           wn8.calculate_for_all_tanks(self.player_data, 'console')
+        all_time['wn8'] =           int(wn8.calculate_for_all_tanks(self.player_data))
         all_time['percentiles'] =   self.calculate_percentiles_for_all_tanks(self.player_data)
         all_time['total_perc'] =    self.calculate_overall_percentile(all_time['percentiles'])
 
@@ -608,7 +654,7 @@ class pageProfile():
         self.player_data = find_difference(first_recent_data, self.player_data)
         self.player_data = filter_data(self.player_data, filters, tankopedia)
         recent =                self.calculate_general_account_stats(self.player_data)
-        recent['wn8'] =         wn8.calculate_for_all_tanks(self.player_data, 'console')
+        recent['wn8'] =         int(wn8.calculate_for_all_tanks(self.player_data))
         recent['percentiles'] = self.calculate_percentiles_for_all_tanks(self.player_data)
         recent['total_perc'] =  self.calculate_overall_percentile(recent['percentiles'])
 
@@ -629,7 +675,7 @@ class pageProfile():
             #Calculating Percentile totals.
             percentiles_totals.append(self.calculate_percentiles_for_all_tanks(self.player_data))
             #Calculating WN8 totals.
-            wn8_totals.append(round(wn8.calculate_for_all_tanks(self.player_data, 'console'), 2))
+            wn8_totals.append(round(wn8.calculate_for_all_tanks(self.player_data), 2))
 
 
         #Calculating overall percentile.
@@ -677,8 +723,7 @@ class pageVehicles():
                 temp_dict['type'] = 'Unknown'
 
             #WN8
-            temp_dict['wn8'] = wn8.calculate_for_tank(vehicle, 'console')
-            temp_dict['wn8pc'] = wn8.calculate_for_tank(vehicle, 'pc')
+            temp_dict['wn8'] = wn8.calculate_for_tank(vehicle)
 
             temp_dict['avg_dmg'] = vehicle['damage_dealt'] / vehicle['battles']
             temp_dict['avg_frags'] = vehicle['frags'] / vehicle['battles']
@@ -695,13 +740,13 @@ class pageVehicles():
 
             #Percentiles
             temp_dict['avg_dmg'] = vehicle['damage_dealt'] / vehicle['battles']
-            temp_dict['dmg_perc'] = percentile.calculate('dmgc', vehicle['tank_id'], temp_dict['avg_dmg'])
+            temp_dict['dmg_perc'] = percentile.calculate('damage_dealt', vehicle['tank_id'], temp_dict['avg_dmg'])
 
             temp_dict['wr'] = vehicle['wins'] / vehicle['battles'] * 100
-            temp_dict['wr_perc'] = percentile.calculate('wr', vehicle['tank_id'], temp_dict['wr'])
+            temp_dict['wr_perc'] = percentile.calculate('wins', vehicle['tank_id'], temp_dict['wr'])
 
             temp_dict['avg_exp'] = vehicle['xp'] / vehicle['battles']
-            temp_dict['exp_perc'] = percentile.calculate('exp', vehicle['tank_id'], temp_dict['avg_exp'])
+            temp_dict['exp_perc'] = percentile.calculate('xp', vehicle['tank_id'], temp_dict['avg_exp'])
 
 
             #'pen_hits_ratio'
@@ -754,7 +799,7 @@ class pageTimeSeries(pageProfile):
             #Calculating Percentile totals.
             self.percentiles_totals.append(self.calculate_percentiles_for_all_tanks(self.player_data))
             #Calculating WN8 totals.
-            self.wn8_totals.append(wn8.calculate_for_all_tanks(self.player_data, 'console'))
+            self.wn8_totals.append(wn8.calculate_for_all_tanks(self.player_data))
 
             #Calculating day-to-day change. Skipping the first item.
             if r != 0:
@@ -763,7 +808,7 @@ class pageTimeSeries(pageProfile):
                 #Calculating day-to-day percentiles.
                 self.percentiles_change.append(self.calculate_percentiles_for_all_tanks(self.slice_data))
                 #Calculating day-to-day WN8.
-                self.wn8_change.append(wn8.calculate_for_all_tanks(self.slice_data, 'console'))
+                self.wn8_change.append(wn8.calculate_for_all_tanks(self.slice_data))
 
             #Assigning snapshot.
             self.snapshot_data = self.player_data
@@ -797,11 +842,11 @@ class pageSessionTracker():
                      'acc':  tank_data['hits'] / tank_data['shots'] * 100 if tank_data['shots'] > 0 else 0.0}
 
         temp_dict['radar'] = [
-            percentile.calculate('acc', tank_id, temp_dict['acc']),
-            percentile.calculate('dmgc', tank_id, temp_dict['dmgc']),
-            percentile.calculate('rass', tank_id, temp_dict['rass']),
-            percentile.calculate('exp', tank_id, temp_dict['exp']),
-            abs(percentile.calculate('dmgr', tank_id, temp_dict['dmgr']) - 100)
+            percentile.calculate('accuracy', tank_id, temp_dict['acc']),
+            percentile.calculate('damage_dealt', tank_id, temp_dict['dmgc']),
+            percentile.calculate('damage_assisted_radio', tank_id, temp_dict['rass']),
+            percentile.calculate('xp', tank_id, temp_dict['exp']),
+            abs(percentile.calculate('damage_received', tank_id, temp_dict['dmgr']) - 100)
         ]
 
         return(temp_dict)
@@ -812,7 +857,7 @@ class pageSessionTracker():
             'wins':     tank_data['wins'],
             'lifetime': tank_data['battle_life_time'] / tank_data['battles'],
             'dpm':      tank_data['damage_dealt'] / tank_data['battle_life_time'] * 60,
-            'wn8':      wn8.calculate_for_tank(tank_data, 'console')
+            'wn8':      wn8.calculate_for_tank(tank_data)
         })
     def calculateSessionTracker(self, timestamp, search):
 
@@ -876,7 +921,7 @@ class pageWn8Estimates():
     @staticmethod
     def calculate_wn8_damage_targets(tank_data):
         #Loading expected values.
-        exp_values = wn8.get_console_values(tank_data['tank_id'])
+        exp_values = wn8.get_values(tank_data['tank_id'])
         if any(exp_values) == False:
             return([0 for i in range(9)])
 
@@ -922,7 +967,7 @@ class pageWn8Estimates():
                 continue
 
             #Get WN8 expected values.
-            tank_dict = wn8.get_console_values(vehicle['tank_id'])
+            tank_dict = wn8.get_values(vehicle['tank_id'])
 
             #Skip if tank not in WN8 expected values.
             if tank_dict is None:

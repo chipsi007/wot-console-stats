@@ -96,7 +96,7 @@ def main():
 
     log.clear(), log.write('Started')
 
-    update_tankopedia()
+    #update_tankopedia()
 
     users = get_users()
     if users is None:

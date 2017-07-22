@@ -3,9 +3,6 @@ import sqlite3
 conn = sqlite3.connect('sqlite.db')
 c = conn.cursor()
 
-#c.execute('''DROP TABLE IF EXISTS checkpoints;''')
-#conn.commit()
-
 c.execute('''
     CREATE TABLE IF NOT EXISTS checkpoints (
         created_at INTEGER,
@@ -31,16 +28,39 @@ c.execute('''
 c.execute('''
     CREATE TABLE IF NOT EXISTS percentiles (
         tank_id INTEGER PRIMARY KEY,
-        array BLOB
+        data BLOB
 );''')
 
 c.execute('''
     CREATE TABLE IF NOT EXISTS percentiles_generic (
         tier INTEGER,
         type TEXT,
-        array BLOB,
+        data BLOB,
         PRIMARY KEY (tier, type)
 );''')
+
+c.execute('''
+    CREATE TABLE IF NOT EXISTS wn8 (
+        tank_id INTEGER PRIMARY KEY,
+        expFrag REAL,
+        expDamage REAL,
+        expSpot REAL,
+        expDef REAL,
+        expWinRate REAL
+);''')
+
+c.execute('''
+    CREATE TABLE IF NOT EXISTS wn8_generic (
+        tier INTEGER,
+        type TEXT,
+        expFrag REAL,
+        expDamage REAL,
+        expSpot REAL,
+        expDef REAL,
+        expWinRate REAL,
+        PRIMARY KEY (tier, type)
+);''')
+
 
 conn.commit()
 conn.close()
