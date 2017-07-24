@@ -1033,8 +1033,8 @@ def api_main(page, server, account_id, timestamp, filters):
         output = {
             'xlabels':            user.xlabels,
             'percentiles_change': user.percentiles_change,
-            'wn8_totals':         user.wn8_totals[1:],
-            'wn8_change':         user.wn8_change,
+            'wn8_totals':         [round(item, 2) for item in user.wn8_totals[1:]],
+            'wn8_change':         [round(item, 2) if item != 0 else None for item in user.wn8_change],
             'wn8_labels':         user.xlabels[1:]
         }
     elif page == 'session_tracker':

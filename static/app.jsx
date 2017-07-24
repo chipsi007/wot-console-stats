@@ -36,7 +36,7 @@ class Login extends React.Component {
     this.state = {
       loading: false,
       warningMsg: null,
-
+      openAbout: false,
       loggedBefore: false,
       nickname: null,
       server: null
@@ -189,6 +189,82 @@ class Login extends React.Component {
             </div>);
   }
 
+  about() {
+    return( <div className={ "modal" + (this.state.openAbout ? " is-active" : "") }>
+              <div className="modal-background"></div>
+              <div className="modal-card">
+                <header className="modal-card-head">
+                  <p className="modal-card-title">About</p>
+                  <button className="delete" onClick={ () => this.setState({openAbout: false}) }></button>
+                </header>
+                <section className="modal-card-body">
+
+                  <article className="media box">
+                    <figure className="media-left">
+                      <a target="_blank" href="https://github.com/IDDT/wot-console-stats">
+                        <span className="icon is-large"><i className="fa fa-github"></i></span>
+                      </a>
+                    </figure>
+                    <div className="media-content">
+                      <div className="content">
+                        <p>
+                          <strong>
+                            <a target="_blank" href="https://github.com/IDDT/wot-console-stats">
+                              Sources and changelog
+                            </a>
+                          </strong>
+                          <br />
+                          Open for contributions, issues and bug reports.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="media box">
+                    <figure className="media-left">
+                      <a target="_blank" href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">
+                        <span className="icon is-large"><i className="fa fa-user"></i></span>
+                      </a>
+                    </figure>
+                    <div className="media-content">
+                      <div className="content">
+                        <p>
+                          <strong>
+                            <a target="_blank" href="http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/">
+                              WoT Console forum profile
+                            </a>
+                          </strong>
+                          <br />
+                          Another way to contact.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="media box">
+                    <figure className="media-left">
+                      <span className="icon is-large"><i className="fa fa-github"></i></span>
+                    </figure>
+                    <div className="media-content">
+                      <div className="content">
+                        <p>
+                          <strong>
+                            <a target="_blank" href="https://github.com/IDDT/wot-console-playerbase-analysis">
+                            WN8 / Percentiles repository
+                            </a>
+                          </strong>
+                          <br />
+                          Player data processing algorithms.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+
+                </section>
+              </div>
+            </div>);
+  }
+
   render() {
 
     // Loading indication for login button.
@@ -201,6 +277,30 @@ class Login extends React.Component {
 
                     <article className='card'>
                       <div className='card-content'>
+
+                        <div className="media">
+                          <div className="media-left">
+                            <span className="icon is-large"><i className="fa fa-line-chart"></i></span>
+                          </div>
+                          <div className="media-content">
+                            <p className="title is-4">World of Tanks</p>
+                            <p className="subtitle is-6">console statistics</p>
+                          </div>
+                          <div className="media-right">
+                            <a onClick={ () => this.setState({openAbout: true}) }>
+                              <span className="icon is-small">
+                                <i className="fa fa-question-circle"></i>
+                              </span>
+                            </a>
+                          </div>
+                          <div className="media-right">
+                            <a target="_blank" href="https://github.com/IDDT/wot-console-stats">
+                              <span className="icon is-small">
+                                <i className="fa fa-github"></i>
+                              </span>
+                            </a>
+                          </div>
+                        </div>
 
                         { (this.state.loggedBefore) ? this.returningUser() : this.newUser() }
 
@@ -216,8 +316,9 @@ class Login extends React.Component {
                         { this.warningMsg() }
 
                       </div>
-
                     </article>
+
+                    { this.about() }
 
                   </div>
                 </div>
@@ -236,8 +337,7 @@ class Main extends React.Component {
         { label: 'Vehicles',        iconClass: "fa fa-table",           active: false },
         { label: 'Time Series',     iconClass: "fa fa-line-chart",      active: false },
         { label: 'Session Tracker', iconClass: "fa fa-calendar",        active: false },
-        { label: 'WN8 Estimates',   iconClass: "fa fa-calculator",      active: false },
-        { label: 'About',           iconClass: "fa fa-question-circle", active: false }
+        { label: 'WN8 Estimates',   iconClass: "fa fa-calculator",      active: false }
       ],
       tabs: [
         {label: 'Dashboard', active: true},
@@ -1163,12 +1263,11 @@ class TimeSeries extends React.Component {
     let ctx = this.refs.ChartCanvas;
 
     const DATA = this.props.data;
-    const ACC = DATA.percentiles_change.map((x) => x.acc);
-    const DMGC = DATA.percentiles_change.map((x) => x.dmgc);
-    const RASS = DATA.percentiles_change.map((x) => x.rass);
-    const WR = DATA.percentiles_change.map((x) => x.wr);
-    const DMGR = DATA.percentiles_change.map((x) => x.dmgr);
-
+    const ACC = DATA.percentiles_change.map((x) => x.acc == 0 ? null : x.acc);
+    const DMGC = DATA.percentiles_change.map((x) => x.dmgc == 0 ? null : x.dmgc);
+    const RASS = DATA.percentiles_change.map((x) => x.rass == 0 ? null : x.rass);
+    const WR = DATA.percentiles_change.map((x) => x.wr == 0 ? null : x.wr);
+    const DMGR = DATA.percentiles_change.map((x) => x.dmgr == 0 ? null : x.dmgr);
     this.Chart = new Chart(ctx, {
       type: 'line',
       data:  {
@@ -1177,6 +1276,7 @@ class TimeSeries extends React.Component {
           {
             label: 'Accuracy',
             fill: false,
+            spanGaps: true,
             borderColor: 'hsl(0, 25%, 63%)',
             backgroundColor: 'hsla(0, 25%, 63%, 0.2)',
             pointBorderColor: 'hsl(0, 25%, 63%)',
@@ -1188,6 +1288,7 @@ class TimeSeries extends React.Component {
           {
             label: 'Damage Caused',
             fill: false,
+            spanGaps: true,
             borderColor: 'hsl(228, 25%, 63%)',
             backgroundColor: 'hsla(228, 25%, 63%, 0.2)',
             pointBorderColor: 'hsl(228, 25%, 63%)',
@@ -1199,6 +1300,7 @@ class TimeSeries extends React.Component {
           {
             label: 'Radio Assist',
             fill: false,
+            spanGaps: true,
             borderColor: 'hsl(197, 25%, 63%)',
             backgroundColor: 'hsla(197, 25%, 63%, 0.2)',
             pointBorderColor: 'hsl(197, 25%, 63%)',
@@ -1210,6 +1312,7 @@ class TimeSeries extends React.Component {
           {
             label: 'WinRate',
             fill: false,
+            spanGaps: true,
             borderColor: 'hsl(127, 25%, 63%)',
             backgroundColor: 'hsla(127, 25%, 63%, 0.2)',
             pointBorderColor: 'hsl(127, 25%, 63%)',
@@ -1221,6 +1324,7 @@ class TimeSeries extends React.Component {
           {
             label: 'Damage Received (inv)',
             fill: false,
+            spanGaps: true,
             borderColor: 'hsl(60, 25%, 63%)',
             backgroundColor: 'hsla(60, 25%, 63%, 0.2)',
             pointBorderColor: 'hsl(60, 25%, 63%)',
@@ -1236,7 +1340,7 @@ class TimeSeries extends React.Component {
           yAxes: [{
             ticks: {
               callback: function(label, index, labels) {
-                return(label + '%');
+                return(Math.round(label * 100) / 100 + '%');
               }
             },
           }],
@@ -1259,13 +1363,14 @@ class TimeSeries extends React.Component {
           {
             label: "WN8 Daily",
             fill: false,
+            spanGaps: true,
             backgroundColor: "hsla(0, 35%, 63%, 0.2)",
             borderColor: "hsl(0, 35%, 63%)",
             pointBackgroundColor: "hsl(0, 35%, 63%)",
             pointBorderColor: "#ffffff",
             pointHoverBackgroundColor: "#ffffff",
             pointHoverBorderColor: "hsl(0, 35%, 63%)",
-            data: DATA.wn8_change
+            data: DATA.wn8_change.map((x) => x == 0 ? null : x)
           },
           {
             label: "WN8 Total",
@@ -1686,81 +1791,6 @@ class Estimates extends React.Component {
     if (CURRENT_TAB == 'WN8 Player Values') { data = this.genPlayerValuesTab(); }
 
     return(this.genSortedTable(data));
-  }
-}
-class About extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-  render() {
-
-    const DISCORD_SVG = (<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd" strokeLinejoin="round" strokeMiterlimit="1.414"><path d="M13.487-.002c.936 0 1.693.758 1.738 1.65v14.35l-1.783-1.515-.98-.892-1.07-.93.446 1.47h-9.36c-.935 0-1.693-.71-1.693-1.65V1.65C.785.76 1.543 0 2.48 0h11zm-4.08 3.788h-.02l-.134.134c1.382.4 2.05 1.025 2.05 1.025-.89-.446-1.694-.668-2.496-.758-.58-.09-1.16-.044-1.65 0h-.132c-.312 0-.98.134-1.872.49-.312.134-.49.223-.49.223s.668-.668 2.14-1.025l-.09-.09s-1.115-.043-2.318.848c0 0-1.203 2.095-1.203 4.68 0 0 .668 1.158 2.495 1.203 0 0 .268-.356.535-.668-1.025-.312-1.426-.936-1.426-.936s.09.044.223.133h.04c.02 0 .03.01.04.02v.005c.01.01.02.02.04.02.22.09.44.178.62.267.31.134.71.268 1.2.357.62.09 1.33.134 2.14 0 .4-.09.8-.178 1.2-.357.26-.133.58-.267.93-.49 0 0-.4.624-1.47.936.22.312.53.668.53.668 1.83-.04 2.54-1.2 2.58-1.15 0-2.58-1.21-4.68-1.21-4.68-1.09-.81-2.11-.84-2.29-.84zm.113 2.942c.468 0 .847.4.847.89 0 .493-.38.892-.847.892-.467 0-.846-.4-.846-.89 0-.493.38-.892.846-.892zm-3.03 0c.467 0 .846.4.846.89 0 .493-.38.892-.846.892-.468 0-.847-.4-.847-.89 0-.493.38-.892.847-.892z"/></svg>);
-
-    const GITHUB_SVG = (<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd" strokeLinejoin="round" strokeMiterlimit="1.414"><path d="M8 0C3.58 0 0 3.582 0 8c0 3.535 2.292 6.533 5.47 7.59.4.075.547-.172.547-.385 0-.19-.007-.693-.01-1.36-2.226.483-2.695-1.073-2.695-1.073-.364-.924-.89-1.17-.89-1.17-.725-.496.056-.486.056-.486.803.056 1.225.824 1.225.824.714 1.223 1.873.87 2.33.665.072-.517.278-.87.507-1.07-1.777-.2-3.644-.888-3.644-3.953 0-.873.31-1.587.823-2.147-.09-.202-.36-1.015.07-2.117 0 0 .67-.215 2.2.82.64-.178 1.32-.266 2-.27.68.004 1.36.092 2 .27 1.52-1.035 2.19-.82 2.19-.82.43 1.102.16 1.915.08 2.117.51.56.82 1.274.82 2.147 0 3.073-1.87 3.75-3.65 3.947.28.24.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.14.46.55.38C13.71 14.53 16 11.53 16 8c0-4.418-3.582-8-8-8"/></svg>);
-
-
-    return( <div>
-              <section className='section'>
-                <div className='container'>
-
-                  <article className="media box">
-                    <figure className="media-left">
-                      <p className="image is-64x64">
-                        { DISCORD_SVG }
-                      </p>
-                    </figure>
-                    <div className="media-content">
-                      <div className="content">
-                        <p>
-                          <strong><a href='https://discord.gg/XjK8tZb'>Discord server</a></strong>
-                          <br />
-                          Probably the fastest and easiest way to get in touch.
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-
-                  <article className="media box">
-                    <figure className="media-left">
-                      <p className="image is-64x64">
-                        { GITHUB_SVG }
-                      </p>
-                    </figure>
-                    <div className="media-content">
-                      <div className="content">
-                        <p>
-                          <strong><a href='https://github.com/IDDT/wot-console-stats'>Development repository</a></strong>
-                          <br />
-                          Changelog with sources.
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-
-                  <article className="media box">
-                    <figure className="media-left">
-                      <p className="image is-64x64">
-                        { GITHUB_SVG }
-                      </p>
-                    </figure>
-                    <div className="media-content">
-                      <div className="content">
-                        <p>
-                          <strong>
-                            <a href='https://github.com/IDDT/wot-console-playerbase-analysis'>
-                            WN8 / Percentiles repository
-                            </a>
-                          </strong>
-                          <br />
-                          WN8 / Percentiles calculation algorithms. <a href='https://github.com/IDDT/wot-console-playerbase-analysis/tree/master/wn8_results'>WN8 comparison charts.</a> <a href='https://github.com/IDDT/wot-console-playerbase-analysis/blob/master/data/processed/wn8console.json'>WN8 console values in JSON.</a>
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-
-                </div>
-              </section>
-            </div>);
   }
 }
 
