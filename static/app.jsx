@@ -441,12 +441,6 @@ class Main extends React.Component {
           {label: 'WN8', active: false}
         ]});
         break;
-      case 'WN8 Estimates':
-        this.setState({tabs: [
-          {label: 'WN8 Target Damage', active: true},
-          {label: 'WN8 Player Values', active: false}
-        ]});
-        break;
       default:
         this.setState({tabs: []});
         break;
@@ -699,13 +693,8 @@ class Main extends React.Component {
                                 accountID={ this.props.accountID } />);
         break;
       case 'WN8 Estimates':
-        body = (<Estimates data={ this.state.wn8Estimates }
-                           tabs={ this.state.tabs }
-                           filters={ this.state.filters }
-                           fetchData={ this.fetchData } />);
-        break;
-      case 'About':
-        body = (<About />);
+        body = (<Estimates server={ this.props.server }
+                           accountID={ this.props.accountID } />);
         break;
       default:
         body = (<div>Error: page doesn't exist</div>)
@@ -718,7 +707,6 @@ class Main extends React.Component {
     switch(CURRENT_PAGE) {
       case 'Profile':
       case 'Time Series':
-      case 'WN8 Estimates':
         controls = (  <div className='container' style={{marginTop: 15 + 'px', marginBottom: 15 + 'px'}}>
                         { this.genFilters('tiers') }
                         { this.genFilters('class') }
@@ -755,6 +743,7 @@ class Main extends React.Component {
             </div>);
   }
 }
+
 
 // Page components.
 class Profile extends React.Component {
@@ -997,8 +986,8 @@ class Vehicles extends React.Component {
     }
   }
 
-  // Returns sorted array based on header id, includes header ids as the first row.
   makeSortedArray() {
+    // Returns sorted array based on header id, includes header ids as the first row.
 
     const SORTING_COLUMN = this.state.sortingColumn;
 
@@ -1649,150 +1638,204 @@ class Estimates extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      sortingColumn: 'unknown'
+      typeFilter: null,
+      textFilter: "",
+
+      playerTanks: [],
+      selectedTankIDs: [],
+
+      limit: 10
     }
-    this.getFilteredData = this.getFilteredData.bind(this);
-    this.genTargetDamageTab = this.genTargetDamageTab.bind(this);
-    this.genPlayerValuesTab = this.genPlayerValuesTab.bind(this);
-    this.genSortedTable = this.genSortedTable.bind(this);
+    this.fetchTanks = this.fetchTanks.bind(this);
+    this.toggleSelect = this.toggleSelect.bind(this);
   }
 
   componentDidMount() {
-    if (!this.props.data) this.props.fetchData();
+    if (this.state.playerTanks.length === 0) { this.fetchTanks() }
   }
 
-  // Get data.
-  getFilteredData() {
+  fetchTanks() {
+    // Get props and states.
+    const SERVER = this.props.server;
+    const ACCOUNT_ID = this.props.accountID;
 
-    const DATA = this.props.data;
+    // Assemble url.
+    const URL = "/microapi/get-player-tanks/" + SERVER + "/" + ACCOUNT_ID + "/";
 
-    const ALLOWED_TIERS = this.props.filters
-      .filter((x) => x.active && (x.type == 'tiers'))
-      .map((x) => parseInt(x.id));
-    const ALLOWED_CLASSES = this.props.filters
-      .filter((x) => x.active && (x.type == 'class'))
-      .map((x) => x.id);
+    // Fetching.
+    fetch(URL)
+    .then(response => { return response.json() })
+    .then(j => {
+      this.setState({loading: false});
+      if (j.status != 'ok') {
+        window.alert(j.message);
+        return;
+      }
+      if (j.data.length === 0) {
+        window.alert("No tanks on the account.");
+        return;
+      }
+      this.setState({playerTanks: j.data});
+    })
+    .catch(error => {
+      alert('There has been a problem with your fetch operation: ' + error.message);
+    });
+  }
 
-    let output = [];
-    for (let tank of DATA) {
-      const A = ALLOWED_TIERS.includes(tank.tier);
-      const B = ALLOWED_CLASSES.includes(tank.type);
-      if (!A || !B) continue;
-      output.push(tank);
+  toggleSelect(iTankID) {
+
+    let selectedTankIDs = this.state.selectedTankIDs;
+    let index = selectedTankIDs.indexOf(iTankID);
+
+    if (index === -1) {
+      selectedTankIDs.push(iTankID);
+    } else {
+      selectedTankIDs.splice(index, 1);
     }
-    return(output);
-  }
-  // 1st tab.
-  genTargetDamageTab() {
 
-    const DATA = this.getFilteredData();
-    const HEADERS = ["Tank", "300", "450", "650", "900", "1200", "1600", "2000", "2450", "2900", "Your Damage"];
-
-    let output = []
-    for(let tank of DATA) {
-      // Adding tank name by default.
-      let row = [tank.short_name];
-      // Iterating through "dmgTargets".
-      tank.dmgTargets.forEach((target) => row.push(target));
-      // Adding player damage in the end.
-      row.push(Math.round(tank.Damage));
-      output.push(row);
-    }
-    return([HEADERS].concat(output));
-  }
-  // 2nd tab
-  genPlayerValuesTab() {
-
-    const DATA = this.getFilteredData();
-    const HEADERS = ["Tank", "WinRate", "expWinRate", "Damage", "expDamage", "Frag", "expFrag", "Def", "expDef", "Spot", "expSpot"];
-    const DATA_IDS = ["WinRate", "expWinRate", "Damage", "expDamage", "Frag", "expFrag", "Def", "expDef", "Spot", "expSpot"];
-
-    let output = [];
-    for(let tank of DATA) {
-      // Adding tank name by default.
-      let row = [tank.short_name];
-      // Iterate through headers.
-      DATA_IDS.forEach((id) => row.push(Math.round(tank[id] * 100) / 100) );
-      // Adding to the output.
-      output.push(row);
-    }
-    return([HEADERS].concat(output));
+    this.setState({selectedTankIDs: selectedTankIDs});
   }
 
-  genSortedTable(oArray) {
+  panel() {
 
-    const HEADERS = oArray.slice(0, 1)[0];
-    const ROWS = oArray.slice(1);
+    // Filters.
+    const TEXT_FILTER = this.state.textFilter;
+    const TYPE_FILTER = this.state.typeFilter;
 
-    // Looking for column to sort based on header id.
-    const SORTING_COLUMN = this.state.sortingColumn;
-    let sortIndex = 0;
-    for(let h = 0; h < HEADERS.length; h++) {
-      if (HEADERS[h] == SORTING_COLUMN) {
-        sortIndex = h;
+    const PLAYER_TANKS = this.state.playerTanks;
+    const SELECTED_TANKS = this.state.selectedTankIDs;
+
+    // Adding tanks to the panel & filtering.
+    let body = [];
+    let counter = 0;
+    for (let tank of PLAYER_TANKS) {
+
+      // Filters.
+      if ((TYPE_FILTER) && (TYPE_FILTER != tank.type)) { continue }
+      if (!tank.name.toLowerCase().includes(TEXT_FILTER)) { continue }
+
+      const IS_ACTIVE = SELECTED_TANKS.includes(tank.tank_id);
+
+      body.push(<a className={ "panel-block" + ((IS_ACTIVE) ? " is-active" : "") }
+                   onClick={ () => this.toggleSelect(tank.tank_id) }
+                   key={ tank.tank_id }>
+                  <span className="panel-icon">
+                    <i className={ (IS_ACTIVE) ? "fa fa-check" : "fa fa-minus" }></i>
+                  </span>
+                  <span className="tag" style={{"marginRight": 4}}>Tier { tank.tier }</span>
+                  <span className="tag" style={{"marginRight": 4}}>{ tank.nation.toUpperCase() }</span>
+                  { tank.name }
+                </a>);
+
+      // Adding "show more" button if hitting the limit.
+      counter += 1
+      if (counter >= this.state.limit) {
+        body.push(<p className="panel-tabs" key={ "addmore" }>
+                    <a onClick={ () => this.setState({limit: this.state.limit + 10}) }>
+                      <span className="icon"><i className="fa fa-ellipsis-h"></i></span>
+                    </a>
+                  </p>);
         break;
       }
     }
 
-    // Sorting.
-    const SORTED_ARRAY = ROWS.sort(function(a,b) {
-      return b[sortIndex] - a[sortIndex];
-    });
+    return( <nav className="panel">
+              <p className="panel-heading">Tanks</p>
+              <div className="panel-block">
+                <p className={ "control has-icons-left" + ((this.state.playerTanks.length === 0) ? " is-loading" : "") }>
+                  <input className="input" type="text" placeholder="Filter by tank name"
+                         onChange={ () => this.setState({textFilter: this.refs.textFilter.value}) }
+                         ref="textFilter" />
+                  <span className="icon is-small is-left">
+                    <i className="fa fa-search"></i>
+                  </span>
+                </p>
+              </div>
+              <p className="panel-tabs">
+                <a onClick={ () => this.setState({typeFilter: null}) }
+                   className={ (this.state.typeFilter === null) ? "is-active" : "" }>All
+                </a>
+                <a onClick={ () => this.setState({typeFilter: "lightTank"}) }
+                   className={ (this.state.typeFilter === "lightTank") ? "is-active" : "" }>LT
+                </a>
+                <a onClick={ () => this.setState({typeFilter: "mediumTank"}) }
+                   className={ (this.state.typeFilter === "mediumTank") ? "is-active" : "" }>MT
+                </a>
+                <a onClick={ () => this.setState({typeFilter: "heavyTank"}) }
+                   className={ (this.state.typeFilter === "heavyTank") ? "is-active" : "" }>HT
+                </a>
+                <a onClick={ () => this.setState({typeFilter: "AT-SPG"}) }
+                   className={ (this.state.typeFilter === "AT-SPG") ? "is-active" : "" }>AT-SPG
+                </a>
+                <a onClick={ () => this.setState({typeFilter: "SPG"}) }
+                   className={ (this.state.typeFilter === "SPG") ? "is-active" : "" }>SPG
+                </a>
+              </p>
 
-    // Preparing headers.
-    let thead = [];
-    HEADERS.forEach((header) => {
-      thead.push( <th key={ header }>
-                    <a onClick={ () => this.setState({sortingColumn: header}) }>
-                      { header }
-                    </a>
-                  </th>);
-    });
+              { body }
 
-    // Preparing table body.
-    let tbody = [];
-    for (let r = 0; r < SORTED_ARRAY.length; r++) {
-      const ROW = SORTED_ARRAY[r];
-      let cells = [];
+              <div className="panel-block">
+                <a className="button is-primary is-outlined is-fullwidth"
+                   onClick={ () => this.setState({selectedTankIDs: []}) }>
+                  <span className="icon"><i className="fa fa-trash-o"></i></span>
+                </a>
+              </div>
+            </nav>);
+  }
 
-      for (let c = 0; c < ROW.length; c++) {
-        const CELL = ROW[c];
-        cells.push(<td key={ [r, c].join('') }>{ CELL }</td>);
-      }
-      tbody.push(<tr key={ r }>{ cells }</tr>);
-    }
+  emptyTanksField() {
+    return( <article className="media box">
+              <div className="media-content">
+                <div className="content has-text-centered">
+                  <h4>No tanks selected</h4>
 
-    return( <div className='container'>
-              <table className='table'>
-                <thead>
-                  <tr>
-
-                    { thead }
-
-                  </tr>
-                </thead>
-                <tbody>
-
-                  { tbody }
-
-                </tbody>
-              </table>
-            </div>);
+                  <p>
+                    Click on a tank in the left panel to view damage targets necessary to achieve a certain WN8 score.
+                    <br />
+                    The targets are calculated precisely for your account data with WN8 expected values extracted from WoT Console player base.
+                  </p>
+                </div>
+              </div>
+            </article>);
   }
 
   render() {
 
-    if (!this.props.data) { return(null); }
+    const SELECTED_IDS = this.state.selectedTankIDs;
+    const PLAYER_TANKS = this.state.playerTanks.filter((x) => SELECTED_IDS.includes(x.tank_id));
 
-    const CURRENT_TAB = this.props.tabs.filter((x) => x.active).map((x) => x.label)[0];
+    let outputTanks = []
 
-    let data;
-    if (CURRENT_TAB == 'WN8 Target Damage') { data = this.genTargetDamageTab(); }
-    if (CURRENT_TAB == 'WN8 Player Values') { data = this.genPlayerValuesTab(); }
+    SELECTED_IDS.forEach((tankID) => {
+      const TANK = PLAYER_TANKS.filter((x) => x.tank_id == tankID)[0];
+      outputTanks.push(<EstimatesTank accountID={ this.props.accountID }
+                                       server={ this.props.server }
+                                       tankID={ TANK.tank_id }
+                                       tankName={ TANK.name }
+                                       tankTier={ TANK.tier }
+                                       tankType={ TANK.type }
+                                       tankNation={ TANK.nation }
+                                       key={ TANK.tank_id }
+                                       remove={ this.toggleSelect }/>);
+    });
 
-    return(this.genSortedTable(data));
+    if (SELECTED_IDS.length === 0) { outputTanks = this.emptyTanksField() }
+
+    return( <section className="section">
+              <div className="container">
+                <div className="columns">
+                  <div className="column is-4">
+                    { this.panel() }
+                  </div>
+                  <div className="column">
+                    { outputTanks }
+                  </div>
+                </div>
+              </div>
+            </section> );
   }
 }
+
 
 // Smaller components.
 class Hero extends React.Component {
@@ -1924,6 +1967,200 @@ class Loading extends React.Component {
             </section>);
   }
 }
+class EstimatesTank extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      view:      "chart",
+
+      wn8:       null,
+      actValues: null,
+      expValues: null,
+      estimates: null,
+      tankData:  null
+    }
+    this.fetchData = this.fetchData.bind(this);
+  }
+
+  fetchData() {
+    // Get props and states.
+    const SERVER = this.props.server;
+    const ACCOUNT_ID = this.props.accountID;
+    const TANK_ID = this.props.tankID;
+
+    // Assemble url.
+    const URL = "/newapi/estimates/tank/" + SERVER + "/" + ACCOUNT_ID + "/" + TANK_ID + "/";
+
+    // Start loading indication.
+    this.setState({loading: true});
+
+    // Fetching.
+    fetch(URL)
+    .then(response => { return response.json() })
+    .then(j => {
+      this.setState({loading: false});
+      if (j.status != 'ok') {
+        alert(j.message);
+        return;
+      }
+      this.setState({
+        wn8:       j.data.wn8_score,
+        actValues: j.data.wn8_act_values,
+        expValues: j.data.wn8_exp_values,
+        estimates: j.data.wn8_estimates,
+        tankData:  j.data.tank_data
+      });
+    })
+    .catch(error => {
+      this.setState({loading: false});
+      alert('There has been a problem with your fetch operation: ' + error.message);
+    });
+  }
+
+  componentDidMount() {
+    // Fetchng the data only once.
+    if (!this.state.tankData) { this.fetchData() }
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return(this.state != nextState);
+  }
+
+  loading() {
+    return( <article className="media">
+              <div className="media-content">
+                <div className="content">
+
+                  <div className='columns'>
+                    <div className='column is-4 is-offset-4'>
+                      <a className='button is-large is-white is-loading is-fullwidth'></a>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+              <div className="media-right">
+                <button className="delete" onClick={ () => this.props.remove(this.props.tankID) }></button>
+              </div>
+            </article>);
+  }
+
+  table() {
+    const A_VALS = this.state.actValues;
+    const E_VALS = this.state.expValues;
+
+    return( <div>
+            <table className="table is-narrow is-bordered">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Damage</th>
+                  <th>Def</th>
+                  <th>Frag</th>
+                  <th>Spot</th>
+                  <th>WinRate</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Your values</td>
+                  <td>{ A_VALS.Damage }</td>
+                  <td>{ A_VALS.Def }</td>
+                  <td>{ A_VALS.Frag }</td>
+                  <td>{ A_VALS.Spot }</td>
+                  <td>{ A_VALS.WinRate }</td>
+                </tr>
+                <tr>
+                  <td>Expected values</td>
+                  <td>{ E_VALS.expDamage }</td>
+                  <td>{ E_VALS.expDef }</td>
+                  <td>{ E_VALS.expFrag }</td>
+                  <td>{ E_VALS.expSpot }</td>
+                  <td>{ E_VALS.expWinRate }</td>
+                </tr>
+              </tbody>
+            </table>
+            <table className="table is-narrow is-bordered">
+              <thead>
+                <tr>
+                  <th>300</th>
+                  <th>450</th>
+                  <th>650</th>
+                  <th>900</th>
+                  <th>1200</th>
+                  <th>1600</th>
+                  <th>2000</th>
+                  <th>2450</th>
+                  <th>2900</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{ this.state.estimates["300"] }</td>
+                  <td>{ this.state.estimates["450"] }</td>
+                  <td>{ this.state.estimates["650"] }</td>
+                  <td>{ this.state.estimates["900"] }</td>
+                  <td>{ this.state.estimates["1200"] }</td>
+                  <td>{ this.state.estimates["1600"] }</td>
+                  <td>{ this.state.estimates["2000"] }</td>
+                  <td>{ this.state.estimates["2450"] }</td>
+                  <td>{ this.state.estimates["2900"] }</td>
+                </tr>
+              </tbody>
+            </table>
+            </div>);
+  }
+
+  render() {
+
+    // Loading if no tank data.
+    if (!this.state.tankData) { return(this.loading()) }
+
+    // Chart or table.
+    let body = (<EstimatesBarChart estimates={ this.state.estimates }
+                                   wn8={ this.state.wn8 } />);
+    if (this.state.view === "table") { body = this.table() }
+
+    return( <article className="media">
+              <div className="media-content">
+                <div className="content">
+
+                  <strong>{ this.props.tankName }</strong>
+                  <span className="tag" style={{"marginLeft": 4}}>
+                    Tier { this.props.tankTier }
+                  </span>
+                  <span className="tag" style={{"marginLeft": 4}}>
+                    { this.props.tankType[0].toUpperCase() + this.props.tankType.slice(1).replace("Tank", " Tank") }
+                  </span>
+                  <span className="tag" style={{"marginLeft": 4}}>
+                    { this.props.tankNation.toUpperCase() }
+                  </span>
+
+                </div>
+
+                <nav className="level is-mobile">
+                  <div className="level-left">
+
+                    <a className="level-item" onClick={ () => this.setState({view: "chart"}) }>
+                      <span className="icon is-small"><i className="fa fa-bar-chart"></i></span>
+                    </a>
+                    <a className="level-item" onClick={ () => this.setState({view: "table"}) }>
+                      <span className="icon is-small"><i className="fa fa-table"></i></span>
+                    </a>
+                    <small>Damage targets</small>
+
+                  </div>
+                </nav>
+
+                { body }
+
+              </div>
+              <div className="media-right">
+                <button className="delete" onClick={ () => this.props.remove(this.props.tankID) }></button>
+              </div>
+            </article>);
+  }
+}
 
 
 //// Charts
@@ -1989,7 +2226,7 @@ class Wn8LineChart extends React.Component {
         }
       }
     });
-    }
+  }
 
   render() {
     return(<canvas ref='Wn8LineChart' width='100' height='40'></canvas>);
@@ -2205,6 +2442,107 @@ class STRadarChart extends React.Component {
 
   render() {
       return(<canvas ref="STRadarChartCanvas" width="100" height="100"></canvas>);
+  }
+}
+
+// Estimates
+class EstimatesBarChart extends React.Component {
+  constructor(props) {
+    super(props);
+    this.openChart = this.openChart.bind(this);
+  }
+
+  componentDidMount() {
+    this.openChart();
+  }
+
+  componentDidUpdate() {
+    this.openChart();
+  }
+
+  componentWillUnmount() {
+    if (this.Chart) { this.Chart.destroy() }
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return(this.props != nextProps);
+  }
+
+  openChart() {
+
+    // Destroying the chart and picking the reference.
+    if (this.Chart) this.Chart.destroy();
+    let ctx = this.refs.chart;
+
+
+    // Pulling the data from props.
+    const LABELS = Object.keys(this.props.estimates).map((x) => parseInt(x));
+    const DATA = Object.values(this.props.estimates);
+    const WN8_SCORE = this.props.wn8;
+
+
+    // Making colors arrays. Highlighting user WN8 score.
+    let scoreIndex = null;
+    for (let i = 0; i < LABELS.length; i++) {
+      if (WN8_SCORE >= LABELS[i]) { scoreIndex = i }
+    }
+    let backgroundColors = [];
+    let borderColors = [];
+    for (let i = 0; i < LABELS.length; i++) {
+      if (scoreIndex === i) {
+        backgroundColors.push("hsla(0, 35%, 63%, 0.2)");
+        borderColors.push("hsl(0, 35%, 63%)");
+      } else {
+        backgroundColors.push("hsla(200, 25%, 63%, 0.1)");
+        borderColors.push("hsl(200, 25%, 63%)");
+      }
+    }
+
+
+    // Creating the chart.
+    this.Chart = new Chart(ctx, {
+      type: 'bar',
+      data:  {
+        labels: LABELS,
+        datasets: [
+          {
+            label: 'Expected DMG',
+            fill: true,
+            borderWidth: 2,
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
+            data: DATA
+          }
+        ]
+      },
+      options: {
+        title: {
+          display: true,
+          text: "Damage Targets" },
+        legend: {
+          display: false
+        },
+        scales: {
+          xAxes: [{
+            ticks: {
+              callback: function(value, index, values) {
+                  return(value + " WN8");
+              }
+            }
+          }],
+          yAxes: [{
+            scaleLabel: {
+              display: true,
+              labelString: "Damage"
+            }
+          }]
+        }
+      }
+    });
+  }
+
+  render() {
+      return(<canvas ref="chart" width='100' height='25'></canvas>);
   }
 }
 

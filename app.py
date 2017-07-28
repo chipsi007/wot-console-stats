@@ -29,16 +29,15 @@ def close_conn(exception):
 class sql():
     #Main functions.
     @staticmethod
-    def get_cached_checkpoint(server, account_id):
-        #Returns the most recent checkpoint created by user from last 10 minutes. None otherwise.
-        five_minutes_ago = int(time.time()) - 600
+    def get_latest_checkpoint(server, account_id):
         cur = open_conn().cursor()
-        query = '''SELECT created_at, account_id, server, data FROM checkpoints
-                   WHERE server = ? AND account_id = ? AND created_by_bot != 1 AND created_at >= ?
-                   ORDER BY created_at DESC LIMIT 1;'''
-        search = cur.execute(query, (server, account_id, five_minutes_ago)).fetchone()
+        search = cur.execute('''
+            SELECT created_at, data FROM checkpoints
+            WHERE server = ? AND account_id = ?
+            ORDER BY created_at DESC LIMIT 1;
+        ''', (server, account_id)).fetchone()
         if search:
-            return([search[0], search[1], search[2], pickle.loads(search[3])])
+            return({'created_at': search[0], 'data': pickle.loads(search[1])})
         return(None)
     @staticmethod
     def get_all_recent_checkpoints(server, account_id):
@@ -319,18 +318,16 @@ class wgapi:
         #Find SQL cached player data or to request and save in SQL. Output: ('status', 'message', [data])
 
         #Trying to get results from SQL first.
-        player_data = sql.get_cached_checkpoint(server, account_id)
+        player_data = sql.get_latest_checkpoint(server, account_id)
 
-        if player_data is not None:
-            return('ok', 'ok', player_data[3])
+        #Accept last 10 minutes. None otherwise.
+        ten_minutes_ago = int(time.time()) - 600
+
+        if player_data.get('created_at', 0) >= ten_minutes_ago :
+            return('ok', 'ok', player_data['data'])
 
         #If no cached results, requesting from WG API.
         status, message, data = cls.get_player_data(server, account_id, app_id)
-
-        #Fallback to 'demo' app_id.
-        #if status == 'error' and message in ['INVALID_APPLICATION_ID', 'INVALID_IP_ADDRESS']:
-        #    self.app_id = 'demo'
-        #    status, message, data = cls.get_player_data(server, account_id)
 
         #Updating (or creating) SQL checkpoint if went fine.
         if status == 'ok':
@@ -351,33 +348,32 @@ class wgapi:
         except:
             return(None)
 class percentile:
-    #(Re)load percentiles.
     @classmethod
     def load(cls):
+        #(Re)load percentiles.
         cls.percentiles = sql.get_percentiles()
         cls.percentiles_generic = sql.get_percentiles_generic()
-    #Find array for specified kind and tank_id.
     @classmethod
     def get_percentiles_array(cls, kind, tank_id):
-        # Checking if the tank in percentiles dictionary.
+        #Find array for specified kind and tank_id.
         array = cls.percentiles.get(tank_id, {}).get(kind)
-
         #If tank is in the pre-calculated table. (DEFAULT)
         if array:
             return(array)
-
         #If tank in tankopedia, getting generic percentile (tier-class).
-        temp_tank = tankopedia.get(str(tank_id))
-        if temp_tank:
-            tier_class = str(temp_tank['tier']) + temp_tank['type']
+        return(cls.get_percentiles_generic_array(kind, tank_id))
+    @classmethod
+    def get_percentiles_generic_array(cls, kind, tank_id):
+        #If tank in tankopedia, getting generic percentile (tier-class).
+        found = tankopedia.get(str(tank_id))
+        if found:
+            tier_class = str(found['tier']) + found['type']
             array = cls.percentiles_generic.get(tier_class, {}).get(kind)
             return(array)
-
-        #If not in percentiles dictionary and not in tankopedia.
         return(None)
-    #Find one closest number from sorted array and return its index.
     @staticmethod
     def find_index_of_closest_value(array, number):
+        #Find one closest number from sorted array and return its index.
         pair_found = False
         beg = 0
         end = len(array) - 1
@@ -400,9 +396,9 @@ class percentile:
             return(end)
         else:
             return(beg)
-    #Calculate percentile for single tank based on parameters.
     @classmethod
     def calculate(cls, kind, tank_id, number):
+        #Calculate percentile for single tank based on parameters.
         if number > 0:
             array = cls.get_percentiles_array(kind, tank_id)
             if array is not None:
@@ -428,12 +424,6 @@ class wn8:
             if exp_values:
                 return(exp_values)
 
-        return(None)
-    @classmethod
-    def get_pc_values(cls, tank_id):
-        for item in cls.wn8pc:
-            if tank_id == item.get('IDNum'):
-                return(item)
         return(None)
     @classmethod
     def calculate_for_tank(cls, tank_data):
@@ -483,6 +473,7 @@ class wn8:
             return(wn8_counter / battle_counter)
         else:
             return(0.0)
+
 
 @app.before_first_request
 def before_first_request():
@@ -557,7 +548,43 @@ def find_difference(old_data, new_data):
                 break
 
     return(slice_data)
+#Calculate WN8 damage targets for tank.
+def calculate_wn8_damage_targets(tank_data, exp_values):
+    #step 0 - WN8 calculation algo - assigning the variables.
+    expDmg      = exp_values['expDamage']
+    expSpot     = exp_values['expSpot']
+    expFrag     = exp_values['expFrag']
+    expDef      = exp_values['expDef']
+    expWinRate  = exp_values['expWinRate']
 
+    #step 1
+    rSPOT   = tank_data['spotted']                  /   tank_data['battles']     / expSpot
+    rFRAG   = tank_data['frags']                    /   tank_data['battles']     / expFrag
+    rDEF    = tank_data['dropped_capture_points']   /   tank_data['battles']     / expDef
+    rWIN    = tank_data['wins']                     /   tank_data['battles']*100 / expWinRate
+
+    #Iterating through damage targets.
+    output = []
+    targets = [300, 450, 650, 900, 1200, 1600, 2000, 2450, 2900]
+    count = 0
+    #Iterating through possible average damage (ONCE)
+    for avg_dmg in range(20, 4500, 5):
+        rDAMAGE = avg_dmg / expDmg
+        rWINc    = max(0, (rWIN - 0.71) / (1 - 0.71))
+        rDAMAGEc = max(0, (rDAMAGE - 0.22) / (1 - 0.22))
+        rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG - 0.12) / (1 - 0.12)))
+        rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT - 0.38) / (1 - 0.38)))
+        rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF - 0.10) / (1 - 0.10)))
+        temp_score = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
+
+        if temp_score >= targets[count]:
+            output.append(avg_dmg)
+            count += 1
+            if count >= len(targets):
+                break
+
+    return({'300': output[0], '450': output[1], '650': output[2], '900': output[3], '1200': output[4],
+            '1600': output[5], '2000': output[6], '2450': output[7], '2900': output[8]})
 
 #Page classes.
 class pageProfile():
@@ -913,86 +940,6 @@ class pageSessionTracker():
             'timestamps':       self.get_timestamps(search),
             'timestamp':        timestamp
         })
-class pageWn8Estimates():
-    def __init__(self, server, account_id, player_data):
-        self.server = server
-        self.account_id = account_id
-        self.player_data = player_data
-    @staticmethod
-    def calculate_wn8_damage_targets(tank_data):
-        #Loading expected values.
-        exp_values = wn8.get_values(tank_data['tank_id'])
-        if any(exp_values) == False:
-            return([0 for i in range(9)])
-
-        #step 0 - WN8 calculation algo - assigning the variables.
-        expDmg      = exp_values['expDamage']
-        expSpot     = exp_values['expSpot']
-        expFrag     = exp_values['expFrag']
-        expDef      = exp_values['expDef']
-        expWinRate  = exp_values['expWinRate']
-        #step 1
-        rSPOT   = tank_data['spotted']                  /   tank_data['battles']     / expSpot
-        rFRAG   = tank_data['frags']                    /   tank_data['battles']     / expFrag
-        rDEF    = tank_data['dropped_capture_points']   /   tank_data['battles']     / expDef
-        rWIN    = tank_data['wins']                     /   tank_data['battles']*100 / expWinRate
-
-        #Iterating through damage targets.
-        output = []
-        targets = [300, 450, 650, 900, 1200, 1600, 2000, 2450, 2900]
-        count = 0
-        #Iterating through possible average damage (ONCE)
-        for avg_dmg in range(20, 4500, 5):
-            rDAMAGE = avg_dmg / expDmg
-            rWINc    = max(0, (rWIN - 0.71) / (1 - 0.71))
-            rDAMAGEc = max(0, (rDAMAGE - 0.22) / (1 - 0.22))
-            rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG - 0.12) / (1 - 0.12)))
-            rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT - 0.38) / (1 - 0.38)))
-            rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF - 0.10) / (1 - 0.10)))
-            temp_score = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
-
-            if temp_score >= targets[count]:
-                output.append(avg_dmg)
-                count += 1
-                if count >= len(targets):
-                    break
-
-        return(output)
-    def calculate_wn8_estimates(self):
-        output = []
-        #Iterating through tanks in player data.
-        for vehicle in self.player_data:
-            #Skip if no battles on tank.
-            if vehicle['battles'] == 0:
-                continue
-
-            #Get WN8 expected values.
-            tank_dict = wn8.get_values(vehicle['tank_id'])
-
-            #Skip if tank not in WN8 expected values.
-            if tank_dict is None:
-                continue
-
-            #Skip if tank not in tankopedia.
-            tankopedia_item = tankopedia.get(str(vehicle['tank_id']))
-            if tankopedia_item is None:
-                continue
-            tank_dict.update(tankopedia_item)
-
-            #Adding additional values.
-            tank_dict['Damage']     = vehicle['damage_dealt'] / vehicle['battles']
-            tank_dict['Def']        = vehicle['dropped_capture_points'] / vehicle['battles']
-            tank_dict['Frag']       = vehicle['frags'] / vehicle['battles']
-            tank_dict['Spot']       = vehicle['spotted'] / vehicle['battles']
-            tank_dict['WinRate']    = vehicle['wins'] / vehicle['battles'] * 100
-
-            #Calculating damage targets.
-            tank_dict['dmgTargets'] = self.calculate_wn8_damage_targets(vehicle)
-
-            output.append(tank_dict)
-
-        return(output)
-
 
 #Main API.
 @app.route('/api/<page>/<server>/<int:account_id>/<int:timestamp>/<filters>/')
@@ -1088,6 +1035,7 @@ def api_request_snapshots(server, account_id):
         'time': time.time() - start
     }), mimetype='application/json')
 
+#Request users in period.
 @app.route('/users-in-period/<int:start_timestamp>/<int:end_timestamp>/')
 def users_in_period(start_timestamp, end_timestamp):
     start = time.time()
@@ -1129,7 +1077,10 @@ def add_checkpoint(server, account_id):
     sql.add_bot_checkpoint(server, account_id, data)
     return('ok')
 
-@app.route('/miniapi/get-player-tanks/<server>/<int:account_id>/')
+
+
+#New API inteface.
+@app.route('/microapi/get-player-tanks/<server>/<int:account_id>/')
 def api_get_player_tanks(server, account_id):
     start = time.time()
 
@@ -1137,23 +1088,22 @@ def api_get_player_tanks(server, account_id):
     try:
         assert server in ['xbox', 'ps4']
     except:
-        return('error')
-
-    checkpoints = sql.get_all_recent_checkpoints(server, account_id)
-
-    if any(checkpoints) == False:
         return Response(json.dumps({
             'status':     'ok',
-            'message':    'no checkpoints',
-            'count':      0,
-            'server':     server,
-            'account_id': account_id,
-            'data':       [],
-            'time':       time.time() - start
+            'message':    'unknown server'
         }), mimetype='application/json')
 
+    #Request player data or find cached.
+    status, message, data = wgapi.find_cached_or_request(server, account_id, app_id)
+    if status != 'ok':
+        return Response(json.dumps({
+            'status': status,
+            'message': message
+        }), mimetype='application/json')
+
+    #Getting tanks. Adding only if the tank_id present in tankopedia.
     output = []
-    for tank in checkpoints[-1][3]:
+    for tank in data:
         tp_tank = tankopedia.get(str(tank['tank_id']))
         if tp_tank:
             output.append(tp_tank)
@@ -1168,19 +1118,81 @@ def api_get_player_tanks(server, account_id):
         'time':       time.time() - start
     }), mimetype='application/json')
 
-@app.route('/diag/<page>/')
-def diag(page):
+@app.route('/newapi/estimates/tank/<server>/<int:account_id>/<int:tank_id>/')
+def api_get_player_tank(server, account_id, tank_id):
     start = time.time()
 
-    if page == 'show':
+    #Validation.
+    try:
+        assert server in ['xbox', 'ps4']
+    except:
+        return Response(json.dumps({
+            'status':     'ok',
+            'message':    'unknown server'
+        }), mimetype='application/json')
+
+    #Request player data or find cached.
+    status, message, data = wgapi.find_cached_or_request(server, account_id, app_id)
+    if status != 'ok':
+        return Response(json.dumps({
+            'status': status,
+            'message': message
+        }), mimetype='application/json')
+
+
+    data = [tank for tank in data if tank['tank_id'] == tank_id]
+    if any(data) == False:
+        return Response(json.dumps({
+            'status':     'error',
+            'message':    'no such tank found',
+        }), mimetype='application/json')
+    data = data[0]
+
+    #Calculating WN8 actual values.
+    wn8_act_values = {
+        'Damage':  round(data['damage_dealt'] / data['battles'], 2),
+        'Def':     round(data['dropped_capture_points'] / data['battles'], 2),
+        'Frag':    round(data['frags'] / data['battles'], 2),
+        'Spot':    round(data['spotted'] / data['battles'], 2),
+        'WinRate': round(data['wins'] / data['battles'] * 100, 2)
+    }
+
+    exp_values = wn8.get_values(tank_id)
+
+    output = {
+        'wn8_score':      int(wn8.calculate_for_tank(data)),
+        'wn8_act_values': wn8_act_values,
+        'wn8_exp_values': exp_values,
+        'wn8_estimates':  calculate_wn8_damage_targets(data, exp_values),
+        'tank_data':      data
+    }
+
+    return Response(json.dumps({
+        'status':     'ok',
+        'message':    'ok',
+        'count':      len(output),
+        'server':     server,
+        'account_id': account_id,
+        'data':       output,
+        'time':       time.time() - start
+    }), mimetype='application/json')
+
+
+
+#Diagnostics and maintenance calls.
+@app.route('/diag/<request>/')
+def diag(request):
+    start = time.time()
+
+    if request == 'show':
         return('show function')
 
-    if page == 'reload-tankopedia':
+    if request == 'reload-tankopedia':
         global tankopedia
         tankopedia = sql.get_tankopedia()
         return('tankopedia reloaded')
 
-    if page == 'update-tankopedia':
+    if request == 'update-tankopedia':
 
         #Getting tankopedias.
         new_tankopedia = wgapi.get_tankopedia(app_id)
