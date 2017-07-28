@@ -473,6 +473,54 @@ class wn8:
             return(wn8_counter / battle_counter)
         else:
             return(0.0)
+    @classmethod
+    def get_damage_targets(cls, tank_data):
+
+        #Getting exp_values.
+        exp_values = cls.get_values(tank_data['tank_id'])
+        if not exp_values:
+            return(0)
+
+        #step 1
+        rSPOT  = tank_data['spotted']                / tank_data['battles']       / exp_values['expSpot']
+        rFRAG  = tank_data['frags']                  / tank_data['battles']       / exp_values['expFrag']
+        rDEF   = tank_data['dropped_capture_points'] / tank_data['battles']       / exp_values['expDef']
+        rWIN   = tank_data['wins']                   / tank_data['battles'] * 100 / exp_values['expWinRate']
+        expDmg = exp_values['expDamage']
+
+        #Iterating through damage targets.
+        output = []
+        targets = [300, 450, 650, 900, 1200, 1600, 2000, 2450, 2900]
+        for target in targets:
+
+            WN8, found = 0, False
+            beg, end = 1, 6000
+
+            #Looking for the closest pair because the WN8 score might not be exact.
+            while abs(beg - end) != 1 and found == False:
+                mid = (beg + end) // 2
+
+                #Finishing WN8 calculation. mid = avgDmg
+                rDAMAGE = mid / expDmg
+                rWINc    = max(0, (rWIN - 0.71) / (1 - 0.71))
+                rDAMAGEc = max(0, (rDAMAGE - 0.22) / (1 - 0.22))
+                rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG - 0.12) / (1 - 0.12)))
+                rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT - 0.38) / (1 - 0.38)))
+                rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF - 0.10) / (1 - 0.10)))
+                wn8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
+
+                #Bisect search.
+                if wn8 > target:
+                    end = mid
+                elif wn8 < target:
+                    beg = mid
+                else:
+                    found = True
+                    end = mid
+
+            #Always return end.
+            output.append({'label': target, 'value': end})
+        return(output)
 
 
 @app.before_first_request
@@ -548,43 +596,7 @@ def find_difference(old_data, new_data):
                 break
 
     return(slice_data)
-#Calculate WN8 damage targets for tank.
-def calculate_wn8_damage_targets(tank_data, exp_values):
-    #step 0 - WN8 calculation algo - assigning the variables.
-    expDmg      = exp_values['expDamage']
-    expSpot     = exp_values['expSpot']
-    expFrag     = exp_values['expFrag']
-    expDef      = exp_values['expDef']
-    expWinRate  = exp_values['expWinRate']
 
-    #step 1
-    rSPOT   = tank_data['spotted']                  /   tank_data['battles']     / expSpot
-    rFRAG   = tank_data['frags']                    /   tank_data['battles']     / expFrag
-    rDEF    = tank_data['dropped_capture_points']   /   tank_data['battles']     / expDef
-    rWIN    = tank_data['wins']                     /   tank_data['battles']*100 / expWinRate
-
-    #Iterating through damage targets.
-    output = []
-    targets = [300, 450, 650, 900, 1200, 1600, 2000, 2450, 2900]
-    count = 0
-    #Iterating through possible average damage (ONCE)
-    for avg_dmg in range(20, 4500, 5):
-        rDAMAGE = avg_dmg / expDmg
-        rWINc    = max(0, (rWIN - 0.71) / (1 - 0.71))
-        rDAMAGEc = max(0, (rDAMAGE - 0.22) / (1 - 0.22))
-        rFRAGc   = max(0, min(rDAMAGEc + 0.2, (rFRAG - 0.12) / (1 - 0.12)))
-        rSPOTc   = max(0, min(rDAMAGEc + 0.1, (rSPOT - 0.38) / (1 - 0.38)))
-        rDEFc    = max(0, min(rDAMAGEc + 0.1, (rDEF - 0.10) / (1 - 0.10)))
-        temp_score = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
-
-        if temp_score >= targets[count]:
-            output.append(avg_dmg)
-            count += 1
-            if count >= len(targets):
-                break
-
-    return({'300': output[0], '450': output[1], '650': output[2], '900': output[3], '1200': output[4],
-            '1600': output[5], '2000': output[6], '2450': output[7], '2900': output[8]})
 
 #Page classes.
 class pageProfile():
@@ -1080,17 +1092,19 @@ def add_checkpoint(server, account_id):
 
 
 #New API inteface.
-@app.route('/microapi/get-player-tanks/<server>/<int:account_id>/')
-def api_get_player_tanks(server, account_id):
+@app.route('/newapi/general/get-player-tanks/')
+def newapi_general_get_player_tanks():
     start = time.time()
 
-    #Validation.
+    #Getting arguments and validating.
     try:
+        server = request.args.get('server')
+        account_id = int(request.args.get('account_id'))
         assert server in ['xbox', 'ps4']
     except:
         return Response(json.dumps({
             'status':     'ok',
-            'message':    'unknown server'
+            'message':    'bad request'
         }), mimetype='application/json')
 
     #Request player data or find cached.
@@ -1118,17 +1132,21 @@ def api_get_player_tanks(server, account_id):
         'time':       time.time() - start
     }), mimetype='application/json')
 
-@app.route('/newapi/estimates/tank/<server>/<int:account_id>/<int:tank_id>/')
-def api_get_player_tank(server, account_id, tank_id):
+
+@app.route('/newapi/estimates/get-tank/')
+def newapi_estimates_get_tank():
     start = time.time()
 
-    #Validation.
+    #Getting arguments and validating.
     try:
+        server = request.args.get('server')
+        account_id = int(request.args.get('account_id'))
+        tank_id = int(request.args.get('tank_id'))
         assert server in ['xbox', 'ps4']
     except:
         return Response(json.dumps({
             'status':     'ok',
-            'message':    'unknown server'
+            'message':    'bad request'
         }), mimetype='application/json')
 
     #Request player data or find cached.
@@ -1139,32 +1157,29 @@ def api_get_player_tank(server, account_id, tank_id):
             'message': message
         }), mimetype='application/json')
 
-
     data = [tank for tank in data if tank['tank_id'] == tank_id]
     if any(data) == False:
         return Response(json.dumps({
             'status':     'error',
             'message':    'no such tank found',
         }), mimetype='application/json')
-    data = data[0]
+    tank_data = data[0]
 
     #Calculating WN8 actual values.
     wn8_act_values = {
-        'Damage':  round(data['damage_dealt'] / data['battles'], 2),
-        'Def':     round(data['dropped_capture_points'] / data['battles'], 2),
-        'Frag':    round(data['frags'] / data['battles'], 2),
-        'Spot':    round(data['spotted'] / data['battles'], 2),
-        'WinRate': round(data['wins'] / data['battles'] * 100, 2)
+        'Damage':  round(tank_data['damage_dealt'] / tank_data['battles'], 2),
+        'Def':     round(tank_data['dropped_capture_points'] / tank_data['battles'], 2),
+        'Frag':    round(tank_data['frags'] / tank_data['battles'], 2),
+        'Spot':    round(tank_data['spotted'] / tank_data['battles'], 2),
+        'WinRate': round(tank_data['wins'] / tank_data['battles'] * 100, 2)
     }
 
-    exp_values = wn8.get_values(tank_id)
-
     output = {
-        'wn8_score':      int(wn8.calculate_for_tank(data)),
+        'wn8_score':      int(wn8.calculate_for_tank(tank_data)),
         'wn8_act_values': wn8_act_values,
-        'wn8_exp_values': exp_values,
-        'wn8_estimates':  calculate_wn8_damage_targets(data, exp_values),
-        'tank_data':      data
+        'wn8_exp_values': wn8.get_values(tank_id),
+        'wn8_estimates':  wn8.get_damage_targets(tank_data),
+        'tank_data':      tank_data
     }
 
     return Response(json.dumps({

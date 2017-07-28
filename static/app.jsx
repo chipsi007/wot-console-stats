@@ -1659,8 +1659,9 @@ class Estimates extends React.Component {
     const SERVER = this.props.server;
     const ACCOUNT_ID = this.props.accountID;
 
-    // Assemble url.
-    const URL = "/microapi/get-player-tanks/" + SERVER + "/" + ACCOUNT_ID + "/";
+    // Assemble the url.
+    const ARGS = `?server=${ SERVER }&account_id=${ ACCOUNT_ID }`;
+    const URL = "/newapi/general/get-player-tanks/" + ARGS;
 
     // Fetching.
     fetch(URL)
@@ -1988,8 +1989,9 @@ class EstimatesTank extends React.Component {
     const ACCOUNT_ID = this.props.accountID;
     const TANK_ID = this.props.tankID;
 
-    // Assemble url.
-    const URL = "/newapi/estimates/tank/" + SERVER + "/" + ACCOUNT_ID + "/" + TANK_ID + "/";
+    // Assemble the url.
+    const ARGS = `?server=${ SERVER }&account_id=${ ACCOUNT_ID }&tank_id=${ TANK_ID }`;
+    const URL = "/newapi/estimates/get-tank/" + ARGS;
 
     // Start loading indication.
     this.setState({loading: true});
@@ -2049,6 +2051,10 @@ class EstimatesTank extends React.Component {
     const A_VALS = this.state.actValues;
     const E_VALS = this.state.expValues;
 
+    // Damage targets.
+    const LABELS = this.state.estimates.map((x) => x.label);
+    const VALUES = this.state.estimates.map((x) => x.value);
+
     return( <div>
             <table className="table is-narrow is-bordered">
               <thead>
@@ -2082,30 +2088,10 @@ class EstimatesTank extends React.Component {
             </table>
             <table className="table is-narrow is-bordered">
               <thead>
-                <tr>
-                  <th>300</th>
-                  <th>450</th>
-                  <th>650</th>
-                  <th>900</th>
-                  <th>1200</th>
-                  <th>1600</th>
-                  <th>2000</th>
-                  <th>2450</th>
-                  <th>2900</th>
-                </tr>
+                <tr>{ LABELS.map((x) => (<th key={ x }>{ x }</th>)) }</tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>{ this.state.estimates["300"] }</td>
-                  <td>{ this.state.estimates["450"] }</td>
-                  <td>{ this.state.estimates["650"] }</td>
-                  <td>{ this.state.estimates["900"] }</td>
-                  <td>{ this.state.estimates["1200"] }</td>
-                  <td>{ this.state.estimates["1600"] }</td>
-                  <td>{ this.state.estimates["2000"] }</td>
-                  <td>{ this.state.estimates["2450"] }</td>
-                  <td>{ this.state.estimates["2900"] }</td>
-                </tr>
+                <tr>{ VALUES.map((x) => (<td key={ x }>{ x }</td>)) }</tr>
               </tbody>
             </table>
             </div>);
@@ -2476,8 +2462,8 @@ class EstimatesBarChart extends React.Component {
 
 
     // Pulling the data from props.
-    const LABELS = Object.keys(this.props.estimates).map((x) => parseInt(x));
-    const DATA = Object.values(this.props.estimates);
+    const LABELS = this.props.estimates.map((x) => x.label);
+    const VALUES = this.props.estimates.map((x) => x.value);
     const WN8_SCORE = this.props.wn8;
 
 
@@ -2511,7 +2497,7 @@ class EstimatesBarChart extends React.Component {
             borderWidth: 2,
             backgroundColor: backgroundColors,
             borderColor: borderColors,
-            data: DATA
+            data: VALUES
           }
         ]
       },
