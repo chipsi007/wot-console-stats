@@ -16,3 +16,5 @@ lib/
 pip-selfcheck.json
 
 pyvenv.cfg
+
+package-lock.json

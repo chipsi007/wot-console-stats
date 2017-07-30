@@ -38,7 +38,7 @@ class sql():
         ''', (server, account_id)).fetchone()
         if search:
             return({'created_at': search[0], 'data': pickle.loads(search[1])})
-        return(None)
+        return({})
     @staticmethod
     def get_all_recent_checkpoints(server, account_id):
         #Returns the list of checkpoints for the last 14 days. Ordered from earliest to latest.
@@ -1239,7 +1239,10 @@ def diag(request):
     if request == 'reload-tankopedia':
         global tankopedia
         tankopedia = sql.get_tankopedia()
-        return('ok')
+        return Response(json.dumps({
+            'status':     'ok',
+            'message':    'ok'
+        }), mimetype='application/json')
 
     if request == 'update-tankopedia':
 
@@ -1248,7 +1251,7 @@ def diag(request):
         if not new_tankopedia:
             return Response(json.dumps({
                 'status':     'error',
-                'message':    'couldnt download tankopedia from WG API',
+                'message':    'couldnt download tankopedia from WG API'
             }), mimetype='application/json')
         old_tankopedia = sql.get_tankopedia()
 
@@ -1284,10 +1287,16 @@ def diag(request):
         #Getting percentiles.
         url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles/'
 
-        resp = requests.get(url, timeout=10).json()
-        assert resp['status'] == 'ok'
-        assert resp['count'] == len(resp['data'])
-        new_percentiles = resp['data']
+        try:
+            resp = requests.get(url, timeout=10).json()
+            assert resp['status'] == 'ok'
+            assert resp['count'] == len(resp['data'])
+            new_percentiles = resp['data']
+        except Exception as e:
+            return Response(json.dumps({
+                'status':     'error',
+                'message':    str(e)
+            }), mimetype='application/json')
 
         sql.update_percentiles(new_percentiles)
 
@@ -1302,10 +1311,16 @@ def diag(request):
         #Getting percentiles.
         url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles-generic/'
 
-        resp = requests.get(url, timeout=10).json()
-        assert resp['status'] == 'ok'
-        assert resp['count'] == len(resp['data'])
-        new_percentiles = resp['data']
+        try:
+            resp = requests.get(url, timeout=10).json()
+            assert resp['status'] == 'ok'
+            assert resp['count'] == len(resp['data'])
+            new_percentiles = resp['data']
+        except Exception as e:
+            return Response(json.dumps({
+                'status':     'error',
+                'message':    str(e)
+            }), mimetype='application/json')
 
         sql.update_percentiles_generic(new_percentiles)
 

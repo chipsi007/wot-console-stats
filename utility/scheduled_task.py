@@ -4,7 +4,6 @@ import json
 
 BASE_URL = 'http://wot.pythonanywhere.com/'
 
-
 def get_users(base_url):
     now = int(time.time())
     seven_days_ago = now - 60 * 60 * 24 * 7
@@ -38,20 +37,23 @@ def iterate(base_url, users):
 def update_tankopedia(base_url):
     try:
         resp = requests.get(base_url + '/diag/update-tankopedia/', timeout=60).json()
+        resp
 
         if resp['status'] != 'ok':
-            print('Tankopedia couldnt be updated. Error: ' + )
+            print('Tankopedia couldnt be updated. Error: ' + resp.get('message'))
         else:
-            print('Tankopedia was updated. ' + resp['count'] + ' updated tanks.')
+            print('Tankopedia was updated. ' + str(resp['count']) + ' updated tanks.')
 
             if resp['count'] > 0:
               for tank in resp['data']:
                 string = 'NAME: {}  TIER: {}  TYPE: {}  NATION {}'\
-                         .format(tank['name'], tank['tier'], tank['type'], tank['nation'])
+                         .format(tank['name'], str(tank['tier']), tank['type'], tank['nation'])
                 print(string)
 
     except Exception as e:
         print('Tankopedia couldnt be updated. Error: ' + str(e))
+
+    time.sleep(3)
 
     #Reloading tankopedia.
     try:
@@ -79,6 +81,8 @@ def update_percentiles(base_url):
     except Exception as e:
         print('Percentiles couldnt be updated. Error: ' + str(e))
 
+    time.sleep(3)
+
     #Updating generic percentiles.
     try:
         resp = requests.get(base_url+ '/diag/update-percentiles-generic/', timeout=20).json()
@@ -90,6 +94,8 @@ def update_percentiles(base_url):
 
     except Exception as e:
         print('Percentiles_generic couldnt be updated. Error: ' + str(e))
+
+    time.sleep(3)
 
     #Reloading.
     try:

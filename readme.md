@@ -1,12 +1,15 @@
 ###### Description:
 
-Advanced player statistics for World of Tanks Console.
 
-SPA - style frontend written in React, communicates with the server via JSON API and Fetch API.
+Player statistics for World of Tanks Console.
 
-Performs real time calculations based on the stored data.
+Keeps player data for last 14 days (in GMT timezone), after that stores first checkpoint a week with maximum of 52.
 
-Utilizes data analysis insights from the records of more than 100,000 players. [Github repo](https://github.com/IDDT/wot-console-playerbase-analysis)
+Bot checks up for the user 7 days after the last user visit at 23:00 GMT.
+
+Uses WN8 expected values pre-calculated for Console players with [these](https://github.com/IDDT/wot-console-wn8) algorithms.
+
+Automatically updates WN8 and percentiles weekly, tanks - daily.
 
 
 ###### Dependencies:
@@ -16,27 +19,28 @@ Utilizes data analysis insights from the records of more than 100,000 players. [
 - [Fetch (Polyfill)](https://github.com/github/fetch)
 - [Bulma](https://github.com/jgthms/bulma)
 - [SQLite](https://www.sqlite.org)
-- [Simple-icons](https://github.com/danleech/simple-icons)
+- [Font-Awesome](https://github.com/FortAwesome/Font-Awesome)
 
 
-###### Bulma SASS Changes:
+###### How to run:
+* `cd wot-console-stats`
+* `echo 'app_id = "demo"' > secret.py`
+* Install python3.6
+  * `python3 -m venv .`
+  * `pip3 install -r requirements.txt`
+* Install Node.js
+  * `npm install --save-dev babel-cli`
+  * `npm install --save-dev babel-cli babel-preset-react`
+  * `echo '{ "presets": ["react"] }' > .babelrc`
+  * `./node_modules/.bin/babel static/app.jsx --out-file static/app.js`
+* `python3 utility/create_db.py`
+* `export FLASK_APP=app.py`
+* `export FLASK_DEBUG=1`
+* `flask run`
 
-utilities/initial-variables.sass - colors
 
-```SASS
-$orange:       hsl(14,  100%, 53%)  !default
-$yellow:       hsl(45,  88%,  65%)  !default
-$green:        hsl(130, 25%,  63%)  !default
-$turquoise:    hsl(212, 43%,  65%)  !default
-$blue:         hsl(200, 25%,  63%)  !default
-$purple:       hsl(271, 100%, 71%)  !default
-$red:          hsl(0,   35%,  63%)  !default
-```
+###### Scripts:
 
-###### Other files:
-
-`/utility/create_db.py` - Database setup
-
-`/utility/nightly_task.py` - Maintenance script
-
-`/utility/request_tankopedia.py` - Update tankopedia
+`/utility/create_db.py` - Database setup & schema.
+`/utility/optimize_db.py` - Remove old player data.
+`/utility/scheduled_task.py` - Maintenance script.
