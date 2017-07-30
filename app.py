@@ -230,6 +230,20 @@ class sql():
             output[row[0]] = pickle.loads(row[1])
         return(output)
     @staticmethod
+    def update_percentiles(new_percentiles):
+        #Input: {"111": {percentiles}, ...}
+        cur = open_conn().cursor()
+
+        #Converting into tuples.
+        tuples = []
+        for tank_id, value in new_percentiles.items():
+            data = sqlite3.Binary(pickle.dumps(value))
+            tuples.append((int(tank_id), data))
+
+        #Rewriting the whole table.
+        cur.execute('DELETE FROM percentiles;')
+        cur.executemany('INSERT INTO percentiles (tank_id, data) VALUES (?, ?);', tuples)
+    @staticmethod
     def get_percentiles_generic():
         cur = open_conn().cursor()
         output = {}
@@ -237,6 +251,26 @@ class sql():
         for row in cur:
             output[str(row[0]) + row[1]] = pickle.loads(row[2])
         return(output)
+    @staticmethod
+    def update_percentiles_generic(new_percentiles):
+        #Input: {"1lightTank": {percentiles}, ...}
+        cur = open_conn().cursor()
+
+        #Converting into tuples.
+        tuples = []
+        for tier_type, value in new_percentiles.items():
+
+            #Extracting into tank_tier & tank_type.
+            digit_string = ''.join(x for x in tier_type if x.isdigit())
+            tank_tier = int(digit_string)
+            tank_type = tier_type.replace(digit_string, '')
+
+            data = sqlite3.Binary(pickle.dumps(value))
+            tuples.append((tank_tier, tank_type, data))
+
+        #Rewriting the whole table.
+        cur.execute('DELETE FROM percentiles_generic;')
+        cur.executemany('INSERT INTO percentiles_generic (tier, type, data) VALUES (?, ?, ?);', tuples)
 
     #WN8
     @staticmethod
@@ -1205,7 +1239,7 @@ def diag(request):
     if request == 'reload-tankopedia':
         global tankopedia
         tankopedia = sql.get_tankopedia()
-        return('tankopedia reloaded')
+        return('ok')
 
     if request == 'update-tankopedia':
 
@@ -1245,7 +1279,53 @@ def diag(request):
             'time':       time.time() - start
         }), mimetype='application/json')
 
-    return('error')
+    if request == 'update-percentiles':
+
+        #Getting percentiles.
+        url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles/'
+
+        resp = requests.get(url, timeout=10).json()
+        assert resp['status'] == 'ok'
+        assert resp['count'] == len(resp['data'])
+        new_percentiles = resp['data']
+
+        sql.update_percentiles(new_percentiles)
+
+        return Response(json.dumps({
+            'status':     'ok',
+            'message':    'ok',
+            'time':       time.time() - start
+        }), mimetype='application/json')
+
+    if request == 'update-percentiles-generic':
+
+        #Getting percentiles.
+        url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles-generic/'
+
+        resp = requests.get(url, timeout=10).json()
+        assert resp['status'] == 'ok'
+        assert resp['count'] == len(resp['data'])
+        new_percentiles = resp['data']
+
+        sql.update_percentiles_generic(new_percentiles)
+
+        return Response(json.dumps({
+            'status':     'ok',
+            'message':    'ok',
+            'time':       time.time() - start
+        }), mimetype='application/json')
+
+    if request == 'reload-percentiles':
+        percentile.load()
+        return Response(json.dumps({
+            'status':     'ok',
+            'message':    'ok'
+        }), mimetype='application/json')
+
+    return Response(json.dumps({
+        'status':     'error',
+        'message':    'bad request'
+    }), mimetype='application/json')
 
 @app.errorhandler(404)
 def error_not_found(error):

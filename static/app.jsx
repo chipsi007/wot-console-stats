@@ -214,7 +214,7 @@ class Login extends React.Component {
                             </a>
                           </strong>
                           <br />
-                          Open for contributions, issues and bug reports.
+                          Open for contributions, suggestions, issues and bug reports.
                         </p>
                       </div>
                     </div>
@@ -235,7 +235,7 @@ class Login extends React.Component {
                             </a>
                           </strong>
                           <br />
-                          Another way to contact.
+                          Rarely checked, but still a valid way to send your thoughts or questions.
                         </p>
                       </div>
                     </div>
@@ -2056,44 +2056,44 @@ class EstimatesTank extends React.Component {
     const VALUES = this.state.estimates.map((x) => x.value);
 
     return( <div>
-            <table className="table is-narrow is-bordered">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Damage</th>
-                  <th>Def</th>
-                  <th>Frag</th>
-                  <th>Spot</th>
-                  <th>WinRate</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Your values</td>
-                  <td>{ A_VALS.Damage }</td>
-                  <td>{ A_VALS.Def }</td>
-                  <td>{ A_VALS.Frag }</td>
-                  <td>{ A_VALS.Spot }</td>
-                  <td>{ A_VALS.WinRate }</td>
-                </tr>
-                <tr>
-                  <td>Expected values</td>
-                  <td>{ E_VALS.expDamage }</td>
-                  <td>{ E_VALS.expDef }</td>
-                  <td>{ E_VALS.expFrag }</td>
-                  <td>{ E_VALS.expSpot }</td>
-                  <td>{ E_VALS.expWinRate }</td>
-                </tr>
-              </tbody>
-            </table>
-            <table className="table is-narrow is-bordered">
-              <thead>
-                <tr>{ LABELS.map((x) => (<th key={ x }>{ x }</th>)) }</tr>
-              </thead>
-              <tbody>
-                <tr>{ VALUES.map((x) => (<td key={ x }>{ x }</td>)) }</tr>
-              </tbody>
-            </table>
+              <table className="table is-narrow is-bordered">
+                <thead>
+                  <tr>{ LABELS.map((x) => (<th key={ x }>{ x }</th>)) }</tr>
+                </thead>
+                <tbody>
+                  <tr>{ VALUES.map((x) => (<td key={ x }>{ x }</td>)) }</tr>
+                </tbody>
+              </table>
+              <table className="table is-narrow is-bordered">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Damage</th>
+                    <th>Def</th>
+                    <th>Frag</th>
+                    <th>Spot</th>
+                    <th>WinRate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Your values</td>
+                    <td>{ A_VALS.Damage }</td>
+                    <td>{ A_VALS.Def }</td>
+                    <td>{ A_VALS.Frag }</td>
+                    <td>{ A_VALS.Spot }</td>
+                    <td>{ A_VALS.WinRate }</td>
+                  </tr>
+                  <tr>
+                    <td>Expected values</td>
+                    <td>{ E_VALS.expDamage }</td>
+                    <td>{ E_VALS.expDef }</td>
+                    <td>{ E_VALS.expFrag }</td>
+                    <td>{ E_VALS.expSpot }</td>
+                    <td>{ E_VALS.expWinRate }</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>);
   }
 
@@ -2133,7 +2133,7 @@ class EstimatesTank extends React.Component {
                     <a className="level-item" onClick={ () => this.setState({view: "table"}) }>
                       <span className="icon is-small"><i className="fa fa-table"></i></span>
                     </a>
-                    <small>Damage targets</small>
+                    <small>Current WN8: { this.state.wn8 }</small>
 
                   </div>
                 </nav>
@@ -2316,40 +2316,42 @@ class RadarChart extends React.Component {
       type: 'radar',
       data:  {
         labels: ['Accuracy', 'Damage Caused', 'Radio Assist', 'WinRate', 'Damage Received (inv)'],
-        datasets: [{
-          label: 'Recent Percentiles',
-          fill: true,
-          backgroundColor: "hsla(0, 35%, 63%, 0.2)",
-          borderColor: "hsl(0, 35%, 63%)",
-          pointBackgroundColor: "hsl(0, 35%, 63%)",
-          pointBorderColor: "#ffffff",
-          pointHoverBackgroundColor: "#ffffff",
-          pointHoverBorderColor: "hsl(0, 35%, 63%)",
-          data: [
-            DATA.recent.percentiles.acc,
-            DATA.recent.percentiles.dmgc,
-            DATA.recent.percentiles.rass,
-            DATA.recent.percentiles.wr,
-            DATA.recent.percentiles.dmgr
-          ],
-        },
-        {
-          label: 'All Time Percentiles',
-          fill: true,
-          backgroundColor: "hsla(200, 25%, 63%, 0.1)",
-          borderColor: "hsl(200, 25%, 63%)",
-          pointBackgroundColor: "hsl(200, 25%, 63%)",
-          pointBorderColor: "#ffffff",
-          pointHoverBackgroundColor: "#ffffff",
-          pointHoverBorderColor: "hsl(200, 25%, 63%)",
-          data: [
-            DATA.all_time.percentiles.acc,
-            DATA.all_time.percentiles.dmgc,
-            DATA.all_time.percentiles.rass,
-            DATA.all_time.percentiles.wr,
-            DATA.all_time.percentiles.dmgr
-          ],
-        }]
+        datasets: [
+          {
+            label: 'Recent Percentiles',
+            fill: true,
+            backgroundColor: "hsla(0, 35%, 63%, 0.2)",
+            borderColor: "hsl(0, 35%, 63%)",
+            pointBackgroundColor: "hsl(0, 35%, 63%)",
+            pointBorderColor: "#ffffff",
+            pointHoverBackgroundColor: "#ffffff",
+            pointHoverBorderColor: "hsl(0, 35%, 63%)",
+            data: [
+              DATA.recent.percentiles.acc,
+              DATA.recent.percentiles.dmgc,
+              DATA.recent.percentiles.rass,
+              DATA.recent.percentiles.wr,
+              DATA.recent.percentiles.dmgr
+            ],
+          },
+          {
+            label: 'All Time Percentiles',
+            fill: true,
+            backgroundColor: "hsla(200, 25%, 63%, 0.1)",
+            borderColor: "hsl(200, 25%, 63%)",
+            pointBackgroundColor: "hsl(200, 25%, 63%)",
+            pointBorderColor: "#ffffff",
+            pointHoverBackgroundColor: "#ffffff",
+            pointHoverBorderColor: "hsl(200, 25%, 63%)",
+            data: [
+              DATA.all_time.percentiles.acc,
+              DATA.all_time.percentiles.dmgc,
+              DATA.all_time.percentiles.rass,
+              DATA.all_time.percentiles.wr,
+              DATA.all_time.percentiles.dmgr
+            ],
+          }
+        ]
       },
       options: {
         scale: {
@@ -2370,51 +2372,64 @@ class RadarChart extends React.Component {
 class STRadarChart extends React.Component {
   constructor(props) {
     super(props);
-    this.OpenRadChart = this.OpenRadChart.bind(this);
+    this.openChart = this.openChart.bind(this);
   }
 
   componentDidMount() {
-    this.OpenRadChart();
+    this.openChart();
   }
 
   componentDidUpdate() {
-    this.OpenRadChart();
+    this.openChart();
   }
 
-  OpenRadChart() {
+  componentWillUnmount() {
+    if (this.Chart) { this.Chart.destroy() }
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return(this.props != nextProps);
+  }
+
+  openChart() {
+
+    // Destroying the chart and picking the reference.
+    if (this.Chart) this.Chart.destroy();
+    let ctx = this.refs.chart;
+
+
     const ALL_TIME = this.props.all_time;
     const RECENT = this.props.recent;
-
-    if (this.RadChart) this.RadChart.destroy();
-    let ctx = this.refs.STRadarChartCanvas;
     const DATA = this.props.data;
 
-    this.RadChart = new Chart(ctx, {
+    this.Chart = new Chart(ctx, {
       type: 'radar',
       data:  {
         labels: ['Accuracy', 'Damage Caused', 'Radio Assist', 'Experience', 'Damage Received (inv)'],
-        datasets: [{
-          label: 'Selected period',
-          fill: true,
-          backgroundColor: "hsla(0, 35%, 63%, 0.2)",
-          borderColor: "hsl(0, 35%, 63%)",
-          pointBackgroundColor: "hsl(0, 35%, 63%)",
-          pointBorderColor: "#ffffff",
-          pointHoverBackgroundColor: "#ffffff",
-          pointHoverBorderColor: "hsl(0, 35%, 63%)",
-          data: RECENT,
-        },
-        {
-          label: 'All time',
-          fill: true,
-          backgroundColor: "hsla(200, 25%, 63%, 0.1)",
-          borderColor: "hsl(200, 25%, 63%)",
-          pointBackgroundColor: "hsl(200, 25%, 63%)",
-          pointBorderColor: "#ffffff",
-          pointHoverBackgroundColor: "#ffffff",
-          pointHoverBorderColor: "hsl(200, 25%, 63%)",
-          data: ALL_TIME,
-        }]
+        datasets: [
+          {
+            label: 'Selected period',
+            fill: true,
+            backgroundColor: "hsla(0, 35%, 63%, 0.2)",
+            borderColor: "hsl(0, 35%, 63%)",
+            pointBackgroundColor: "hsl(0, 35%, 63%)",
+            pointBorderColor: "#ffffff",
+            pointHoverBackgroundColor: "#ffffff",
+            pointHoverBorderColor: "hsl(0, 35%, 63%)",
+            data: RECENT,
+          },
+          {
+            label: 'All time',
+            fill: true,
+            backgroundColor: "hsla(200, 25%, 63%, 0.1)",
+            borderColor: "hsl(200, 25%, 63%)",
+            pointBackgroundColor: "hsl(200, 25%, 63%)",
+            pointBorderColor: "#ffffff",
+            pointHoverBackgroundColor: "#ffffff",
+            pointHoverBorderColor: "hsl(200, 25%, 63%)",
+            data: ALL_TIME,
+          }
+        ]
       },
       options: {
         scale: {
@@ -2427,7 +2442,7 @@ class STRadarChart extends React.Component {
   }
 
   render() {
-      return(<canvas ref="STRadarChartCanvas" width="100" height="100"></canvas>);
+      return(<canvas ref="chart" width="100" height="100"></canvas>);
   }
 }
 

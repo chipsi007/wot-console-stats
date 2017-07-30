@@ -1,70 +1,14 @@
 import requests
 import time
 import json
-import os
 
-#Logging.
-class log:
-    @staticmethod
-    def clear():
-        open('log.txt', 'w').close()
-    @staticmethod
-    def write(text):
-        print(text)
-        with open('log.txt', 'a') as f:
-            timestring = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
-            f.write(timestring + ': ' + text + '\n')
-#Update tankopedia.
-def update_tankopedia():
-
-    TANKOPEDIA_PATH = 'references/tankopedia.json'
-    TEMPFILE_PATH = 'references/temp.json'
-
-    #Requesting tankopedia from WG API.
-    server = 'xbox'
-    fields = '%2C+'.join(['short_name', 'nation', 'is_premium', 'tier', 'tank_id', 'type', 'name'])
-    url = 'https://api-{}-console.worldoftanks.com/wotx/encyclopedia/vehicles/?application_id=demo&fields={}'.format(server, fields)
-    #Trying to request 3 times.
-    attempts = 0
-    while attempts < 3:
-        try:
-            resp = requests.get(url, timeout=30).json()
-            assert resp['status'] == 'ok'
-            data = resp['data']
-            assert resp['meta']['count'] == len(data)
-            break
-        except:
-            data = None
-    #If not successful.
-    if data is None:
-        log.write('Couldnt download tankopedia')
-        return
+BASE_URL = 'http://wot.pythonanywhere.com/'
 
 
-    #Update tankopedia if there more tank ids in the new taankopedia.
-    should_update = False
-    if os.path.isfile(TANKOPEDIA_PATH) == True:
-        with open(TANKOPEDIA_PATH, 'r') as f:
-            old_file = json.load(f)
-        if len(old_file.keys()) < len(data.keys()):
-            should_update = True
-    else:
-        should_update = True
-
-
-    #If nothing new.
-    if should_update == False:
-        log.write('Tankopedia should not be updated')
-        return
-
-    #Saving.
-    with open(TANKOPEDIA_PATH, 'w') as f:
-        json.dump(data, f)
-#Get users in specified period.
-def get_users():
+def get_users(base_url):
     now = int(time.time())
     seven_days_ago = now - 60 * 60 * 24 * 7
-    url = 'http://wot.pythonanywhere.com/users-in-period/{}/{}/'.format(seven_days_ago, now)
+    url = base_url + 'users-in-period/{}/{}/'.format(seven_days_ago, now)
 
     #Trying 3 times.
     attempts = 0
@@ -75,12 +19,12 @@ def get_users():
         except:
             resp = None
     return(resp)
-#Iterate through users and add bot checkpoint.
-def iterate(users):
+
+def iterate(base_url, users):
     success_counter = 0
     for server, account_id in users:
         try:
-            url = 'http://wot.pythonanywhere.com/add-bot-checkpoint/{}/{}/'.format(server, account_id)
+            url = base_url + 'add-bot-checkpoint/{}/{}/'.format(server, account_id)
             resp = requests.get(url, timeout=15).text
             if resp == 'ok':
                 success_counter += 1
@@ -91,27 +35,99 @@ def iterate(users):
 
     return(success_counter)
 
+def update_tankopedia(base_url):
+    try:
+        resp = requests.get(base_url + '/diag/update-tankopedia/', timeout=60).json()
+
+        if resp['status'] != 'ok':
+            print('Tankopedia couldnt be updated. Error: ' + )
+        else:
+            print('Tankopedia was updated. ' + resp['count'] + ' updated tanks.')
+
+            if resp['count'] > 0:
+              for tank in resp['data']:
+                string = 'NAME: {}  TIER: {}  TYPE: {}  NATION {}'\
+                         .format(tank['name'], tank['tier'], tank['type'], tank['nation'])
+                print(string)
+
+    except Exception as e:
+        print('Tankopedia couldnt be updated. Error: ' + str(e))
+
+    #Reloading tankopedia.
+    try:
+        resp = requests.get(base_url + '/diag/reload-tankopedia/', timeout=60).json()
+
+        if resp['status'] != 'ok':
+            print('Tankopedia couldnt be reloaded. Error: ' + resp.get('message'))
+        else:
+            print('Tankopedia was reloaded.')
+
+    except Exception as e:
+        print('Tankopedia couldnt be reloaded. Error: ' + str(e))
+
+def update_percentiles(base_url):
+
+    #Updating percentiles.
+    try:
+        resp = requests.get(base_url+ '/diag/update-percentiles/', timeout=20).json()
+
+        if resp['status'] != 'ok':
+            print('Percentiles couldnt be updated. Error: ' + resp.get('message'))
+        else:
+            print('Percentiles were updated.')
+
+    except Exception as e:
+        print('Percentiles couldnt be updated. Error: ' + str(e))
+
+    #Updating generic percentiles.
+    try:
+        resp = requests.get(base_url+ '/diag/update-percentiles-generic/', timeout=20).json()
+
+        if resp['status'] != 'ok':
+            print('Percentiles_generic couldnt be updated. Error: ' + resp.get('message'))
+        else:
+            print('Percentiles_generic were updated.')
+
+    except Exception as e:
+        print('Percentiles_generic couldnt be updated. Error: ' + str(e))
+
+    #Reloading.
+    try:
+        resp = requests.get(base_url+ '/diag/reload-percentiles/', timeout=20).json()
+
+        if resp['status'] != 'ok':
+            print('Percentiles couldnt be reloaded. Error: ' + resp.get('message'))
+        else:
+            print('Percentiles were reloaded.')
+
+    except Exception as e:
+        print('Percentiles couldnt be reloaded. Error: ' + str(e))
 
 def main():
 
-    log.clear(), log.write('Started')
+    print('Started')
 
-    #update_tankopedia()
+    update_tankopedia(BASE_URL)
 
-    users = get_users()
+    users = get_users(BASE_URL)
     if users is None:
-        log.write('Users couldnt be downloaded. Shutting down')
+        print('Users couldnt be downloaded. Shutting down')
         return
-    log.write('Downloaded users')
+    print('Downloaded users')
 
 
     #Iterating.
-    log.write('Started iterating through users.')
-    success_counter = iterate(users)
+    print('Started iterating through users.')
+    success_counter = iterate(BASE_URL, users)
 
 
     #Finished.
-    log.write('Finished adding users to the server. {} / {} successful.'.format(success_counter, len(users)))
+    print('Finished adding users to the server. {} / {} successful.'.format(success_counter, len(users)))
+
+
+    #Additional task on monday.
+    if time.gmtime().tm_wday == 0:
+        update_percentiles(BASE_URL)
 
 
 if __name__ == '__main__':

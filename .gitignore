@@ -8,3 +8,11 @@ sqlite.db
 static/app.js
 
 secret.py
+
+bin/
+
+lib/
+
+pip-selfcheck.json
+
+pyvenv.cfg
