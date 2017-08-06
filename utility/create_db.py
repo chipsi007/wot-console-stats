@@ -49,18 +49,5 @@ c.execute('''
         expWinRate REAL
 );''')
 
-c.execute('''
-    CREATE TABLE IF NOT EXISTS wn8_generic (
-        tier INTEGER,
-        type TEXT,
-        expFrag REAL,
-        expDamage REAL,
-        expSpot REAL,
-        expDef REAL,
-        expWinRate REAL,
-        PRIMARY KEY (tier, type)
-);''')
-
-
 conn.commit()
 conn.close()

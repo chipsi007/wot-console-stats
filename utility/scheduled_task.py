@@ -37,7 +37,6 @@ def iterate(base_url, users):
 def update_tankopedia(base_url):
     try:
         resp = requests.get(base_url + '/diag/update-tankopedia/', timeout=60).json()
-        resp
 
         if resp['status'] != 'ok':
             print('Tankopedia couldnt be updated. Error: ' + resp.get('message'))
@@ -54,18 +53,6 @@ def update_tankopedia(base_url):
         print('Tankopedia couldnt be updated. Error: ' + str(e))
 
     time.sleep(3)
-
-    #Reloading tankopedia.
-    try:
-        resp = requests.get(base_url + '/diag/reload-tankopedia/', timeout=60).json()
-
-        if resp['status'] != 'ok':
-            print('Tankopedia couldnt be reloaded. Error: ' + resp.get('message'))
-        else:
-            print('Tankopedia was reloaded.')
-
-    except Exception as e:
-        print('Tankopedia couldnt be reloaded. Error: ' + str(e))
 
 def update_percentiles(base_url):
 
@@ -109,6 +96,20 @@ def update_percentiles(base_url):
     except Exception as e:
         print('Percentiles couldnt be reloaded. Error: ' + str(e))
 
+def update_wn8(base_url):
+    try:
+        resp = requests.get(base_url + '/diag/update-wn8/', timeout=60).json()
+
+        if resp['status'] != 'ok':
+            print('WN8 couldnt be updated. Error: ' + resp.get('message'))
+        else:
+            print('WN8 was updated.')
+
+    except Exception as e:
+        print('WN8 couldnt be updated. Error: ' + str(e))
+
+    time.sleep(3)
+
 def main():
 
     print('Started')
@@ -134,6 +135,7 @@ def main():
     #Additional task on monday.
     if time.gmtime().tm_wday == 0:
         update_percentiles(BASE_URL)
+        update_wn8(BASE_URL)
 
 
 if __name__ == '__main__':

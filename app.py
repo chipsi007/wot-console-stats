@@ -288,19 +288,22 @@ class sql():
             }
         return(output)
     @staticmethod
-    def get_wn8_generic():
+    def update_wn8(wn8_dict):
+        #Input: {"111": {exp_values}, ...}
         cur = open_conn().cursor()
-        output = {}
-        cur.execute('SELECT tier, type, expFrag, expDamage, expSpot, expDef, expWinRate FROM wn8_generic;')
-        for row in cur:
-            output[str(row[0]) + row[1]] = {
-                'expFrag':    row[2],
-                'expDamage':  row[3],
-                'expSpot':    row[4],
-                'expDef':     row[5],
-                'expWinRate': row[6]
-            }
-        return(output)
+        cur.execute('DELETE FROM wn8;')
+
+        tuples = []
+        for tank_id, val in wn8_dict.items():
+            tank_id = int(tank_id)
+            tuples.append([int(tank_id), val['expFrag'], val['expDamage'], val['expSpot'], val['expDef'], val['expWinRate']])
+
+        cur.executemany('''
+            INSERT INTO wn8 (tank_id, expFrag, expDamage, expSpot, expDef, expWinRate)
+            VALUES (?, ?, ?, ?, ?, ?);
+        ''', tuples)
+
+
 
 
 
@@ -442,7 +445,19 @@ class wn8:
     @classmethod
     def load(cls):
         cls.wn8dict = sql.get_wn8()
-        cls.wn8dict_generic = sql.get_wn8_generic()
+
+        #Loading generic wn8.
+        with open('references/wn8pc_v30.json', 'r') as f:
+            obj_list = json.load(f)
+        cls.wn8dict_generic = {}
+        for x in obj_list:
+            cls.wn8dict_generic[str(x['tier']) + x['type']] = {
+                'expFrag':    x['expFrag'],
+                'expDamage':  x['expDamage'],
+                'expSpot':    x['expSpot'],
+                'expDef':     x['expDef'],
+                'expWinRate': x['expWinRate']
+            }
     @classmethod
     def get_values(cls, tank_id):
         exp_values = cls.wn8dict.get(tank_id)
@@ -1233,58 +1248,49 @@ def newapi_estimates_get_tank():
 def diag(request):
     start = time.time()
 
+    status, message = 'error', 'bad request'
+    data = count = None
+
     if request == 'show':
         return('show function')
 
-    if request == 'reload-tankopedia':
-        global tankopedia
-        tankopedia = sql.get_tankopedia()
-        return Response(json.dumps({
-            'status':     'ok',
-            'message':    'ok'
-        }), mimetype='application/json')
-
     if request == 'update-tankopedia':
 
-        #Getting tankopedias.
         new_tankopedia = wgapi.get_tankopedia(app_id)
+
         if not new_tankopedia:
-            return Response(json.dumps({
-                'status':     'error',
-                'message':    'couldnt download tankopedia from WG API'
-            }), mimetype='application/json')
-        old_tankopedia = sql.get_tankopedia()
+            status, message = 'error', 'couldnt download tankopedia from WG API'
+        else:
+            old_tankopedia = sql.get_tankopedia()
 
-        #Getting keys.
-        new_keys = list(new_tankopedia.keys())
-        old_keys = list(old_tankopedia.keys())
+            #Getting keys.
+            new_keys = list(new_tankopedia.keys())
+            old_keys = list(old_tankopedia.keys())
 
-        #Looking for keys that are not in the old tankopedia.
-        new_ids = [key for key in new_keys if key not in old_keys]
-        #Looking if any of the old ids are changed.
-        diff_keys = [key for key in old_keys if old_tankopedia[key] != new_tankopedia.get(key)]
+            #Looking for keys that are not in the old tankopedia.
+            new_ids = [key for key in new_keys if key not in old_keys]
+            #Looking if any of the old ids are changed.
+            diff_keys = [key for key in old_keys if old_tankopedia[key] != new_tankopedia.get(key)]
 
-        #Getting list of tank dictionaries to add / update.
-        tanks = []
-        for key in new_ids + diff_keys:
-            if new_tankopedia.get(key, False):
-                tanks.append(new_tankopedia.get(key))
+            #Getting list of tank dictionaries to add / update.
+            tanks = []
+            for key in new_ids + diff_keys:
+                if new_tankopedia.get(key, False):
+                    tanks.append(new_tankopedia.get(key))
 
-        #Updating SQLITE.
-        for tank in tanks:
-            sql.add_tankopedia_tank(tank)
+            #Updating SQLITE.
+            for tank in tanks:
+                sql.add_tankopedia_tank(tank)
 
-        return Response(json.dumps({
-            'status':     'ok',
-            'message':    'ok',
-            'count':      len(tanks),
-            'data':       tanks,
-            'time':       time.time() - start
-        }), mimetype='application/json')
+            data, count = tanks, len(tanks)
+
+            #Reloading into memory.
+            global tankopedia
+            tankopedia = sql.get_tankopedia()
+            status = message = 'ok'
 
     if request == 'update-percentiles':
 
-        #Getting percentiles.
         url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles/'
 
         try:
@@ -1292,23 +1298,13 @@ def diag(request):
             assert resp['status'] == 'ok'
             assert resp['count'] == len(resp['data'])
             new_percentiles = resp['data']
+            sql.update_percentiles(new_percentiles)
+            status = message = 'ok'
         except Exception as e:
-            return Response(json.dumps({
-                'status':     'error',
-                'message':    str(e)
-            }), mimetype='application/json')
-
-        sql.update_percentiles(new_percentiles)
-
-        return Response(json.dumps({
-            'status':     'ok',
-            'message':    'ok',
-            'time':       time.time() - start
-        }), mimetype='application/json')
+            status, message = 'error', str(e)
 
     if request == 'update-percentiles-generic':
 
-        #Getting percentiles.
         url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles-generic/'
 
         try:
@@ -1316,30 +1312,36 @@ def diag(request):
             assert resp['status'] == 'ok'
             assert resp['count'] == len(resp['data'])
             new_percentiles = resp['data']
+            sql.update_percentiles_generic(new_percentiles)
+            status = message = 'ok'
         except Exception as e:
-            return Response(json.dumps({
-                'status':     'error',
-                'message':    str(e)
-            }), mimetype='application/json')
-
-        sql.update_percentiles_generic(new_percentiles)
-
-        return Response(json.dumps({
-            'status':     'ok',
-            'message':    'ok',
-            'time':       time.time() - start
-        }), mimetype='application/json')
+            status, message = 'error', str(e)
 
     if request == 'reload-percentiles':
         percentile.load()
-        return Response(json.dumps({
-            'status':     'ok',
-            'message':    'ok'
-        }), mimetype='application/json')
+        status = message = 'ok'
+
+    if request == 'update-wn8':
+
+        url = 'http://usernameforlulz.pythonanywhere.com/get/wn8/'
+
+        try:
+            resp = requests.get(url, timeout=10).json()
+            assert resp['status'] == 'ok'
+            assert resp['count'] == len(resp['data'])
+            wn8_dict = resp['data']
+            sql.update_wn8(wn8_dict)
+            wn8.load()
+            status = message = 'ok'
+        except Exception as e:
+            status, message = 'error', str(e)
 
     return Response(json.dumps({
-        'status':     'error',
-        'message':    'bad request'
+        'status':     status,
+        'message':    message,
+        'count':      count,
+        'data':       data,
+        'time':       time.time() - start
     }), mimetype='application/json')
 
 @app.errorhandler(404)

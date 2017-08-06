@@ -27,6 +27,7 @@ Automatically updates WN8 and percentiles weekly, tanks - daily.
 * `echo 'app_id = "demo"' > secret.py`
 * Install python3.6
   * `python3 -m venv .`
+  * `source ./bin/activate`
   * `pip3 install -r requirements.txt`
 * Install Node.js
   * `npm install --save-dev babel-cli`
