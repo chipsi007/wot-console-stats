@@ -26,7 +26,7 @@ def close_conn(exception):
     if conn is not None:
         conn.commit()
         conn.close()
-class sql():
+class db():
     #Main functions.
     @staticmethod
     def get_latest_checkpoint(server, account_id):
@@ -36,20 +36,20 @@ class sql():
             WHERE server = ? AND account_id = ?
             ORDER BY created_at DESC LIMIT 1;
         ''', (server, account_id)).fetchone()
-        if search:
-            return({'created_at': search[0], 'data': pickle.loads(search[1])})
-        return({})
+
+        return {'created_at': search[0], 'data': pickle.loads(search[1])} if search else {}
     @staticmethod
     def get_all_recent_checkpoints(server, account_id):
         #Returns the list of checkpoints for the last 14 days. Ordered from earliest to latest.
         fourteen_days = int(time.time()) - 60 * 60 * 24 * 14
         cur = open_conn().cursor()
-        query = '''SELECT created_at, account_id, server, data FROM checkpoints
-                   WHERE server = ? AND account_id = ? AND created_at >= ?
-                   ORDER BY created_at ASC;'''
-        search = cur.execute(query, [server, account_id, fourteen_days]).fetchall()
-        output = [[row[0], row[1], row[2], pickle.loads(row[3])] for row in search]
-        return(output)
+        cur.execute('''
+            SELECT created_at, data FROM checkpoints
+            WHERE server = ? AND account_id = ? AND created_at >= ?
+            ORDER BY created_at ASC;
+        ''', (server, account_id, fourteen_days))
+
+        return [{'created_at': row[0], 'data': pickle.loads(row[1])} for row in cur]
     @staticmethod
     def add_or_update_checkpoint(server, account_id, player_data):
         #Add checkpoint by HUMAN if none were created today.
@@ -77,7 +77,8 @@ class sql():
     @staticmethod
     def get_first_checkoint_per_week(server, account_id):
         #SQLite3:"strftime('%H%M', timestamp, 'unixepoch')" ==  Python:"time.strftime('%H%M', time.gmtime(timestamp))"
-        query = '''
+        cur = open_conn().cursor()
+        cur.execute('''
             SELECT created_at, data
             FROM checkpoints
             WHERE server = ? AND account_id = ? AND created_at IN (
@@ -89,9 +90,8 @@ class sql():
                     strftime('%W', created_at, 'unixepoch')
             )
             ORDER BY created_at ASC;
-        '''
-        cur.execute(query, (server, account_id, server, account_id))
-        return([{'created_at': row[0], 'data': pickle.loads(row[1])} for row in cur])
+        ''', (server, account_id, server, account_id))
+        return [{'created_at': row[0], 'data': pickle.loads(row[1])} for row in cur]
 
     #Methods for the bot to create auto-checkpoints.
     @staticmethod
@@ -103,8 +103,7 @@ class sql():
                    GROUP BY account_id, server
                    ORDER BY account_id, server'''
         cur = open_conn().cursor()
-        output = cur.execute(query, (start_timestamp, end_timestamp)).fetchall()
-        return(output)
+        return cur.execute(query, (start_timestamp, end_timestamp)).fetchall()
     @staticmethod
     def is_created_today(server, account_id):
         #Check if checkpoint was created today. Returns bool.
@@ -119,8 +118,8 @@ class sql():
             current_date = time.strftime('%Y%m%d', time.gmtime(time.time()))
             #If latest timestamp is from today.
             if found_date == current_date:
-                return(True)
-        return(False)
+                return True
+        return False
     @staticmethod
     def add_bot_checkpoint(server, account_id, player_data):
         #Add checkpont by BOT or do nothing if already exist today.
@@ -176,7 +175,7 @@ class sql():
                 "tier":         row[5],
                 "type":         row[6]
             }
-        return(output)
+        return output
     @staticmethod
     def add_tankopedia_tank(tank):
         cur = open_conn().cursor()
@@ -228,19 +227,16 @@ class sql():
         cur.execute('SELECT tank_id, data FROM percentiles;')
         for row in cur:
             output[row[0]] = pickle.loads(row[1])
-        return(output)
+        return output
     @staticmethod
     def update_percentiles(new_percentiles):
         #Input: {"111": {percentiles}, ...}
-        cur = open_conn().cursor()
 
         #Converting into tuples.
-        tuples = []
-        for tank_id, value in new_percentiles.items():
-            data = sqlite3.Binary(pickle.dumps(value))
-            tuples.append((int(tank_id), data))
+        tuples = [(int(tank_id), pickle.dumps(value)) for tank_id, value in new_percentiles.items()]
 
         #Rewriting the whole table.
+        cur = open_conn().cursor()
         cur.execute('DELETE FROM percentiles;')
         cur.executemany('INSERT INTO percentiles (tank_id, data) VALUES (?, ?);', tuples)
     @staticmethod
@@ -250,7 +246,7 @@ class sql():
         cur.execute('SELECT tier, type, data FROM percentiles_generic;')
         for row in cur:
             output[str(row[0]) + row[1]] = pickle.loads(row[2])
-        return(output)
+        return output
     @staticmethod
     def update_percentiles_generic(new_percentiles):
         #Input: {"1lightTank": {percentiles}, ...}
@@ -264,9 +260,7 @@ class sql():
             digit_string = ''.join(x for x in tier_type if x.isdigit())
             tank_tier = int(digit_string)
             tank_type = tier_type.replace(digit_string, '')
-
-            data = sqlite3.Binary(pickle.dumps(value))
-            tuples.append((tank_tier, tank_type, data))
+            tuples.append((tank_tier, tank_type, pickle.dumps(value)))
 
         #Rewriting the whole table.
         cur.execute('DELETE FROM percentiles_generic;')
@@ -286,7 +280,7 @@ class sql():
                 'expDef':     row[4],
                 'expWinRate': row[5]
             }
-        return(output)
+        return output
     @staticmethod
     def update_wn8(wn8_dict):
         #Input: {"111": {exp_values}, ...}
@@ -313,11 +307,11 @@ class wgapi:
     def get_player_data(server, account_id, app_id):
         #Request player data from WG API. Output: ('status', 'message', [data])
 
-        url = 'https://api-{}-console.worldoftanks.com/wotx/tanks/stats/?application_id={}&account_id={}'\
-               .format(server, app_id, account_id)
+        url = f'https://api-{server}-console.worldoftanks.com/wotx/tanks/stats/?application_id={app_id}&account_id={account_id}'
+
         try:
             resp = requests.get(url, timeout=15).json()
-        except requests.exceptions.ReadTimeout:
+        except requests.exceptions.Timeout:
             return('error', 'couldnt connect to WG API within specified time', None)
 
         #If request went through.
@@ -352,10 +346,10 @@ class wgapi:
         return(status, message, data)
     @classmethod
     def find_cached_or_request(cls, server, account_id, app_id):
-        #Find SQL cached player data or to request and save in SQL. Output: ('status', 'message', [data])
+        #Find DB cached player data or to request and save in DB. Output: ('status', 'message', [data])
 
-        #Trying to get results from SQL first.
-        player_data = sql.get_latest_checkpoint(server, account_id)
+        #Trying to get results from DB first.
+        player_data = db.get_latest_checkpoint(server, account_id)
 
         #Accept last 10 minutes. None otherwise.
         ten_minutes_ago = int(time.time()) - 600
@@ -366,30 +360,31 @@ class wgapi:
         #If no cached results, requesting from WG API.
         status, message, data = cls.get_player_data(server, account_id, app_id)
 
-        #Updating (or creating) SQL checkpoint if went fine.
+        #Updating (or creating) DB checkpoint if went fine.
         if status == 'ok':
-            sql.add_or_update_checkpoint(server, account_id, data)
+            db.add_or_update_checkpoint(server, account_id, data)
 
         return(status, message, data)
     @staticmethod
     def get_tankopedia(app_id):
         fields = '%2C+'.join(['name', 'short_name', 'nation', 'is_premium', 'tier', 'type', 'tank_id'])
-        url = 'https://api-xbox-console.worldoftanks.com/wotx/encyclopedia/vehicles/?application_id=' + app_id + '&fields=' + fields
+        url = f'https://api-xbox-console.worldoftanks.com/wotx/encyclopedia/vehicles/?application_id={app_id}&fields={fields}'
         try:
             resp = requests.get(url, timeout=10).json()
-            assert resp.get('status') == 'ok'
+            assert resp['status'] == 'ok'
             count = resp.get('meta', {}).get('count')
             data = resp.get('data')
             assert len(data) == count
-            return(data)
-        except:
-            return(None)
+            return data
+        except (requests.exceptions.Timeout, AssertionError, KeyError):
+            return None
+
 class percentile:
     @classmethod
     def load(cls):
         #(Re)load percentiles.
-        cls.percentiles = sql.get_percentiles()
-        cls.percentiles_generic = sql.get_percentiles_generic()
+        cls.percentiles = db.get_percentiles()
+        cls.percentiles_generic = db.get_percentiles_generic()
     @classmethod
     def get_percentiles_array(cls, kind, tank_id):
         #Find array for specified kind and tank_id.
@@ -398,7 +393,7 @@ class percentile:
         if array:
             return(array)
         #If tank in tankopedia, getting generic percentile (tier-class).
-        return(cls.get_percentiles_generic_array(kind, tank_id))
+        return cls.get_percentiles_generic_array(kind, tank_id)
     @classmethod
     def get_percentiles_generic_array(cls, kind, tank_id):
         #If tank in tankopedia, getting generic percentile (tier-class).
@@ -407,7 +402,7 @@ class percentile:
             tier_class = str(found['tier']) + found['type']
             array = cls.percentiles_generic.get(tier_class, {}).get(kind)
             return(array)
-        return(None)
+        return None
     @staticmethod
     def find_index_of_closest_value(array, number):
         #Find one closest number from sorted array and return its index.
@@ -430,21 +425,46 @@ class percentile:
 
         #Getting the closest index.
         if abs(number - array[beg]) > abs(number - array[end]):
-            return(end)
+            return end
         else:
-            return(beg)
+            return beg
     @classmethod
-    def calculate(cls, kind, tank_id, number):
-        #Calculate percentile for single tank based on parameters.
+    def calculate(cls, kind, tank):
+        #Calculate percentile from tank data.
+
+        battles = tank['battles']
+
+        if battles == 0:
+            return 0
+
+        set_a = [
+            "battle_life_time", "damage_dealt", "damage_received", "xp",
+            "capture_points", "damage_assisted_radio", "damage_assisted_track", "direct_hits_received",
+            "no_damage_direct_hits_received", "dropped_capture_points", "explosion_hits", "explosion_hits_received",
+            "frags", "hits", "trees_cut", "piercings", "piercings_received", "shots", "spotted"
+        ]
+
+        if kind in set_a:
+            number = tank[kind] / battles
+        elif kind in ["wins", "survived_battles", "losses"]:
+            number = tank[kind] * 100 / battles
+        elif kind in ["max_frags", "max_xp", "mark_of_mastery"]:
+            number = tank[kind]
+        elif kind == 'accuracy':
+            number = tank['hits'] / tank['shots'] * 100 if tank['shots'] > 0 else 0.0
+        else:
+            raise
+
         if number > 0:
-            array = cls.get_percentiles_array(kind, tank_id)
+            array = cls.get_percentiles_array(kind, tank['tank_id'])
             if array is not None:
-                return(cls.find_index_of_closest_value(array, number))
-        return(0)
+                return cls.find_index_of_closest_value(array, number)
+        return 0
+
 class wn8:
     @classmethod
     def load(cls):
-        cls.wn8dict = sql.get_wn8()
+        cls.wn8dict = db.get_wn8()
 
         #Loading generic wn8.
         with open('references/wn8pc_v30.json', 'r') as f:
@@ -471,9 +491,9 @@ class wn8:
             exp_values = cls.wn8dict_generic.get(str(tp_dict['tier']) + tp_dict['type'])
 
             if exp_values:
-                return(exp_values)
+                return exp_values
 
-        return(None)
+        return None
     @classmethod
     def calculate_for_tank(cls, tank_data):
         #Loading expected values
@@ -481,7 +501,7 @@ class wn8:
 
         #If not found.
         if exp_values is None:
-            return(0)
+            return 0
 
         #step 0 - assigning the variables
         expDmg      = exp_values['expDamage']
@@ -507,7 +527,7 @@ class wn8:
         #step 3
         WN8 = 980*rDAMAGEc + 210*rDAMAGEc*rFRAGc + 155*rFRAGc*rSPOTc + 75*rDEFc*rFRAGc + 145*min(1.8,rWINc)
 
-        return(WN8)
+        return WN8
     @classmethod
     def calculate_for_all_tanks(cls, player_data):
         battle_counter, wn8_counter = 0, 0
@@ -518,17 +538,14 @@ class wn8:
                 battle_counter += tank['battles']
                 wn8_counter += wn8_temp
 
-        if battle_counter > 0:
-            return(wn8_counter / battle_counter)
-        else:
-            return(0.0)
+        return wn8_counter / battle_counter if battle_counter > 0 else 0.0
     @classmethod
     def get_damage_targets(cls, tank_data):
 
         #Getting exp_values.
         exp_values = cls.get_values(tank_data['tank_id'])
         if not exp_values:
-            return(0)
+            return 0
 
         #step 1
         rSPOT  = tank_data['spotted']                / tank_data['battles']       / exp_values['expSpot']
@@ -569,13 +586,13 @@ class wn8:
 
             #Always return end.
             output.append({'label': target, 'value': end})
-        return(output)
+        return output
 
 
 @app.before_first_request
 def before_first_request():
     global tankopedia
-    tankopedia = sql.get_tankopedia()
+    tankopedia = db.get_tankopedia()
     percentile.load()
     wn8.load()
 
@@ -594,7 +611,7 @@ def index_dev():
 def decode_filters_string(filters_string):
     #'ab&cd&ef&' -> ['ab', 'cd', 'ef']
     items = filters_string.split('&')
-    return([x for x in items if len(x) > 0])
+    return [x for x in items if len(x) > 0]
 #Filter player data according to filter input.
 def filter_data(player_data, filter_input, tankopedia):
     filtered_player_data = []
@@ -605,7 +622,7 @@ def filter_data(player_data, filter_input, tankopedia):
             #Filtering.
             if tp_dict['type'] in filter_input and str(tp_dict['tier']) in filter_input:
                 filtered_player_data.append(tank)
-    return(filtered_player_data)
+    return filtered_player_data
 #Substract old_data from new_data.
 def find_difference(old_data, new_data):
     #Making a copy to prevent changing the input.
@@ -619,7 +636,7 @@ def find_difference(old_data, new_data):
 
     #Return if empty.
     if any(old_data) == False:
-        return([])
+        return []
 
     #Deleting tanks from 'new_data' that aren't in filtered 'old_data'.
     old_tank_ids = [tank['tank_id'] for tank in old_data]
@@ -644,7 +661,7 @@ def find_difference(old_data, new_data):
                 slice_data.append(temp_dict)
                 break
 
-    return(slice_data)
+    return slice_data
 
 
 #Page classes.
@@ -673,15 +690,17 @@ class pageProfile():
             k_d =       frags / (battles - survived) if (battles - survived) > 0 else 100
             dmgc_dmgr = dmgc / dmgr                  if dmgr > 0                 else 100
 
-            return({'acc':       round(acc, 2),
-                    'dmgc':      round(dmgc / battles, 2),
-                    'rass':      round(rass / battles, 2),
-                    'dmgr':      round(dmgr / battles, 2),
-                    'k_d':       round(k_d, 2),
-                    'dmgc_dmgr': round(dmgc_dmgr, 2),
-                    'wr':        round(wins / battles * 100, 2)})
+            return({
+                'acc':       round(acc, 2),
+                'dmgc':      round(dmgc / battles, 2),
+                'rass':      round(rass / battles, 2),
+                'dmgr':      round(dmgr / battles, 2),
+                'k_d':       round(k_d, 2),
+                'dmgc_dmgr': round(dmgc_dmgr, 2),
+                'wr':        round(wins / battles * 100, 2)
+            })
 
-        return({'acc': 0, 'dmgc': 0, 'rass': 0, 'dmgr': 0, 'k_d': 0, 'dmgc_dmgr': 0, 'wr': 0})
+        return {'acc': 0, 'dmgc': 0, 'rass': 0, 'dmgr': 0, 'k_d': 0, 'dmgc_dmgr': 0, 'wr': 0}
     def calculate_percentiles_for_all_tanks(self, userdata):
         dmgc_temp, wr_temp, rass_temp, dmgr_temp, acc_temp = ([] for i in range(5))
         output_dict = {}
@@ -689,42 +708,41 @@ class pageProfile():
         dmgc, wr, rass, dmgr, acc = (0 for i in range(5))
         battle_counter = 0
         for vehicle in userdata:
-            if vehicle['battles'] > 0:
-                battle_counter += vehicle['battles']
 
-                dmgc += percentile.calculate('damage_dealt', vehicle['tank_id'], vehicle['damage_dealt']/vehicle['battles']) * vehicle['battles']
-                wr +=   percentile.calculate('wins', vehicle['tank_id'], vehicle['wins']/vehicle['battles']*100) * vehicle['battles']
-                rass += percentile.calculate('damage_assisted_radio', vehicle['tank_id'], vehicle['damage_assisted_radio']/vehicle['battles']) * vehicle['battles']
-                dmgr += percentile.calculate('damage_received', vehicle['tank_id'], vehicle['damage_received']/vehicle['battles']) * vehicle['battles']
+            battles = vehicle['battles']
+            battle_counter += battles
 
-                #If no hits, percentile would be 0 anyways.
-                if vehicle['hits'] > 0:
-                    acc += percentile.calculate('accuracy', vehicle['tank_id'], vehicle['hits']/vehicle['shots']*100) * vehicle['battles']
+            if battles > 0:
+                dmgc += percentile.calculate('damage_dealt', vehicle)           * battles
+                wr +=   percentile.calculate('wins', vehicle)                   * battles
+                rass += percentile.calculate('damage_assisted_radio', vehicle)  * battles
+                dmgr += percentile.calculate('damage_received', vehicle)        * battles
+                acc +=  percentile.calculate('accuracy', vehicle)               * battles
 
         #Preparing output.
         if battle_counter == 0:
             #In case nothing found.
-            output_dict = {'dmgc': 0.0, 'wr': 0.0, 'rass': 0.0, 'dmgr': 0.0, 'acc': 0.0}
+            return {'dmgc': 0.0, 'wr': 0.0, 'rass': 0.0, 'dmgr': 0.0, 'acc': 0.0}
         else:
             #If at least one vehicle with "vehicle['battles'] > 0"
-            output_dict = {'dmgc':  round(dmgc / battle_counter, 2),
-                           'wr':    round(wr / battle_counter, 2),
-                           'rass':  round(rass / battle_counter, 2),
-                           'dmgr':  abs(round(dmgr / battle_counter, 2) - 100),
-                           'acc':   round(acc / battle_counter, 2)}
-        return(output_dict)
+            return({
+                'dmgc':  round(dmgc / battle_counter, 2),
+                'wr':    round(wr / battle_counter, 2),
+                'rass':  round(rass / battle_counter, 2),
+                'dmgr':  abs(round(dmgr / battle_counter, 2) - 100),
+                'acc':   round(acc / battle_counter, 2)
+            })
     @staticmethod
     def calculate_overall_percentile(percentile_dict):
         total = sum([value for _, value in percentile_dict.items()])
         #There are 5 percentiles.
-        output = total / 5
-        return(round(output, 2))
+        return round(total / 5, 2)
     def calculate_page_profile(self, filters, recent_checkpoints):
 
-        #Getting player data from first checkpont.
+        #Getting player data from first checkpont. Must exist!
         first_recent_checkpoint = []
         if any(recent_checkpoints):
-            first_recent_data = recent_checkpoints[0][3]
+            first_recent_data = recent_checkpoints[0]['data']
 
         #Placeholders.
         all_time, recent, difference = ({} for i in range(3))
@@ -750,14 +768,14 @@ class pageProfile():
         #Calculating charts.
         for r, row in enumerate(recent_checkpoints):
             #Getting 'xlabels'.
-            checkpoint_timestamp = row[0]
+            checkpoint_timestamp = row['created_at']
             timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(checkpoint_timestamp).date()
             if timedelta.days > 0:
                 xlabels.append(str(timedelta.days) + 'd ago')
             else:
                 xlabels.append('Today')
             #Loading and filtering player data.
-            self.player_data = row[3]
+            self.player_data = row['data']
             #Filtering data using function of the same class.
             self.player_data = filter_data(self.player_data, filters, tankopedia)
             #Calculating Percentile totals.
@@ -828,13 +846,13 @@ class pageVehicles():
 
             #Percentiles
             temp_dict['avg_dmg'] = vehicle['damage_dealt'] / vehicle['battles']
-            temp_dict['dmg_perc'] = percentile.calculate('damage_dealt', vehicle['tank_id'], temp_dict['avg_dmg'])
+            temp_dict['dmg_perc'] = percentile.calculate('damage_dealt', vehicle)
 
             temp_dict['wr'] = vehicle['wins'] / vehicle['battles'] * 100
-            temp_dict['wr_perc'] = percentile.calculate('wins', vehicle['tank_id'], temp_dict['wr'])
+            temp_dict['wr_perc'] = percentile.calculate('wins', vehicle)
 
             temp_dict['avg_exp'] = vehicle['xp'] / vehicle['battles']
-            temp_dict['exp_perc'] = percentile.calculate('xp', vehicle['tank_id'], temp_dict['avg_exp'])
+            temp_dict['exp_perc'] = percentile.calculate('xp', vehicle)
 
 
             #'pen_hits_ratio'
@@ -857,50 +875,6 @@ class pageVehicles():
 
             extracted_data.append(temp_dict)
         self.player_data = extracted_data
-class pageTimeSeries(pageProfile):
-    def __init__(self, server, account_id, player_data):
-        self.server = server
-        self.account_id = account_id
-        self.player_data = player_data
-    def calculate_charts(self, user_history_query, filter_input, tankopedia):
-
-        self.xlabels = []
-
-        self.percentiles_totals, self.percentiles_change = [], []
-
-        self.wn8_totals, self.wn8_change = [], []
-
-        for r, row in enumerate(user_history_query):
-
-            #Getting 'xlabels'.
-            user_timestamp = row[0]
-            timedelta = datetime.datetime.utcnow().date() - datetime.datetime.utcfromtimestamp(user_timestamp).date()
-            if timedelta.days > 0:
-                self.xlabels.append(str(timedelta.days) + 'd ago')
-            else:
-                self.xlabels.append('Today')
-
-            #Loading and filtering player data.
-            self.player_data = row[3]
-            #Filtering data using function of the same class.
-            self.player_data = filter_data(self.player_data, filter_input, tankopedia)
-            #Calculating Percentile totals.
-            self.percentiles_totals.append(self.calculate_percentiles_for_all_tanks(self.player_data))
-            #Calculating WN8 totals.
-            self.wn8_totals.append(wn8.calculate_for_all_tanks(self.player_data))
-
-            #Calculating day-to-day change. Skipping the first item.
-            if r != 0:
-                #Substracting snapshot_data from player_data.
-                self.slice_data = find_difference(self.snapshot_data, self.player_data)
-                #Calculating day-to-day percentiles.
-                self.percentiles_change.append(self.calculate_percentiles_for_all_tanks(self.slice_data))
-                #Calculating day-to-day WN8.
-                self.wn8_change.append(wn8.calculate_for_all_tanks(self.slice_data))
-
-            #Assigning snapshot.
-            self.snapshot_data = self.player_data
-        return
 class pageSessionTracker():
     def __init__(self, server, account_id, player_data):
         self.server = server
@@ -914,30 +888,32 @@ class pageSessionTracker():
 
         output = []
         for row in search:
-            timestamp = row[0]
+            timestamp = row['created_at']
             time_struct = time.gmtime(timestamp)
             date = (time_struct.tm_year, time_struct.tm_yday)
 
             if today != date:
                 output.append(timestamp)
 
-        return(output)
+        return output
     def get_radar_data(self, tank_data, tank_id):
-        temp_dict = {'dmgc': tank_data['damage_dealt'] / tank_data['battles'],
-                     'exp':  tank_data['xp'] / tank_data['battles'],
-                     'rass': tank_data['damage_assisted_radio'] / tank_data['battles'],
-                     'dmgr': tank_data['damage_received'] / tank_data['battles'],
-                     'acc':  tank_data['hits'] / tank_data['shots'] * 100 if tank_data['shots'] > 0 else 0.0}
+        temp_dict = {
+            'dmgc': tank_data['damage_dealt'] / tank_data['battles'],
+            'exp':  tank_data['xp'] / tank_data['battles'],
+            'rass': tank_data['damage_assisted_radio'] / tank_data['battles'],
+            'dmgr': tank_data['damage_received'] / tank_data['battles'],
+            'acc':  tank_data['hits'] / tank_data['shots'] * 100 if tank_data['shots'] > 0 else 0.0
+        }
 
         temp_dict['radar'] = [
-            percentile.calculate('accuracy', tank_id, temp_dict['acc']),
-            percentile.calculate('damage_dealt', tank_id, temp_dict['dmgc']),
-            percentile.calculate('damage_assisted_radio', tank_id, temp_dict['rass']),
-            percentile.calculate('xp', tank_id, temp_dict['exp']),
-            abs(percentile.calculate('damage_received', tank_id, temp_dict['dmgr']) - 100)
+            percentile.calculate('accuracy', tank_data),
+            percentile.calculate('damage_dealt', tank_data),
+            percentile.calculate('damage_assisted_radio', tank_data),
+            percentile.calculate('xp', tank_data),
+            abs(percentile.calculate('damage_received', tank_data) - 100)
         ]
 
-        return(temp_dict)
+        return temp_dict
     @staticmethod
     def get_other_data(tank_data):
         return({
@@ -968,9 +944,9 @@ class pageSessionTracker():
 
         #Get the snapshot_data.
         for row in search:
-            row_timestamp = row[0]
+            row_timestamp = row['created_at']
             if timestamp == row_timestamp:
-                snapshot_data = row[3]
+                snapshot_data = row['data']
                 break
 
         #Slicing.
@@ -1009,8 +985,8 @@ def api_main(page, server, account_id, timestamp, filters):
 
     #Validation.
     try:
-        assert server in ['xbox', 'ps4']
-        assert page in ['profile', 'vehicles', 'time_series', 'session_tracker', 'wn8_estimates']
+        assert server in ('xbox', 'ps4')
+        assert page in ('profile', 'vehicles', 'time_series', 'session_tracker', 'wn8_estimates')
     except:
         abort(404)
 
@@ -1028,7 +1004,7 @@ def api_main(page, server, account_id, timestamp, filters):
     #Processing according to request type.
     if page == 'profile':
         user = pageProfile(server, account_id, data)
-        recent_checkpoints = sql.get_all_recent_checkpoints(server, account_id)
+        recent_checkpoints = db.get_all_recent_checkpoints(server, account_id)
         output = user.calculate_page_profile(filters, recent_checkpoints)
     elif page == 'vehicles':
         user = pageVehicles(server, account_id, data)
@@ -1036,7 +1012,7 @@ def api_main(page, server, account_id, timestamp, filters):
         output = user.player_data
     elif page == 'time_series':
         user = pageTimeSeries(server, account_id, data)
-        user_history_search = sql.get_all_recent_checkpoints(server, account_id)
+        user_history_search = db.get_all_recent_checkpoints(server, account_id)
         user.calculate_charts(user_history_search, filters, tankopedia)
         output = {
             'xlabels':            user.xlabels,
@@ -1047,7 +1023,7 @@ def api_main(page, server, account_id, timestamp, filters):
         }
     elif page == 'session_tracker':
         user = pageSessionTracker(server, account_id, data)
-        search = sql.get_all_recent_checkpoints(server, account_id)
+        search = db.get_all_recent_checkpoints(server, account_id)
         output = user.calculateSessionTracker(timestamp, search)
     elif page == 'wn8_estimates':
         user = pageWn8Estimates(server, account_id, data)
@@ -1063,27 +1039,22 @@ def api_main(page, server, account_id, timestamp, filters):
         'time':       time.time() - start
     }), mimetype='application/json')
 
-#Request snapshots straight from SQL.
+#Request snapshots straight from DB.
 @app.route('/api-request-snapshots/<server>/<int:account_id>/')
 def api_request_snapshots(server, account_id):
     start = time.time()
 
-    #Defaults.
-    output = {'status': 'error',
-              'message': 'Bad request',
-              'count': 0,
-              'server': None,
-              'account_id': None,
-              'data': None}
-
     #Validation.
     try:
-        assert server in ['xbox', 'ps4']
-    except:
-        abort(404)
+        assert server in ('xbox', 'ps4'), "server must be either 'xbox' or 'ps4'"
+    except Exception as e:
+        return Response(json.dumps({
+            'status': 'error',
+            'message': str(e)
+        }), mimetype='application/json')
 
     #Database fetch.
-    data = sql.get_all_recent_checkpoints(server, account_id)
+    data = db.get_all_recent_checkpoints(server, account_id)
 
     #Output.
     return Response(json.dumps({
@@ -1101,7 +1072,7 @@ def api_request_snapshots(server, account_id):
 def users_in_period(start_timestamp, end_timestamp):
     start = time.time()
 
-    users = sql.get_users_in_period(start_timestamp, end_timestamp)
+    users = db.get_users_in_period(start_timestamp, end_timestamp)
 
     return Response(json.dumps({
         'status': 'ok',
@@ -1116,44 +1087,43 @@ def users_in_period(start_timestamp, end_timestamp):
 def add_checkpoint(server, account_id):
 
     #Validation.
-    try:
-        assert server in ['xbox', 'ps4']
-    except:
-        return('error')
+    if server not in ['xbox', 'ps4']:
+        return 'error'
 
     #Cleaning up.
-    sql.leave_first_checkpoint_per_week(server, account_id)
+    db.leave_first_checkpoint_per_week(server, account_id)
 
     #Checking if the checkpoint already was created today before sending http request for data.
-    if sql.is_created_today(server, account_id) == True:
-        return('ok')
+    if db.is_created_today(server, account_id) == True:
+        return 'ok'
 
     #Fetching the player.
     status, message, data = wgapi.get_player_data(server, account_id, app_id)
 
     if status != 'ok':
-        return('error: player couldnt be fetched')
+        return 'error: player couldnt be fetched'
 
     #Adding to the database.
-    sql.add_bot_checkpoint(server, account_id, data)
-    return('ok')
+    db.add_bot_checkpoint(server, account_id, data)
+    return 'ok'
 
 
 
 #New API inteface.
 @app.route('/newapi/general/get-player-tanks/')
 def newapi_general_get_player_tanks():
+    #GET args: server, account_id
     start = time.time()
 
-    #Getting arguments and validating.
+    #Validating inputs.
     try:
         server = request.args.get('server')
         account_id = int(request.args.get('account_id'))
-        assert server in ['xbox', 'ps4']
-    except:
+        assert server in ('xbox', 'ps4'), "server must be either 'xbox' or 'ps4'"
+    except (AssertionError, ValueError) as e:
         return Response(json.dumps({
-            'status':     'ok',
-            'message':    'bad request'
+            'status': 'error',
+            'message': str(e)
         }), mimetype='application/json')
 
     #Request player data or find cached.
@@ -1164,7 +1134,7 @@ def newapi_general_get_player_tanks():
             'message': message
         }), mimetype='application/json')
 
-    #Getting tanks. Adding only if the tank_id present in tankopedia.
+    #Getting tanks. Adding to output only if the tank_id present in tankopedia.
     output = []
     for tank in data:
         tp_tank = tankopedia.get(str(tank['tank_id']))
@@ -1181,9 +1151,9 @@ def newapi_general_get_player_tanks():
         'time':       time.time() - start
     }), mimetype='application/json')
 
-
 @app.route('/newapi/estimates/get-tank/')
 def newapi_estimates_get_tank():
+    #GET args: server, account_id, tank_id
     start = time.time()
 
     #Getting arguments and validating.
@@ -1191,11 +1161,11 @@ def newapi_estimates_get_tank():
         server = request.args.get('server')
         account_id = int(request.args.get('account_id'))
         tank_id = int(request.args.get('tank_id'))
-        assert server in ['xbox', 'ps4']
-    except:
+        assert server in ('xbox', 'ps4'), "server must be either 'xbox' or 'ps4'"
+    except (AssertionError, ValueError) as e:
         return Response(json.dumps({
-            'status':     'ok',
-            'message':    'bad request'
+            'status': 'error',
+            'message': str(e)
         }), mimetype='application/json')
 
     #Request player data or find cached.
@@ -1209,8 +1179,8 @@ def newapi_estimates_get_tank():
     data = [tank for tank in data if tank['tank_id'] == tank_id]
     if any(data) == False:
         return Response(json.dumps({
-            'status':     'error',
-            'message':    'no such tank found',
+            'status': 'error',
+            'message': 'no such tank found',
         }), mimetype='application/json')
     tank_data = data[0]
 
@@ -1241,6 +1211,234 @@ def newapi_estimates_get_tank():
         'time':       time.time() - start
     }), mimetype='application/json')
 
+@app.route('/newapi/timeseries/get-data/', methods=['POST'])
+def newapi_timeseries_get_data():
+    start = time.time()
+
+    #Extracting JSON request body.
+    try:
+        body = request.get_json()
+        server =        body['server']
+        account_id =    body['account_id']
+        time_scale =    body['time_scale']
+        formula =       body['formula']
+        filter_by =     body['filter_by']
+        filters =       body['filters']
+        tank_id =       body['tank_id']
+    except KeyError as e:
+        return Response(json.dumps({
+            'status':     'error',
+            'message':    'key {} is not present in JSON POST body'.format(str(e))
+        }), mimetype='application/json')
+
+
+    #Validating inputs.
+    try:
+        assert server in ['xbox', 'ps4'],                               'server must be: xbox, ps4'
+        assert type(account_id) == int,                                 'account_id is not integer'
+        assert time_scale in ['daily', 'weekly'],                       'time_scale must be: daily, weekly'
+        assert filter_by in ['filters', 'tank'],                        'filter_by must be: filters, tank'
+        assert type(tank_id) is int if filter_by is 'tank' else True,   'tank_id must be integer if filter_by == tank'
+        assert len(filters) > 0 if type(filters) is list else False,    'filters must be a list with length > 0'
+    except AssertionError as e:
+        return Response(json.dumps({
+            'status':     'error',
+            'message':    str(e)
+        }), mimetype='application/json')
+    except:
+        return Response(json.dumps({
+            'status':     'error',
+            'message':    'bad request'
+        }), mimetype='application/json')
+
+
+    #Fetching data from database.
+    if time_scale == 'daily':
+        checkpoints_data = db.get_all_recent_checkpoints(server, account_id)
+    if time_scale == 'weekly':
+        checkpoints_data = db.get_first_checkoint_per_week(server, account_id)
+
+
+    #Unpacking checkpoints.
+    timestamps, checkpoints = [], []
+    for item in checkpoints_data:
+        timestamps.append(item['created_at'])
+        checkpoints.append(item['data'])
+
+
+    #Filtering.
+    if filter_by == 'tank':
+        #Leaving one selected tank in every checkpoint.
+        checkpoints_filtered = []
+        for checkpoint in checkpoints:
+            for tank in checkpoint:
+                if tank['tank_id'] == tank_id:
+                    checkpoints_filtered.append([tank])
+                    break
+            else:
+                checkpoints_filtered.append([])
+        checkpoints = checkpoints_filtered
+        for checkpoint in checkpoints:
+            print(len(checkpoint))
+    if filter_by == 'filters':
+        checkpoints_filtered = []
+        for checkpoint in checkpoints:
+            #tankopedia and filter_data is globals
+            checkpoints_filtered.append(filter_data(checkpoint, filters, tankopedia))
+        checkpoints = checkpoints_filtered
+
+
+    #Output as will be presented in returned data.
+    output = [None for i in range(len(checkpoints))]
+    output_change = [None for i in range(len(checkpoints))]
+
+    for c, checkpoint in enumerate(checkpoints):
+
+        #If no tanks in the checkpoint.
+        if not any(checkpoint):
+            output[c] = None
+            continue
+
+        #No function at the start of the formula.
+        func = None
+
+        #Iterate through formula items.
+        for item in formula:
+            item_type, item_id = item['type'], item['id']
+
+            #Operation - assign function.
+            if item_type == 'op':
+                if item_id == 'plus':
+                    func = lambda x, y: x + y
+                elif item_id == 'minus':
+                    func = lambda x, y: x - y
+                elif item_id == 'times':
+                    func = lambda x, y: x * y
+                elif item_id == 'divide':
+                    func = lambda x, y: x / y if y != 0 else 0
+                else:
+                    raise
+                continue
+            #Raw field from database.
+            if item_type == 'raw':
+
+                number = 0
+                for tank in checkpoint:
+                    number += tank[item_id]
+            #Simple number.
+            elif item_type == 'num':
+
+                #Numbers are applied to the whole result. Not per tank basis.
+                if item_id == 'sixty':
+                    number = 60
+                elif item_id == 'hundred':
+                    number = 100
+                elif item_id == 'twentyfour':
+                    number = 24
+                else:
+                    raise
+            #WN8
+            elif item_type == 'wn8':
+
+                number = wn8.calculate_for_all_tanks(checkpoint)
+            #Percentiles.
+            elif item_type == 'perc':
+
+                kind = item_id
+                total_battles, cum_value = 0, 0
+
+                for tank in checkpoint:
+                    perc = percentile.calculate(kind, tank)
+
+                    if perc != 0:
+                        battles = tank['battles']
+                        cum_value += perc * battles
+                        total_battles += battles
+
+                number = cum_value / total_battles if total_battles > 0 else 0.0
+            else:
+                raise
+
+            #Apply function if not the first item in the formula.
+            output[c] = func(output[c], number) if func else number
+
+        # TODO: Formula blocks are repeated. Might be worth wrapping into a function.
+        #Do not calculate change if first item.
+        if c == 0:
+            continue
+
+        diff_checkpoint = find_difference(checkpoints[c - 1], checkpoint)
+        #No function at the start of the formula.
+        func = None
+
+        #Iterate through formula items.
+        for item in formula:
+            item_type, item_id = item['type'], item['id']
+
+            #Operation - assign function.
+            if item_type == 'op':
+                if item_id == 'plus':
+                    func = lambda x, y: x + y
+                elif item_id == 'minus':
+                    func = lambda x, y: x - y
+                elif item_id == 'times':
+                    func = lambda x, y: x * y
+                elif item_id == 'divide':
+                    func = lambda x, y: x / y if y != 0 else 0
+                else:
+                    raise
+                continue
+            #Raw field from database.
+            if item_type == 'raw':
+
+                number = 0
+                for tank in diff_checkpoint:
+                    number += tank[item_id]
+            #Simple number.
+            elif item_type == 'num':
+
+                #Numbers are applied to the whole result. Not per tank basis.
+                if item_id == 'sixty':
+                    number = 60
+                elif item_id == 'hundred':
+                    number = 100
+                elif item_id == 'twentyfour':
+                    number = 24
+                else:
+                    raise
+            #WN8
+            elif item_type == 'wn8':
+
+                number = wn8.calculate_for_all_tanks(diff_checkpoint)
+            #Percentiles.
+            elif item_type == 'perc':
+
+                kind = item_id
+                total_battles, cum_value = 0, 0
+
+                for tank in diff_checkpoint:
+                    perc = percentile.calculate(kind, tank)
+
+                    if perc != 0:
+                        battles = tank['battles']
+                        cum_value += perc * battles
+                        total_battles += battles
+
+                number = cum_value / total_battles if total_battles > 0 else 0.0
+            else:
+                raise
+
+            #Apply function if not the first item in the formula.
+            output_change[c] = func(output_change[c], number) if func else number
+
+    return Response(json.dumps({
+        'status':      'ok',
+        'message':     'ok',
+        'timestamps':  timestamps,
+        'data_totals': output,
+        'data_change': output_change,
+        'time':        time.time() - start
+    }), mimetype='application/json')
 
 
 #Diagnostics and maintenance calls.
@@ -1251,9 +1449,6 @@ def diag(request):
     status, message = 'error', 'bad request'
     data = count = None
 
-    if request == 'show':
-        return('show function')
-
     if request == 'update-tankopedia':
 
         new_tankopedia = wgapi.get_tankopedia(app_id)
@@ -1261,33 +1456,26 @@ def diag(request):
         if not new_tankopedia:
             status, message = 'error', 'couldnt download tankopedia from WG API'
         else:
-            old_tankopedia = sql.get_tankopedia()
+            old_tankopedia = db.get_tankopedia()
 
-            #Getting keys.
-            new_keys = list(new_tankopedia.keys())
-            old_keys = list(old_tankopedia.keys())
+            #Getting sets of tank ids.
+            new_tank_ids = set(new_tankopedia.keys())
+            old_tank_ids = set(old_tankopedia.keys())
 
-            #Looking for keys that are not in the old tankopedia.
-            new_ids = [key for key in new_keys if key not in old_keys]
-            #Looking if any of the old ids are changed.
-            diff_keys = [key for key in old_keys if old_tankopedia[key] != new_tankopedia.get(key)]
+            #New tank ids & changed tank entries.
+            new_ids = new_tank_ids - old_tank_ids
+            changed_ids = [key for key in old_tank_ids if old_tankopedia[key] != new_tankopedia.get(key)]
 
-            #Getting list of tank dictionaries to add / update.
-            tanks = []
-            for key in new_ids + diff_keys:
-                if new_tankopedia.get(key, False):
-                    tanks.append(new_tankopedia.get(key))
-
-            #Updating SQLITE.
+            #Getting list of tank dictionaries to add / update & updating DB.
+            tanks = [new_tankopedia[key] for key in list(new_ids) + changed_ids if new_tankopedia.get(key, False)]
             for tank in tanks:
-                sql.add_tankopedia_tank(tank)
-
-            data, count = tanks, len(tanks)
+                db.add_tankopedia_tank(tank)
 
             #Reloading into memory.
             global tankopedia
-            tankopedia = sql.get_tankopedia()
+            tankopedia = db.get_tankopedia()
             status = message = 'ok'
+            data, count = tanks, len(tanks)
 
     if request == 'update-percentiles':
 
@@ -1298,9 +1486,9 @@ def diag(request):
             assert resp['status'] == 'ok'
             assert resp['count'] == len(resp['data'])
             new_percentiles = resp['data']
-            sql.update_percentiles(new_percentiles)
+            db.update_percentiles(new_percentiles)
             status = message = 'ok'
-        except Exception as e:
+        except (requests.exceptions.Timeout, AssertionError, KeyError) as e:
             status, message = 'error', str(e)
 
     if request == 'update-percentiles-generic':
@@ -1312,14 +1500,14 @@ def diag(request):
             assert resp['status'] == 'ok'
             assert resp['count'] == len(resp['data'])
             new_percentiles = resp['data']
-            sql.update_percentiles_generic(new_percentiles)
+            db.update_percentiles_generic(new_percentiles)
             status = message = 'ok'
-        except Exception as e:
+        except (requests.exceptions.Timeout, AssertionError, KeyError) as e:
             status, message = 'error', str(e)
 
     if request == 'reload-percentiles':
         percentile.load()
-        status = message = 'ok'
+        status, message = 'ok', 'Percentiles reloaded'
 
     if request == 'update-wn8':
 
@@ -1330,10 +1518,10 @@ def diag(request):
             assert resp['status'] == 'ok'
             assert resp['count'] == len(resp['data'])
             wn8_dict = resp['data']
-            sql.update_wn8(wn8_dict)
+            db.update_wn8(wn8_dict)
             wn8.load()
             status = message = 'ok'
-        except Exception as e:
+        except (requests.exceptions.Timeout, AssertionError, KeyError) as e:
             status, message = 'error', str(e)
 
     return Response(json.dumps({
@@ -1344,6 +1532,8 @@ def diag(request):
         'time':       time.time() - start
     }), mimetype='application/json')
 
+
+#Errorhandlers.
 @app.errorhandler(404)
 def error_not_found(error):
     return Response(json.dumps({
