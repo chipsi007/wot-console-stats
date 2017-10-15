@@ -7,7 +7,9 @@ import datetime
 import time
 
 
-from secret import app_id
+#app_id to connect with WG API services.
+#access_key to connect with data updating service.
+from secret import app_id, access_key
 
 
 app = Flask(__name__)
@@ -159,7 +161,8 @@ class db():
         '''
         cur.execute(query, (server, account_id, fourteen_days_ago, server, account_id))
 
-    #Tankopedia.
+    #Core data loaders.
+    #Output: {key:str: {...}}
     @staticmethod
     def get_tankopedia():
         cur = open_conn().cursor()
@@ -177,50 +180,6 @@ class db():
             }
         return output
     @staticmethod
-    def add_tankopedia_tank(tank):
-        cur = open_conn().cursor()
-
-        now = int(time.time())
-
-        found = cur.execute('SELECT 1 FROM tankopedia WHERE tank_id = ?', (tank['tank_id'],)).fetchone()
-
-        #Not in the database.
-        if not found:
-            query = '''
-                INSERT INTO tankopedia (tank_id, updated_at, name, short_name, nation, is_premium, tier, type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-            '''
-            cur.execute(query, (
-                tank['tank_id'],
-                now,
-                tank['name'],
-                tank['short_name'],
-                tank['nation'],
-                1 if tank['is_premium'] == True else 0,
-                tank['tier'],
-                tank['type']
-            ))
-
-        #If in the database.
-        else:
-            query = '''
-                UPDATE tankopedia
-                SET updated_at = ?, name = ?, short_name = ?, nation = ?, is_premium = ?, tier = ?, type = ?
-                WHERE tank_id = ?;
-            '''
-            cur.execute(query, (
-                now,
-                tank['name'],
-                tank['short_name'],
-                tank['nation'],
-                1 if tank['is_premium'] == True else 0,
-                tank['tier'],
-                tank['type'],
-                tank['tank_id']
-            ))
-
-    #Percentiles.
-    @staticmethod
     def get_percentiles():
         cur = open_conn().cursor()
         output = {}
@@ -229,17 +188,6 @@ class db():
             output[row[0]] = pickle.loads(row[1])
         return output
     @staticmethod
-    def update_percentiles(new_percentiles):
-        #Input: {"111": {percentiles}, ...}
-
-        #Converting into tuples.
-        tuples = [(int(tank_id), pickle.dumps(value)) for tank_id, value in new_percentiles.items()]
-
-        #Rewriting the whole table.
-        cur = open_conn().cursor()
-        cur.execute('DELETE FROM percentiles;')
-        cur.executemany('INSERT INTO percentiles (tank_id, data) VALUES (?, ?);', tuples)
-    @staticmethod
     def get_percentiles_generic():
         cur = open_conn().cursor()
         output = {}
@@ -247,26 +195,6 @@ class db():
         for row in cur:
             output[str(row[0]) + row[1]] = pickle.loads(row[2])
         return output
-    @staticmethod
-    def update_percentiles_generic(new_percentiles):
-        #Input: {"1lightTank": {percentiles}, ...}
-        cur = open_conn().cursor()
-
-        #Converting into tuples.
-        tuples = []
-        for tier_type, value in new_percentiles.items():
-
-            #Extracting into tank_tier & tank_type.
-            digit_string = ''.join(x for x in tier_type if x.isdigit())
-            tank_tier = int(digit_string)
-            tank_type = tier_type.replace(digit_string, '')
-            tuples.append((tank_tier, tank_type, pickle.dumps(value)))
-
-        #Rewriting the whole table.
-        cur.execute('DELETE FROM percentiles_generic;')
-        cur.executemany('INSERT INTO percentiles_generic (tier, type, data) VALUES (?, ?, ?);', tuples)
-
-    #WN8
     @staticmethod
     def get_wn8():
         cur = open_conn().cursor()
@@ -281,24 +209,77 @@ class db():
                 'expWinRate': row[5]
             }
         return output
+
+    #Core data updaters.
+    #Input: list of dictionaries.
     @staticmethod
-    def update_wn8(wn8_dict):
-        #Input: {"111": {exp_values}, ...}
+    def insert_tankopedia(new_tankopedia):
         cur = open_conn().cursor()
+
+        #Converting into tuples.
+        inserts = []
+        for tank in new_tankopedia:
+            inserts.append([
+                tank['tank_id'],
+                tank['name'],
+                tank['short_name'],
+                tank['nation'],
+                1 if tank['is_premium'] == True else 0,
+                tank['tier'],
+                tank['type']
+            ])
+
+        # NOTE: ignore updated_at.
+        # TODO: remove updated_at from database.
+
+        cur.execute('DELETE FROM tankopedia;')
+
+        cur.executemany('''
+            INSERT INTO tankopedia (tank_id, updated_at, name, short_name, nation, is_premium, tier, type)
+            VALUES (?, 0, ?, ?, ?, ?, ?, ?);
+        ''', inserts)
+    @staticmethod
+    def insert_percentiles(new_percentiles):
+        cur = open_conn().cursor()
+
+        #Converting into tuples.
+        inserts = []
+        for tank in new_percentiles:
+            inserts.append([tank['tank_id'], pickle.dumps(tank['data'])])
+
+        #Rewriting the whole table.
+        cur.execute('DELETE FROM percentiles;')
+        cur.executemany('INSERT INTO percentiles (tank_id, data) VALUES (?, ?);', inserts)
+    @staticmethod
+    def insert_percentiles_generic(new_percentiles):
+        cur = open_conn().cursor()
+
+        inserts = []
+        for x in new_percentiles:
+            inserts.append([x['tier'], x['type'], pickle.dumps(x['data'])])
+
+        cur.execute('DELETE FROM percentiles_generic;')
+        cur.executemany('INSERT INTO percentiles_generic (tier, type, data) VALUES (?, ?, ?);', inserts)
+    @staticmethod
+    def insert_wn8(wn8_dict):
+        cur = open_conn().cursor()
+
+        inserts = []
+        for x in wn8_dict:
+            inserts.append([
+                x['tank_id'],
+                x['expFrag'],
+                x['expDamage'],
+                x['expSpot'],
+                x['expDef'],
+                x['expWinRate']
+            ])
+
         cur.execute('DELETE FROM wn8;')
-
-        tuples = []
-        for tank_id, val in wn8_dict.items():
-            tank_id = int(tank_id)
-            tuples.append([int(tank_id), val['expFrag'], val['expDamage'], val['expSpot'], val['expDef'], val['expWinRate']])
-
         cur.executemany('''
             INSERT INTO wn8 (tank_id, expFrag, expDamage, expSpot, expDef, expWinRate)
             VALUES (?, ?, ?, ?, ?, ?);
-        ''', tuples)
-
-
-
+        ''', inserts)
 
 
 #Singletons.
@@ -986,7 +967,7 @@ def api_main(page, server, account_id, timestamp, filters):
     #Validation.
     try:
         assert server in ('xbox', 'ps4')
-        assert page in ('profile', 'vehicles', 'time_series', 'session_tracker', 'wn8_estimates')
+        assert page in ('profile', 'vehicles', 'session_tracker')
     except:
         abort(404)
 
@@ -1010,24 +991,10 @@ def api_main(page, server, account_id, timestamp, filters):
         user = pageVehicles(server, account_id, data)
         user.extract_vehicle_data()
         output = user.player_data
-    elif page == 'time_series':
-        user = pageTimeSeries(server, account_id, data)
-        user_history_search = db.get_all_recent_checkpoints(server, account_id)
-        user.calculate_charts(user_history_search, filters, tankopedia)
-        output = {
-            'xlabels':            user.xlabels,
-            'percentiles_change': user.percentiles_change,
-            'wn8_totals':         [round(item, 2) for item in user.wn8_totals[1:]],
-            'wn8_change':         [round(item, 2) if item != 0 else None for item in user.wn8_change],
-            'wn8_labels':         user.xlabels[1:]
-        }
     elif page == 'session_tracker':
         user = pageSessionTracker(server, account_id, data)
         search = db.get_all_recent_checkpoints(server, account_id)
         output = user.calculateSessionTracker(timestamp, search)
-    elif page == 'wn8_estimates':
-        user = pageWn8Estimates(server, account_id, data)
-        output = user.calculate_wn8_estimates()
 
     return Response(json.dumps({
         'status':     'ok',
@@ -1441,94 +1408,76 @@ def newapi_timeseries_get_data():
     }), mimetype='application/json')
 
 
-#Diagnostics and maintenance calls.
-@app.route('/diag/<request>/')
-def diag(request):
+#Endpoint to update tankopedia, percentiles, wn8 exp values.
+@app.route('/update/', methods=['POST'])
+def update():
     start = time.time()
 
-    status, message = 'error', 'bad request'
-    data = count = None
 
-    if request == 'update-tankopedia':
+    #access_key must be sent in headers.
+    if request.headers.get('access_key') != access_key:
+        return Response(json.dumps({
+            'status':     'error',
+            'message':    'access_key doesnt match'
+        }), mimetype='application/json')
 
-        new_tankopedia = wgapi.get_tankopedia(app_id)
 
-        if not new_tankopedia:
-            status, message = 'error', 'couldnt download tankopedia from WG API'
-        else:
-            old_tankopedia = db.get_tankopedia()
+    #Validation, extract name and data.
+    try:
+        body = request.get_json()
+        name, data, count = body['name'], body['data'], body['count']
+        assert len(data) == count, 'length of "data" and "count" dont match'
 
-            #Getting sets of tank ids.
-            new_tank_ids = set(new_tankopedia.keys())
-            old_tank_ids = set(old_tankopedia.keys())
+    except (KeyError, AssertionError) as e:
+        return Response(json.dumps({
+            'status':     'error',
+            'message':    str(e)
+        }), mimetype='application/json')
 
-            #New tank ids & changed tank entries.
-            new_ids = new_tank_ids - old_tank_ids
-            changed_ids = [key for key in old_tank_ids if old_tankopedia[key] != new_tankopedia.get(key)]
 
-            #Getting list of tank dictionaries to add / update & updating DB.
-            tanks = [new_tankopedia[key] for key in list(new_ids) + changed_ids if new_tankopedia.get(key, False)]
-            for tank in tanks:
-                db.add_tankopedia_tank(tank)
+    #Defaults.
+    status, message = 'error', 'shouldnt be updated'
 
-            #Reloading into memory.
+
+
+    if name == 'tankopedia':
+        old_data = db.get_tankopedia()
+        if len(data) >= len(old_data):
+            db.insert_tankopedia(data)
             global tankopedia
             tankopedia = db.get_tankopedia()
             status = message = 'ok'
-            data, count = tanks, len(tanks)
 
-    if request == 'update-percentiles':
-
-        url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles/'
-
-        try:
-            resp = requests.get(url, timeout=10).json()
-            assert resp['status'] == 'ok'
-            assert resp['count'] == len(resp['data'])
-            new_percentiles = resp['data']
-            db.update_percentiles(new_percentiles)
+    elif name == 'percentiles':
+        old_data = db.get_percentiles()
+        if len(data) >= len(old_data):
+            db.insert_percentiles(data)
+            percentile.load()
             status = message = 'ok'
-        except (requests.exceptions.Timeout, AssertionError, KeyError) as e:
-            status, message = 'error', str(e)
 
-    if request == 'update-percentiles-generic':
-
-        url = 'http://usernameforlulz.pythonanywhere.com/get/percentiles-generic/'
-
-        try:
-            resp = requests.get(url, timeout=10).json()
-            assert resp['status'] == 'ok'
-            assert resp['count'] == len(resp['data'])
-            new_percentiles = resp['data']
-            db.update_percentiles_generic(new_percentiles)
+    elif name == 'percentiles_generic':
+        old_data = db.get_percentiles_generic()
+        if len(data) >= len(old_data):
+            db.insert_percentiles_generic(data)
+            percentile.load()
             status = message = 'ok'
-        except (requests.exceptions.Timeout, AssertionError, KeyError) as e:
-            status, message = 'error', str(e)
 
-    if request == 'reload-percentiles':
-        percentile.load()
-        status, message = 'ok', 'Percentiles reloaded'
-
-    if request == 'update-wn8':
-
-        url = 'http://usernameforlulz.pythonanywhere.com/get/wn8/'
-
-        try:
-            resp = requests.get(url, timeout=10).json()
-            assert resp['status'] == 'ok'
-            assert resp['count'] == len(resp['data'])
-            wn8_dict = resp['data']
-            db.update_wn8(wn8_dict)
+    elif name == 'wn8':
+        old_data = db.get_wn8()
+        if len(data) >= len(old_data):
+            db.insert_wn8(data)
             wn8.load()
             status = message = 'ok'
-        except (requests.exceptions.Timeout, AssertionError, KeyError) as e:
-            status, message = 'error', str(e)
+            
+    else:
+        status = 'error'
+        message = 'unknown name property'
+
+
 
     return Response(json.dumps({
         'status':     status,
         'message':    message,
-        'count':      count,
-        'data':       data,
         'time':       time.time() - start
     }), mimetype='application/json')
 

@@ -1,5 +1,12 @@
-#WG API app_id
-echo 'app_id = "demo"' > secret.py
+#!/usr/bin/env bash
+
+cd "${0%/*}"
+
+
+#Creating secret file with default values.
+touch secret.py
+echo 'app_id = "demo"' >> secret.py
+echo 'access_key = "12345"' >> secret.py
 
 
 #Python 3.6
@@ -41,10 +48,6 @@ npm install node-sass
 #Create SQLite database
 python3 utility/create_db.py
 
-
-#Make executable.
-chmod +x ./sh/compile_jsx.sh
-chmod +x ./sh/run.sh
 
 
 # TODO: update on setup:
