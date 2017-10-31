@@ -1,0 +1,47 @@
+{
+  "name": "wot-console-stats",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.jsx",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack -d",
+    "build-watch": "webpack -d --watch",
+    "build-debug": "webpack --display-error-details",
+    "build-prod": "webpack -p",
+    "eslint": "eslint --ext .js --ext .jsx src",
+    "eslint-fix": "eslint --ext .js --ext .jsx src --fix"
+  },
+  "dependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-react": "^6.24.1",
+    "base-64": "^0.1.0",
+    "bulma": "0.5.1",
+    "chart.js": "2.7.0",
+    "font-awesome": "4.7.0",
+    "node-sass": "^4.5.3",
+    "react": "15.6.1",
+    "react-dom": "15.6.1",
+    "webpack": "^3.8.1",
+    "whatwg-fetch": "2.0.3"
+  },
+  "devDependencies": {
+    "eslint": "^4.9.0",
+    "eslint-plugin-react": "^7.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IDDT/wot-console-stats.git"
+  },
+  "author": "IDDT",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/IDDT/wot-console-stats/issues"
+  },
+  "homepage": "https://github.com/IDDT/wot-console-stats#readme"
+}

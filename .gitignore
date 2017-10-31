@@ -1,27 +1,17 @@
 .DS_Store
-__pycache__/
 
 node_modules/
+package-lock.json
+
+*.pyc
 bin/
 lib/
 include/
 pip-selfcheck.json
 pyvenv.cfg
-package-lock.json
+*.pyc
 
-# Database.
 sqlite.db
-
-# Created during setup.
-secret.py
-.babelrc
-
-# Compiled during setup.
-static/app.js
-static/bulma.css
-
-# Downloaded during setup.
-static/react-dom.js
-static/react.js
-static/chart.bundle.js
-static/fetch.js
+web/static/app.js
+web/static/style.css
+web/secret.py

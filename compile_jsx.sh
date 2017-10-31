@@ -1,1 +1,0 @@
-./node_modules/.bin/babel static/app.jsx --watch --out-file static/app.js
