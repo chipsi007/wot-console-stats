@@ -1,4 +1,4 @@
-from .database import db
+from . import database as db
 from .wn8pc import wn8pc
 from . import tankopedia
 

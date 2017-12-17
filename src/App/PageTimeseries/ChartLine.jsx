@@ -27,7 +27,7 @@ export default class ChartLine extends React.PureComponent {
 
     // Destroying the chart and picking the reference.
     if (this.Chart) this.Chart.destroy();
-    let ctx = this.refs.chart;
+    let ctx = this.chartRef;
 
     // Pulling the data from props.
     const LABELS = this.props.timestamps.map(x => x * 1000);
@@ -104,6 +104,6 @@ export default class ChartLine extends React.PureComponent {
   }
 
   render() {
-    return(<canvas ref='chart' width='100' height='25'></canvas>);
+    return(<canvas ref={ (x) => this.chartRef = x } width='100' height='25'></canvas>);
   }
 }

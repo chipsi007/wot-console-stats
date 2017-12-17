@@ -4,10 +4,10 @@ import json
 
 from .. import app
 from .. import tankopedia
-from ..database import db
-from ..secret import app_id
-from ..wgapi import wgapi
+from .. import database as db
+from .. import wgapi
 from ..wn8 import wn8
+from ..percentile import percentile
 from ..functions import filter_data, find_difference
 
 
@@ -31,10 +31,10 @@ def newapi_general_get_player_tanks():
         }), mimetype='application/json')
 
     #Request player data or find cached.
-    status, message, data = wgapi.find_cached_or_request(server, account_id, app_id)
-    if status != 'ok':
+    message, data = wgapi.find_cached_or_request(server, account_id)
+    if message:
         return Response(json.dumps({
-            'status': status,
+            'status': 'error',
             'message': message
         }), mimetype='application/json')
 
@@ -74,10 +74,10 @@ def newapi_estimates_get_tank():
         }), mimetype='application/json')
 
     #Request player data or find cached.
-    status, message, data = wgapi.find_cached_or_request(server, account_id, app_id)
-    if status != 'ok':
+    message, data = wgapi.find_cached_or_request(server, account_id)
+    if message:
         return Response(json.dumps({
-            'status': status,
+            'status': 'error',
             'message': message
         }), mimetype='application/json')
 
@@ -160,7 +160,8 @@ def newapi_timeseries_get_data():
 
     #Fetching data from database.
     if time_scale == 'daily':
-        checkpoints_data = db.get_all_recent_checkpoints(server, account_id)
+        fourteen_days_ago = int(time.time()) - 60 * 60 * 24 * 14
+        checkpoints_data = db.get_all_checkpoints(server, account_id, min_created_at=fourteen_days_ago)
     if time_scale == 'weekly':
         checkpoints_data = db.get_first_checkoint_per_week(server, account_id)
 

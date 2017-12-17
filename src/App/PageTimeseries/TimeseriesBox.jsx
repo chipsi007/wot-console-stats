@@ -27,6 +27,7 @@ export default class TimeseriesBox extends React.Component {
     this.findSequences = this.findSequences.bind(this);
   }
 
+  
   fetchData() {
     
     fetch('/newapi/timeseries/get-data/', {
@@ -63,14 +64,17 @@ export default class TimeseriesBox extends React.Component {
       });
   }
 
+  
   componentDidMount() {
     // Fetchng the data only once.
     if (!this.state.tankData) { this.fetchData() }
   }
 
+  
   shouldComponentUpdate(nextProps, nextState) {
     return(this.state != nextState);
   }
+  
   
   findSequences(arr) {
     // Find sequences of numbers in the array of ints.
@@ -92,6 +96,7 @@ export default class TimeseriesBox extends React.Component {
     }
     return output;
   }
+  
   
   dropdownContent() {
     
@@ -148,6 +153,7 @@ export default class TimeseriesBox extends React.Component {
     }
   }
   
+  
   loading() {
     return(
       <article className='media'>
@@ -169,6 +175,7 @@ export default class TimeseriesBox extends React.Component {
     );
   }
 
+  
   render() {
     
     // Loading if no tank data.
@@ -192,11 +199,9 @@ export default class TimeseriesBox extends React.Component {
      
     return( 
       <article className='media'>
-        
         <div className='media-content'>
 
           <div className='field is-grouped'>
-
             <div className='control dropdown is-hoverable'>
               <div className='dropdown-trigger'>
                 <button className='button is-info is-small' aria-haspopup='true' aria-controls='dropdown-menu4'>
@@ -210,15 +215,12 @@ export default class TimeseriesBox extends React.Component {
                 { this.dropdownContent() }
               </div>
             </div>
-
             <p className='control'>
               <a className='button is-small' 
-                onClick={ () => this.setState({showFormula: !this.state.showFormula}) }
-              >
+                onClick={ () => this.setState({showFormula: !this.state.showFormula}) }>
                 { ((this.state.showFormula) ? 'Hide' : 'View') + ' formula' }
               </a>
             </p>
-
           </div>
 
           { (this.state.showFormula) ? FORMULA : null }  

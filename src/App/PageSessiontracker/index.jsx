@@ -75,6 +75,12 @@ export default class PageSessiontracker extends React.Component {
   
   componentDidMount() {
     if (!this.state.data) { this.fetchData() }
+    
+    // Google Analytics tracking.
+    if (typeof(ga) == 'function') {
+      ga('set', 'page', 'Session Tracker');
+      ga('send', 'pageview');
+    }
   }
 
   
@@ -269,12 +275,14 @@ export default class PageSessiontracker extends React.Component {
   
   render() {
     return(
-      <div>
-        <div className='container' style={ {marginTop: 15 + 'px', marginBottom: 15 + 'px'} }>
+      <section style={{marginTop: '24px'}}>
+        <div className='container' style={{marginBottom: '20px'}}>
           { this.genControls() }
         </div>
-        { this.mainBody() }
-      </div>
+        <div className='container'>
+          { this.mainBody() }
+        </div>
+      </section>
     );
   }
 }

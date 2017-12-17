@@ -2,13 +2,17 @@ import React from 'react';
 
 
 export default class Hero extends React.Component {
-  //this.state.pages
+  //this.props.pages
   //this.props.nickname
-  //this.switchPage
+  //this.props.switchPage
   //this.props.updateRootInfo
   constructor(props) {
     super(props);
+    this.state = {
+      menuVisible: false 
+    };
     this.logout = this.logout.bind(this);
+    this.toggleMenu = this.toggleMenu.bind(this);
   }
 
   
@@ -26,29 +30,34 @@ export default class Hero extends React.Component {
   }
 
   
+  toggleMenu() {
+    this.setState({menuVisible: !this.state.menuVisible});
+  }
+  
+  
+  /* render */
+  
+  
   genHeroFoot() {
 
     let pages = [];
     const CURRENT_PAGE = this.props.pages.filter((x) => x.active).map((x) => x.label)[0];
 
     this.props.pages.forEach((page) => {
-      let isActive = '';
-      if (CURRENT_PAGE == page.label) {
-        isActive = 'is-active';
-      }
       pages.push(
-        <li 
-          className={ isActive }
+        <li className={ (CURRENT_PAGE == page.label) ? 'is-active' : '' }
           onClick={ () => this.props.switchPage(page.label) }
-          key={ page.label }
-        >
+          key={ page.label }>
           <a>
-            <span className='icon'><i className={ page.iconClass }></i></span>
+            <span className='icon'>
+              <i className={ page.iconClass }></i>
+            </span>
             <span>{page.label}</span>
           </a>
         </li>
       );
     });
+    
     return(
       <div className='hero-foot'>
         <nav className='tabs is-boxed'>
@@ -66,27 +75,58 @@ export default class Hero extends React.Component {
   genHeroHead() {
     return(
       <div className='hero-head'>
-        <header className='nav'>
+        <nav className='navbar'>
           <div className='container'>
 
-            <div className='nav-left'>
-              <span className='nav-item'>
+            <div className='navbar-brand'>
+              <div className='navbar-item'>
                 <strong>
-                  {this.props.nickname}
+                  WoT Console Stats
                 </strong>
-              </span>
+              </div>
+              
+              <div className={ 'navbar-burger burger' + ((this.state.menuVisible) ? ' is-active' : '') }
+                onClick={ this.toggleMenu }>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              
             </div>
 
-            <div className='nav-right'>
-              <span className='nav-item'>
-                <a className='button is-primary is-inverted' onClick={ this.logout }>
-                  Logout
-                </a>
-              </span>
+            <div className={ 'navbar-menu' + ((this.state.menuVisible) ? ' is-active' : '') }>
+              <div className='navbar-end'>
+                
+                <div className='navbar-item'>
+                  <div className='field is-grouped is-grouped-right'>
+                    
+                    <p className='control'>
+                      <span className='button is-primary' disabled>
+                        <span className='icon'>
+                          <i className='fa fa-user'></i>
+                        </span>
+                        <span>
+                          <strong>{this.props.nickname}</strong>
+                        </span>
+                      </span>
+                    </p>
+                    
+                    <p className='control'>
+                      <a className='button is-primary' onClick={ this.logout }>
+                        <span className='icon'>
+                          <i className='fa fa-sign-out'></i>
+                        </span>
+                        <span>Logout</span>
+                      </a>
+                    </p>
+                  </div>
+                </div>
+                
+              </div>
             </div>
 
           </div>
-        </header>
+        </nav>
       </div>
     );
   }

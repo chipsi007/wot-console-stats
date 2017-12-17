@@ -28,7 +28,7 @@ export default class ChartBar extends React.Component {
 
     // Destroying the chart and picking the reference.
     if (this.Chart) this.Chart.destroy();
-    let ctx = this.refs.chart;
+    let ctx = this.chartRef;
 
 
     // Pulling the data from props.
@@ -82,7 +82,7 @@ export default class ChartBar extends React.Component {
           xAxes: [{
             ticks: {
               callback: function(value, index, values) {
-                return(value + ' WN8');
+                return value + ' WN8';
               }
             }
           }],
@@ -98,6 +98,6 @@ export default class ChartBar extends React.Component {
   }
 
   render() {
-    return(<canvas ref='chart' width='100' height='25'></canvas>);
+    return(<canvas ref={ (x) => this.chartRef = x } width='100' height='25'></canvas>);
   }
 }

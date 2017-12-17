@@ -21,18 +21,19 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
     "base-64": "^0.1.0",
-    "bulma": "0.5.1",
-    "chart.js": "2.7.0",
-    "font-awesome": "4.7.0",
-    "node-sass": "^4.5.3",
-    "react": "15.6.1",
-    "react-dom": "15.6.1",
-    "webpack": "^3.8.1",
-    "whatwg-fetch": "2.0.3"
+    "bulma": "^0.6.1",
+    "bulma-pageloader": "0.1.0",
+    "chart.js": "^2.7.1",
+    "font-awesome": "^4.7.0",
+    "node-sass": "^4.7.2",
+    "react": "^16.2.0",
+    "react-dom": "^16.2.0",
+    "webpack": "^3.10.0",
+    "whatwg-fetch": "^2.0.3"
   },
   "devDependencies": {
-    "eslint": "^4.9.0",
-    "eslint-plugin-react": "^7.4.0"
+    "eslint": "^4.12.1",
+    "eslint-plugin-react": "^7.5.1"
   },
   "repository": {
     "type": "git",

@@ -1,9 +1,11 @@
+from flask import Response
 import json
 import time
 
+
 from .. import app
-from ..database import db
-from ..secret import app_id
+from .. import wgapi
+from .. import database as db
 
 
 #General support endpoints.
@@ -41,7 +43,7 @@ def add_checkpoint(server, account_id):
         return 'ok'
 
     #Fetching the player.
-    status, message, data = wgapi.get_player_data(server, account_id, app_id)
+    status, message, data = wgapi.get_player_data(server, account_id)
 
     if status != 'ok':
         return 'error: player couldnt be fetched'
@@ -66,7 +68,8 @@ def api_request_snapshots(server, account_id):
         }), mimetype='application/json')
 
     #Database fetch.
-    data = db.get_all_recent_checkpoints(server, account_id)
+    fourteen_days_ago = int(time.time()) - 60 * 60 * 24 * 14
+    data = db.get_all_checkpoints(server, account_id, min_created_at=fourteen_days_ago)
 
     #Output.
     return Response(json.dumps({

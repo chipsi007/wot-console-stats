@@ -1,18 +1,21 @@
-// Updating bulma basic colors.
-@import "../node_modules/bulma/sass/utilities/initial-variables"
-$orange:       hsl(14,  100%, 53%)
-$yellow:       hsl(45,  88%,  65%)
+@charset "utf-8"
+
+
+// bulma.
+//$yellow:       hsl(45,  88%,  65%)
 $green:        hsl(130, 25%,  63%)
 $turquoise:    hsl(212, 43%,  65%)
 $blue:         hsl(200, 25%,  63%)
-$purple:       hsl(271, 100%, 71%)
+$cyan:         hsl(204, 43%,  63%)
 $red:          hsl(0,   35%,  63%)
 @import "../node_modules/bulma/bulma"
 
 
+// bulma-pageloader extention.
+@import "../node_modules/bulma-pageloader/pageloader"
 
 
-// Loading most of the font awesome.
+// Most of the font awesome.
 @import "../node_modules/font-awesome/scss/variables"
 @import "../node_modules/font-awesome/scss/mixins"
 //@import "../node_modules/font-awesome/scss/path"
@@ -26,6 +29,8 @@ $red:          hsl(0,   35%,  63%)
 @import "../node_modules/font-awesome/scss/stacked"
 @import "../node_modules/font-awesome/scss/icons"
 @import "../node_modules/font-awesome/scss/screen-reader"
+
+
 // Import prepared base64 string. Variable name = "$base64fontString"
 @import "base64font"
 // Modified font-face from ../node_modules/font-awesome/scss/path
@@ -34,12 +39,3 @@ $red:          hsl(0,   35%,  63%)
   src: url('data:application/font-woff;charset=utf-8;base64,#{$base64fontString}') format('woff')
   font-weight: normal
   font-style: normal
-
-
-
-
-//workaround for using multiline columns for Safari
-// TODO: check if issue still exists.
-.column
-  flex-shrink: 1
-  flex-basis: auto

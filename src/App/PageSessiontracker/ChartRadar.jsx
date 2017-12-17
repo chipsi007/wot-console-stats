@@ -30,7 +30,7 @@ export default class ChartRadar extends React.PureComponent {
 
     // Destroying the chart and picking the reference.
     if (this.Chart) this.Chart.destroy();
-    let ctx = this.refs.chart;
+    let ctx = this.chartRef;
 
     const ALL_TIME = this.props.all_time;
     const RECENT = this.props.recent;
@@ -75,6 +75,6 @@ export default class ChartRadar extends React.PureComponent {
   }
 
   render() {
-    return(<canvas ref='chart' width='100' height='100'></canvas>);
+    return(<canvas ref={ (x) => this.chartRef = x } width='100' height='100'></canvas>);
   }
 }

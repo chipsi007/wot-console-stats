@@ -1,4 +1,4 @@
-from .database import db
+from . import database as db
 from . import tankopedia
 
 
@@ -13,28 +13,46 @@ class percentile:
 
     @classmethod
     def load(cls):
-        #(Re)load percentiles.
+        '''Re(Load) perecentiles dictionaries into the body of class.
+        '''
         cls.percentiles = db.get_percentiles()
         cls.percentiles_generic = db.get_percentiles_generic()
 
     @classmethod
     def get_percentiles_array(cls, kind, tank_id):
-        #Find array for specified kind and tank_id.
+        '''Get percentiles array.
+        Arguments:
+            kind:str              - name of the percentile.
+            tank_id:Any(int, str) - tank_id.
+        Returns:
+            Any(List[float], None)
+            Falls to generic percentiles if not found.
+        '''
+
         array = cls.percentiles.get(tank_id, {}).get(kind)
-        #If tank is in the pre-calculated table. (DEFAULT)
         if array:
-            return(array)
-        #If tank in tankopedia, getting generic percentile (tier-class).
+            return array
         return cls.get_percentiles_generic_array(kind, tank_id)
 
     @classmethod
     def get_percentiles_generic_array(cls, kind, tank_id):
-        #If tank in tankopedia, getting generic percentile (tier-class).
+        '''Get generic percentiles array.
+        Arguments:
+            kind:str              - name of the percentile.
+            tank_id:Any(int, str) - tank_id.
+        Returns:
+            Any(List[float], None)
+            None if tank is not in tankopedia.
+            None if the generic percentiles for tier-class dont exits.
+        '''
+
         found = tankopedia.get(str(tank_id))
         if found:
             tier_class = str(found['tier']) + found['type']
-            array = cls.percentiles_generic.get(tier_class, {}).get(kind)
-            return(array)
+            perc_dict = cls.percentiles_generic.get(tier_class)
+            if perc_dict:
+                array = perc_dict.get(kind)
+                return array
         return None
 
     @staticmethod
@@ -71,6 +89,8 @@ class percentile:
 
         if battles == 0:
             return 0
+
+        # TODO: make a set instead of list.
 
         set_a = [
             "battle_life_time", "damage_dealt", "damage_received", "xp",

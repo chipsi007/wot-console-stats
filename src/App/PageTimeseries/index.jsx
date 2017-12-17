@@ -2,6 +2,7 @@ import React from 'react';
 
 
 import TimeseriesBox from './TimeseriesBox';
+import TagsDropdown from '../components/TagsDropdown';
 
 
 export default class PageTimeseries extends React.Component {
@@ -55,7 +56,7 @@ export default class PageTimeseries extends React.Component {
       ],
       
       // Messages under formula.
-      infoMsg: 'This section allows to calculate various account or tank metrics and view it on a time series chart. Click this message to close.',//null,
+      infoMsg: 'This section allows to calculate various account or tank metrics and view it on a time series chart. Click this message to dismiss.',//null,
       dangerMsg: null,
       
       // Container for player tanks loaded on mount.
@@ -65,12 +66,19 @@ export default class PageTimeseries extends React.Component {
     this.fetchTanks = this.fetchTanks.bind(this);
     this.addChartBox = this.addChartBox.bind(this);
     this.removeLastFormulaItem = this.removeLastFormulaItem.bind(this);
+    this.switchFilter = this.switchFilter.bind(this);
     this.resetFilters = this.resetFilters.bind(this);
   }
   
   
   componentDidMount() {
     if (this.state.playerTanks.length === 0) { this.fetchTanks() }
+    
+    // Google Analytics tracking.
+    if (typeof(ga) == 'function') {
+      ga('set', 'page', 'Time Series');
+      ga('send', 'pageview');
+    }  
   }
   
 
@@ -101,6 +109,9 @@ export default class PageTimeseries extends React.Component {
         alert('There has been a problem with your fetch operation: ' + error.message);
       });
   }
+  
+  
+  /* formula */
   
   
   addFormulaItem(item) {
@@ -150,6 +161,7 @@ export default class PageTimeseries extends React.Component {
     const DELETE_BUTTON = (<button className='delete' onClick={ this.removeLastFormulaItem }></button>);
 
     let formulaItems = FORMULA.map((x, index) => {
+      // Items don't change order, so index keys are acceptable.
       return( 
         <span className={ 'tag is-medium' + ((x.type === 'op') ? ' is-warning' : ' is-primary') } 
           key={ index }>
@@ -206,6 +218,9 @@ export default class PageTimeseries extends React.Component {
   }
   
   
+  /* chartboxes */
+  
+  
   addChartBox() {
     
     // Validation.
@@ -246,6 +261,9 @@ export default class PageTimeseries extends React.Component {
   }
 
   
+  /* filters */
+  
+  
   switchFilter(filterID) {
     let filters = this.state.filters;
     for (let item of filters) {
@@ -258,10 +276,25 @@ export default class PageTimeseries extends React.Component {
   }
   
   
+  switchFilters(sType, bActive) {
+
+    let filters = this.state.filters;
+
+    filters
+      .filter((x) => x.type == sType)
+      .forEach((x) => {
+        if (bActive) { x.active = true }
+        else { x.active = false }
+      });
+
+    this.setState({filters: filters});
+  }
+  
+  
   resetFilters() {
-    this.refs.text.value = '';
-    this.refs.tier.value = '0';
-    this.refs.type.value = 'all';
+    this.reftext.value = '';
+    this.reftier.value = '0';
+    this.reftype.value = 'all';
     this.setState({
       dataTankText: '',
       dataTankType: 'all',
@@ -270,6 +303,9 @@ export default class PageTimeseries extends React.Component {
       dataTankMaxItems: 12, // actually 12 - 1 for the extend button.
     });
   }
+  
+  
+  /* render */
   
 
   editorFormula() {
@@ -345,55 +381,61 @@ export default class PageTimeseries extends React.Component {
     ];
     
     const OP_ITEMS = OP_FIELDS.map((x, index) => {
-      return( <p className='control' key={ x.type + index }>
-        <a className='button is-small is-warning'
-          onClick={ () => this.addFormulaItem(x) }
-        >
-          { x.label }
-        </a>
-      </p>);
+      // Items don't change order, so index keys are acceptable.
+      return( 
+        <p className='control' key={ x.type + index }>
+          <a className='button is-small is-warning'
+            onClick={ () => this.addFormulaItem(x) }>
+            { x.label }
+          </a>
+        </p>
+      );
     });
     const NUM_ITEMS = NUM_FIELDS.map((x, index) => {
-      return( <p className='control' key={ x.type + index }>
-        <a className='button is-small is-light'
-          onClick={ () => this.addFormulaItem(x) }
-        >
-          { x.label }
-        </a>
-      </p>);
+      // Items don't change order, so index keys are acceptable.
+      return(
+        <p className='control' key={ x.type + index }>
+          <a className='button is-small is-light'
+            onClick={ () => this.addFormulaItem(x) }>
+            { x.label }
+          </a>
+        </p>
+      );
     });
     const RAW_ITEMS = RAW_FIELDS.map((x, index) => {
-      return( <p className='control' key={ index }>
-        <a className='button is-small is-info'
-          onClick={ () => this.addFormulaItem(x) }
-        >
-          { x.label }
-        </a>
-      </p>);
+      // Items don't change order, so index keys are acceptable.
+      return(
+        <p className='control' key={ index }>
+          <a className='button is-small is-info'
+            onClick={ () => this.addFormulaItem(x) }>
+            { x.label }
+          </a>
+        </p>
+      );
     });
     const CALC_ITEMS = CALC_FIELDS.map((x, index) => {
-      return( <p className='control' key={ index }>
-        <a className='button is-small is-danger'
-          onClick={ () => this.addFormulaItem(x) }
-        >
-          { x.label }
-        </a>
-      </p>);
+      // Items don't change order, so index keys are acceptable.
+      return(
+        <p className='control' key={ index }>
+          <a className='button is-small is-danger'
+            onClick={ () => this.addFormulaItem(x) }>
+            { x.label }
+          </a>
+        </p>
+      );
     });
    
     const HEADER = (
       <header className='card-header'>
         <a className='card-header-title'
-          onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }
-        >
+          onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }>
           <span className='icon'>
             <i className={ (this.state.formulaExpanded) ? 'fa fa-angle-down' : 'fa fa-angle-right' }></i>
           </span>
           Edit formula
         </a>
         <a className='card-header-icon' 
-          onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }
-        >
+          onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }>
           { (this.state.formulaExpanded) ? 'Hide' : 'Show' }
         </a>
       </header>
@@ -401,7 +443,6 @@ export default class PageTimeseries extends React.Component {
     
     const CONTENT = (
       <div className='card-content'>
-        
         <div className='content'>
           <small>Operations and basic numbers:</small>
           <div className='field is-grouped is-grouped-multiline'>
@@ -409,28 +450,27 @@ export default class PageTimeseries extends React.Component {
             { NUM_ITEMS }
           </div>
         </div>
-        
         <div className='content'>
           <small>Raw data properties:</small>
           <div className='field is-grouped is-grouped-multiline'>
             { RAW_ITEMS }
           </div>
         </div>
-        
         <div className='content'>
           <small>WN8 and percentiles:</small>
           <div className='field is-grouped is-grouped-multiline'>
             { CALC_ITEMS }
           </div>
         </div>
-        
       </div>
     );
     
-    return( <div className='card is-unselectable'>
-      { HEADER }
-      { (this.state.formulaExpanded) ? CONTENT : null }
-    </div>);
+    return( 
+      <div className='card is-unselectable'>
+        { HEADER }
+        { (this.state.formulaExpanded) ? CONTENT : null }
+      </div>
+    );
   }
   
   
@@ -439,16 +479,14 @@ export default class PageTimeseries extends React.Component {
     const HEADER = (
       <header className='card-header'>
         <a className='card-header-title'
-          onClick={ () => this.setState({dataExpanded: !this.state.dataExpanded}) }
-        >
+          onClick={ () => this.setState({dataExpanded: !this.state.dataExpanded}) }>
           <span className='icon'>
             <i className={ (this.state.dataExpanded) ? 'fa fa-angle-down' : 'fa fa-angle-right' }></i>
           </span>
           Choose data
         </a>
         <a className='card-header-icon' 
-          onClick={ () => this.setState({dataExpanded: !this.state.dataExpanded}) }
-        >
+          onClick={ () => this.setState({dataExpanded: !this.state.dataExpanded}) }>
           { (this.state.dataExpanded) ? 'Hide' : 'Show' }
         </a>
       </header>
@@ -493,36 +531,28 @@ export default class PageTimeseries extends React.Component {
   
   editorDataFilters() {
     
-    const TIERS = this.state.filters.filter((x) => x.type === 'tier').map((x) => {
-      return( <a className={ 'tag' + (x.active ? ' is-success' : '') }
-        onClick={ () => this.switchFilter(x.id) }
-        key={ x.id }
-      >
-        { x.label }
-      </a>);
-    });
-    
-    const TYPES = this.state.filters.filter((x) => x.type === 'type').map((x) => {
-      return( <a className={ 'tag' + (x.active ? ' is-success' : '') }
-        onClick={ () => this.switchFilter(x.id) }
-        key={ x.id }
-      >
-        { x.label }
-      </a>);
-    });
-    
-
-    
-    return( <div className='columns'>
-      <div className='column'>
-        <div className='tags'>
-          { TIERS }
+    return( 
+      <div className='columns'>
+        <div className='column is-6'>
+          <TagsDropdown 
+            tags={ this.state.filters.filter((x) => x.type === 'tier') }
+            buttonMsg={ 'Add more tiers...' }
+            toggle={ this.switchFilter }
+            toggleAllOn={ () => this.switchFilters('tier', true) }
+            toggleAllOff={ () => this.switchFilters('tier', false) }
+          />
         </div>
-        <div className='tags'>
-          { TYPES }
+        <div className='column is-6'>
+          <TagsDropdown 
+            tags={ this.state.filters.filter((x) => x.type === 'type') }
+            buttonMsg={ 'Add more types...' }
+            toggle={ this.switchFilter }
+            toggleAllOn={ () => this.switchFilters('type', true) }
+            toggleAllOff={ () => this.switchFilters('type', false) }
+          />
         </div>
       </div>
-    </div>);
+    );
   }
   
   
@@ -603,8 +633,7 @@ export default class PageTimeseries extends React.Component {
         <div className='field' key='extend'>
           <p className='control is-expanded'>
             <a className='button is-small is-fullwidth'
-              onClick={ () => this.setState({dataTankMaxItems: this.state.dataTankMaxItems + 12}) }
-            >
+              onClick={ () => this.setState({dataTankMaxItems: this.state.dataTankMaxItems + 12}) }>
               { '• • •' }
             </a>
           </p>
@@ -618,13 +647,14 @@ export default class PageTimeseries extends React.Component {
         <nav className='level'>
 
           <div className='level-left'>
-
             <div className='level-item'>
               <div className='field'>
                 <p className={ 'control has-icons-left' + ((this.state.playerTanks.length === 0) ? ' is-loading' : '') }>
-                  <input className='input' type='text' placeholder='Filter by tank name'
-                    onChange={ () => this.setState({dataTankText: this.refs.text.value}) }
-                    ref='text'
+                  <input className='input' 
+                    type='text' 
+                    placeholder='Filter by tank name'
+                    onChange={ () => this.setState({dataTankText: this.reftext.value}) }
+                    ref={ (x) => this.reftext = x }
                   />
                   <span className='icon is-left'>
                     <i className='fa fa-search'></i>
@@ -632,7 +662,6 @@ export default class PageTimeseries extends React.Component {
                 </p>
               </div>
             </div>
-
             <div className='level-item'>
               <p className='control'>
                 <button className='button is-outlined' onClick={ this.resetFilters }>
@@ -642,33 +671,30 @@ export default class PageTimeseries extends React.Component {
                 </button>
               </p>
             </div>
-
             <div className='level-item'>
               <p className='subtitle is-5'>
                 <strong>{ TANKS.length }</strong> vehicles
               </p>
             </div>
-
           </div>
 
           <div className='level-right'>
-
             <div className='level-item'>
               <div className='select'>
-                <select ref='tier' onChange={ () => this.setState({dataTankTier: this.refs.tier.value}) }>
+                <select ref={ (x) => this.reftier = x } 
+                  onChange={ () => this.setState({dataTankTier: this.reftier.value}) }>
                   { TIER_SELECT_ITEMS }
                 </select>
               </div>
             </div>
-
             <div className='level-item'>
               <div className='select'>
-                <select ref='type' onChange={ () => this.setState({dataTankType: this.refs.type.value}) }>
+                <select ref={ (x) => this.reftype = x }
+                  onChange={ () => this.setState({dataTankType: this.reftype.value}) }>
                   { TYPE_SELECT_ITEMS }
                 </select>
               </div>
             </div>
-
           </div>
 
         </nav>
@@ -677,19 +703,17 @@ export default class PageTimeseries extends React.Component {
           <div className='column is-3'>
             { col1 }
           </div>
-
           <div className='column is-3'>
             { col2 }
           </div>
-
           <div className='column is-3'>
             { col3 }
           </div>
-
           <div className='column is-3'>
             { col4 }      
           </div>
         </div>
+        
       </div>
     );
   }
@@ -731,8 +755,8 @@ export default class PageTimeseries extends React.Component {
     );
         
     return(
-      <section className='section'>
-        <div className='container' >
+      <section style={{marginTop: '24px'}}>
+        <div className='container'>
           { this.formula() }
           { (this.state.dangerMsg) ? DANGER_MESSAGE : null }
           { (this.state.infoMsg) ? INFO_MESSAGE : null }   

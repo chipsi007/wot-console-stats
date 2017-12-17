@@ -1,15 +1,22 @@
 #Reuseable basic support functions.
 
 
-#Decode string sent by a client into the filter input array.
-def decode_filters_string(filters_string):
-    #'ab&cd&ef&' -> ['ab', 'cd', 'ef']
-    items = filters_string.split('&')
-    return [x for x in items if len(x) > 0]
-
-
 #Filter player data according to filter input.
 def filter_data(player_data, filter_input, tankopedia):
+    '''Filter checkpoint according to filter_input.
+
+    Tier filters: "1", "2", "3",  "4", "5", "6", "7", "8", "9", "10",
+    Type filters: "lightTank", "mediumTank", "heavyTank", "AT-SPG", "SPG"
+
+    Arguments:
+        required: player_data:List[dict] -
+        required: filter_input:Sequence[str] -
+        required: tankopedia:Dict[str, dict] -
+    Returns:
+        List[dict] - player tanks that match the filters.
+    '''
+
+
     filtered_player_data = []
     for tank in player_data:
         #Calling tankopedia tank dictionary.
@@ -21,9 +28,27 @@ def filter_data(player_data, filter_input, tankopedia):
     return filtered_player_data
 
 
-#Substract old_data from new_data.
+
 def find_difference(old_data, new_data):
-    #Making a copy to prevent changing the input.
+    '''Substract old_data from new_data.
+
+    Inputs are lists of dictionaries.
+
+    Arguments:
+        required: old_data:[dict] - for example checkpoint 2 weeks ago.
+        required: new_data:[dict] - checkpoint later in time. for example now.
+    Returns:
+        [dict]
+
+    The output slice doesnt include tanks that dont exist in the 'old_data'.
+    '''
+
+    # TODO: test if WG api returns player datas with missing tanks that previously existed on the account.
+    #possibly add named argument "dont_include_new_tanks=True"
+
+    #The function works by mutating the list.
+
+    #Making a copy.
     old_data = old_data[:]
     #Deleting tanks from 'old_data' that were not played.
     for new_tank in new_data:

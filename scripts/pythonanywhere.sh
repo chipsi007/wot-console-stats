@@ -24,9 +24,10 @@ if [ "$ACTION" == "pack" ]; then
 
 elif [ "$ACTION" == "unpack" ]; then
   echo Unpacking...
+  rm -rf web/
   tar -zxf bundle.tgz
   echo All unpacked.
 
 else
-  echo Unknown action.
+  echo "Unknown action use commands 'pack' or 'unpack'."
 fi

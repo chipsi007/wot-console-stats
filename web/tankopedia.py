@@ -1,8 +1,11 @@
-from .database import db
+from . import database as db
 
 
 #Tankopedia is stored as in-memory module-global, tread-local basic dictionary.
 #load method must be invoked first.
+
+
+# TODO: make tankopedia keys as integers
 
 
 tankopedia = None

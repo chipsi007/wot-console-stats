@@ -1,13 +1,13 @@
-from flask import Response
+from flask import Response, request
 import time
 import json
 
 from .. import app
-from ..database import db
+from .. import database as db
 from .. import tankopedia
 from ..percentile import percentile
 from ..wn8 import wn8
-from ..secret import app_id
+from ..secret import access_key
 
 
 #Endpoint to update tankopedia, percentiles, wn8 exp values.

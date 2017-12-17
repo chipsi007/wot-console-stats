@@ -5,13 +5,13 @@ import React from 'react';
 
 
 export default class PageLogin extends React.Component {
+  //this.props.updateRootInfo
   constructor(props) {
     super(props);
     this.state = {
+      errorMsg: null,
       loading: false,
-      warningMsg: null,
-      openAbout: false,
-      loggedBefore: false,
+      infoPresent: false,
       nickname: null,
       server: null
     };
@@ -31,13 +31,22 @@ export default class PageLogin extends React.Component {
     
     if (NICKNAME && SERVER) {
       this.setState({
-        loggedBefore: true,
+        infoPresent: true,
         nickname: NICKNAME,
         server: SERVER
-      });
+      }, this.fetchAccountInfo);
     }
   }
-
+  
+  
+  componentDidMount() {
+    // Google Analytics tracking.
+    if (typeof(ga) == 'function') {
+      ga('set', 'page', 'Login');
+      ga('send', 'pageview');
+    }  
+  }
+  
   
   updateLocalStorage(nickname, server) {
     // Update local storage values.
@@ -69,37 +78,37 @@ export default class PageLogin extends React.Component {
     // Clear warning message.
     this.setState({warningMsg: null});
 
-    // Getting variables based on the form.
-    let nickname = this.state.nickname;
-    let server = this.state.server;
-
+    
     // If new user, getting variables from refs.
-    if (!this.state.loggedBefore) {
-      nickname = this.refs.nickname.value;
-      server = this.refs.server.value;
+    let nickname, server;
+    if (this.state.infoPresent) {
+      nickname = this.state.nickname;
+      server = this.state.server;
+    } else {
+      nickname = this.refnickname.value;
+      server = this.refserver.value;
     }
-
+    
+    
     // Validation.
     if (nickname === '') {
-      this.setState({warningMsg: 'Please enter your playername'});
+      this.setState({errorMsg: 'Please enter your playername'});
       return;
     }
-
-    // Loading indication.
+    
+    
+    // Start loading after validation.
     this.setState({loading: true});
+    
+    
+    const URL = `https://api-${server}-console.worldoftanks.com/wotx/account/list/?application_id=demo&search=${nickname}`;
 
-    // Preparing the url.
-    let url = 'https://api-' + server + '-console.worldoftanks.com/wotx/account/list/?application_id=demo&search=';
-    url += nickname;
 
-    // Requesting the info.
-    fetch(url)
+    fetch(URL)
       .then(response => { return response.json() })
       .then(j => {
-        // Disable loading indicator.
-        this.setState({loading: false});
       
-        // Everythyng OK.
+        // Everythyng's OK.
         if ((j.status == 'ok') && (j.meta.count > 0)) {
           const OBJ = {
             nickname: j.data[0].nickname,
@@ -109,23 +118,30 @@ export default class PageLogin extends React.Component {
           this.updateLocalStorage(OBJ.nickname, OBJ.server);
           this.props.updateRootInfo(OBJ);
           
-        // No players found.
-        } else if ((j.status == 'ok') && (j.meta.count === 0)) {
-          this.setState({warningMsg: 'The player was not found'});
-          
-        // WG API returned error.
-        } else if (j.status == 'error') {
-          this.setState({warningMsg: j.error.message});
+        // Not ok.
+        } else {
+          let errorMsg = null;
+          // No players found.
+          if ((j.status == 'ok') && (j.meta.count === 0)) { errorMsg = 'The player was not found' }
+          // Error from WGAPI.
+          if (j.status == 'error') { errorMsg = j.error.message }
+          this.setState({
+            errorMsg: errorMsg,
+            loading: false
+          });
         }
+      
       })
       .catch(error => {
-        // Disable loading indicator & show warning message.
+
         this.setState({
-          loading: false,
-          warningMsg: 'Failed to contact Wargaming API services. Error message: ' + error.message
+          errorMsg: 'Failed to contact Wargaming API services. Error message: ' + error.message,
+          infoPresent: false,
+          loading: false
         });
-        // Clear local storage and return to new login form.
+      
         this.clearLocalStorage();
+      
       });
   }
   
@@ -133,99 +149,21 @@ export default class PageLogin extends React.Component {
   /* render */
   
   
-  warningMsg() {
-    if (!this.state.warningMsg) { return }
-    return( <p className='help is-danger has-text-centered'>
-      {this.state.warningMsg}
-    </p>);
+  fullscreenLoading() {
+    return(<div className='pageloader is-active'></div>);
   }
-
   
-  newUser() {
-
-    return( <div className='field has-addons'>
-      <p className='control has-icons-left is-expanded'>
-        <input className='input has-text-centered' type='text' ref='nickname' />
-        <span className='icon is-left'>
-          <i className='fa fa-user'></i>
-        </span>
-      </p>
-      <p className='control has-icons-left'>
-        <span className='select'>
-          <select ref='server'>
-            <option value='xbox'>XBOX</option>
-            <option value='ps4'>PS4</option>
-          </select>
-        </span>
-        <span className='icon is-left'>
-          <i className='fa fa-gamepad'></i>
-        </span>
-      </p>
-    </div>);
-  }
-
   
-  returningUser() {
-
-    return( <div className='field is-grouped'>
-      <p className='control is-expanded'>
-        <span className='button is-static is-fullwidth'>
-          <span className='icon'><i className='fa fa-user'></i></span>
-          <span>{this.state.nickname}</span>
-        </span>
-      </p>
-      <p className='control'>
-        <a className='button is-danger' onClick={ this.clearLocalStorage }>
-          <span className='icon'><i className='fa fa-times'></i></span>
-        </a>
-      </p>
-    </div>);
-  }
-
-  
-  about() {
-    return(
-      <div className={ 'modal' + (this.state.openAbout ? ' is-active' : '') }>
-        <div className='modal-background'></div>
-        <div className='modal-card'>
-          <header className='modal-card-head'>
-            <p className='modal-card-title'>About</p>
-            <button className='delete' onClick={ () => this.setState({openAbout: false}) }></button>
-          </header>
-          <section className='modal-card-body'>
-            <div className='content'>  
-              <p>
-                This website is the result to bring fair results tracking into WoT Console community. It is not associated with Wargaming company in any way. It's intended not to shame anyone but rather to satisfy the curiosity of players. Follow the links below to learn more about how the things work inside.
-              </p>
-              <p>
-                The most interesting features of this website requre user to have at least a few data points. To help with that, the system creates checkpoints automatically up 7 days after the last user log in.
-              </p>       
-              <p className='control'>
-                <a className='button is-info is-outlined is-fullwidth'
-                  target='_blank'
-                  rel="noopener noreferrer"
-                  href='https://github.com/IDDT/wot-console-stats/commits/master'>
-                  Changelog
-                </a>
-              </p>
-              <p className='control'>
-                <a className='button is-info is-outlined is-fullwidth'
-                  target='_blank'
-                  rel="noopener noreferrer"
-                  href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'>
-                  Suggest things here
-                </a>
-              </p>
-              <p className='control'>
-                <a className='button is-info is-outlined is-fullwidth'
-                  target='_blank'
-                  rel="noopener noreferrer"
-                  href='https://github.com/IDDT/wot-console-wn8'>
-                  WN8 / percentiles calculation algorithm.
-                </a>
-              </p>
-            </div>
-          </section>
+  errorMsg() {
+    
+    if (!this.state.errorMsg) { return }
+    
+    return( 
+      <div className='field'>
+        <div className='control'>
+          <p className='help is-danger has-text-centered'>
+            {this.state.errorMsg}
+          </p>
         </div>
       </div>
     );
@@ -233,56 +171,68 @@ export default class PageLogin extends React.Component {
 
   
   render() {
-
-    // Loading indication for login button.
-    let loginClsName = 'button is-primary is-fullwidth' + (this.state.loading ? ' is-loading' : '');
-
-    return( <section className='hero is-fullheight is-light is-bold is-medium'>
-      <div className='hero-body'>
-        <div className='container'>
-          <div className='columns is-centered'>
-
-            <article className='card'>
-              <div className='card-content'>
-
-                <div className='media'>
-                  <div className='media-left'>
-                    <span className='icon is-large'><i className='fa fa-line-chart'></i></span>
-                  </div>
-                  <div className='media-content'>
-                    <p className='title is-4'>World of Tanks</p>
-                    <p className='subtitle is-6'>console statistics</p>
-                  </div>
-                  <div className='media-right'>
-                    <a onClick={ () => this.setState({openAbout: true}) }>
-                      <span className='icon is-small'>
-                        <i className='fa fa-question-circle'></i>
-                      </span>
-                    </a>
-                  </div>
-                </div>
-
-                { (this.state.loggedBefore) ? this.returningUser() : this.newUser() }
-
+    
+    if (this.state.nickname && this.state.server && this.state.infoPresent) {
+      return(this.fullscreenLoading());
+    }
+    
+    return(
+      <section className='hero is-fullheight is-light'>
+        <div className='hero-body'>
+          <div className='container has-text-centered'>
+            <div className='column is-4 is-offset-4'>
+              <div className='box'>
+                <h4 className='title has-text-grey'>WoT Console Stats</h4>
+                
+                { this.errorMsg() }
+                
                 <div className='field'>
-                  <p className='control'>
-                    <a className={ loginClsName } onClick={ this.fetchAccountInfo }>
-                      <span className='icon'><i className='fa fa-sign-in'></i></span>
-                      <span>Login</span>
-                    </a>
-                  </p>
+                  <div className='control'>
+                    <input className='input is-medium' 
+                      type='text' 
+                      placeholder='Your Playername' 
+                      ref={ (x) => this.refnickname = x } />
+                  </div>
                 </div>
-                        
-                {this.warningMsg()}
-
+                <div className='field'>
+                  <div className='control'>
+                    <div className='select is-primary is-medium is-fullwidth has-text-centered'>
+                      <select ref={ (x) => this.refserver = x }>
+                        <option value='xbox'>XBOX</option>
+                        <option value='ps4'>PLAYSTATION</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <a className={ 'button is-fullwidth is-primary is-medium' + ((this.state.loading) ? ' is-loading' : '') }
+                  onClick={ this.fetchAccountInfo }>
+                  Login
+                </a>
               </div>
-            </article>
-                    
-            {this.about()}
-
+              
+              <p className='has-text-grey'>
+                <a href='https://github.com/IDDT/wot-console-stats'
+                  target='_blank'
+                  rel='noopener noreferrer'>
+                  Open Source
+                </a>
+                  &nbsp;·&nbsp;
+                <a href='https://github.com/IDDT/wot-console-wn8'
+                  target='_blank'
+                  rel='noopener noreferrer'>
+                  WN8
+                </a>
+                  &nbsp;·&nbsp;
+                <a href='http://forum-console.worldoftanks.com/index.php?/user/turboparrot666-1076121407/'
+                  target='_blank'
+                  rel='noopener noreferrer'>
+                  Send Feedback
+                </a>
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </section>);
+      </section>
+    );
   }
 }
