@@ -11,7 +11,7 @@ from ..percentile import percentile
 from ..functions import filter_data, find_difference
 
 
-#New API inteface - smaller made to be reuseable.
+#New API inteface - smaller, made to be reuseable.
 
 
 @app.route('/newapi/general/get-player-tanks/')

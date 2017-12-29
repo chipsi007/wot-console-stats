@@ -1,5 +1,5 @@
 import pickle
-
+import time
 
 from .utils import open_conn
 
@@ -125,3 +125,16 @@ def insert_wn8(wn8_dict):
         INSERT INTO wn8 (tank_id, expFrag, expDamage, expSpot, expDef, expWinRate)
         VALUES (?, ?, ?, ?, ?, ?);
     ''', inserts)
+
+def insert_history(new_values):
+    cur = open_conn().cursor()
+
+    now = int(time.time())
+
+    inserts = []
+
+    for value in new_values:
+        tank_id = int(value['tank_id'])
+        inserts.append([tank_id, now, pickle.dumps(value)])
+
+    cur.executemany('INSERT OR REPLACE INTO history (tank_id, updated_at, data) VALUES (?, ?, ?);', inserts)

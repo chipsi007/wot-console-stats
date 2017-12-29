@@ -1,9 +1,9 @@
 import sqlite3
 
 conn = sqlite3.connect('sqlite.db')
-c = conn.cursor()
+cur = conn.cursor()
 
-c.execute('''
+cur.execute('''
     CREATE TABLE IF NOT EXISTS checkpoints (
         created_at INTEGER,
         created_by_bot INTEGER,
@@ -11,9 +11,10 @@ c.execute('''
         server TEXT,
         data BLOB,
         PRIMARY KEY (account_id, server, created_at)
-);''')
+    );
+''')
 
-c.execute('''
+cur.execute('''
     CREATE TABLE IF NOT EXISTS tankopedia (
         tank_id INTEGER PRIMARY KEY,
         updated_at INTEGER,
@@ -23,23 +24,26 @@ c.execute('''
         is_premium INTEGER,
         tier INTEGER,
         type TEXT
-);''')
+    );
+''')
 
-c.execute('''
+cur.execute('''
     CREATE TABLE IF NOT EXISTS percentiles (
         tank_id INTEGER PRIMARY KEY,
         data BLOB
-);''')
+    );
+''')
 
-c.execute('''
+cur.execute('''
     CREATE TABLE IF NOT EXISTS percentiles_generic (
         tier INTEGER,
         type TEXT,
         data BLOB,
         PRIMARY KEY (tier, type)
-);''')
+    );
+''')
 
-c.execute('''
+cur.execute('''
     CREATE TABLE IF NOT EXISTS wn8 (
         tank_id INTEGER PRIMARY KEY,
         expFrag REAL,
@@ -47,7 +51,16 @@ c.execute('''
         expSpot REAL,
         expDef REAL,
         expWinRate REAL
-);''')
+    );
+''')
+
+cur.execute('''
+    CREATE TABLE IF NOT EXISTS history (
+        tank_id INTEGER PRIMARY KEY,
+        updated_at INTEGER,
+        data BLOB
+    );
+''')
 
 conn.commit()
 conn.close()

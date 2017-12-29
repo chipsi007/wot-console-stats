@@ -14,6 +14,9 @@ from .pages import api_main
 from .page_home import api_page_home
 
 
+from .export import export_tankopedia
+
+
 from .support import users_in_period
 from .support import add_checkpoint
 from .support import api_request_snapshots

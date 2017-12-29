@@ -15,6 +15,25 @@ from ..secret import access_key
 
 @app.route('/update/', methods=['POST'])
 def update():
+    '''Update pre-calculated values that support the website.
+
+    Accepts:
+        HTTP POST request with JSON body:
+        {
+            "name":str       - name of the object.
+            "data":List[Obj] - main data to be received, processed & stored.
+            "count":int      - count of the items in the 'data' field for basic validation.
+            "access_key":str - secret access key for security purpose.
+        }
+    Returns:
+        HTTP JSON response:
+        {
+            required "error":Any(None, str) - None if no error. String with error message in case of error.
+            optional "time:float            - time took to execute request. Omitted of error is not None.
+        }
+    '''
+
+
     start = time.time()
 
     #Validation, extract name and data.
@@ -26,50 +45,38 @@ def update():
 
     except (KeyError, AssertionError) as e:
         return Response(json.dumps({
-            'status':     'error',
-            'message':    str(e)
+            'error': str(e)
         }), mimetype='application/json')
 
 
-    #Defaults.
-    status, message = 'error', 'shouldnt be updated'
+    #Default.
+    error = None
 
 
     if name == 'tankopedia':
-        old_data = db.get_tankopedia()
-        if len(data) >= len(old_data):
-            db.insert_tankopedia(data)
-            tankopedia.load()
-            status = message = 'ok'
+        db.insert_tankopedia(data)
+        tankopedia.load()
 
     elif name == 'percentiles':
-        old_data = db.get_percentiles()
-        if len(data) >= len(old_data):
-            db.insert_percentiles(data)
-            percentile.load()
-            status = message = 'ok'
+        db.insert_percentiles(data)
+        percentile.load()
 
     elif name == 'percentiles_generic':
-        old_data = db.get_percentiles_generic()
-        if len(data) >= len(old_data):
-            db.insert_percentiles_generic(data)
-            percentile.load()
-            status = message = 'ok'
+        db.insert_percentiles_generic(data)
+        percentile.load()
 
     elif name == 'wn8':
-        old_data = db.get_wn8()
-        if len(data) >= len(old_data):
-            db.insert_wn8(data)
-            wn8.load()
-            status = message = 'ok'
+        db.insert_wn8(data)
+        wn8.load()
 
+    elif name == 'history':
+        db.insert_history(data)
+        
     else:
-        status = 'error'
-        message = 'unknown name property'
+        error = 'unknown name property'
 
 
     return Response(json.dumps({
-        'status':     status,
-        'message':    message,
-        'time':       time.time() - start
+        'error': error,
+        'time':  time.time() - start
     }), mimetype='application/json')

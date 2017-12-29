@@ -10,6 +10,7 @@ import PageVehicles from './PageVehicles';
 import PageTimeseries from './PageTimeseries';
 import PageSessionTracker from './PageSessionTracker';
 import PageEstimates from './PageEstimates';
+import PageHistory from './PageHistory';
 
 
 // Contains root state of the app.
@@ -28,7 +29,8 @@ export default class App extends React.Component {
         { label: 'Vehicles',        iconClass: 'fa fa-table',           active: false },
         { label: 'Time Series',     iconClass: 'fa fa-line-chart',      active: false },
         { label: 'Session Tracker', iconClass: 'fa fa-calendar',        active: false },
-        { label: 'WN8 Estimates',   iconClass: 'fa fa-calculator',      active: false }
+        { label: 'WN8 Estimates',   iconClass: 'fa fa-calculator',      active: false },
+        { label: 'History',         iconClass: 'fa fa-history',         active: false }
       ]
     };
     this.updateRootInfo = this.updateRootInfo.bind(this);
@@ -107,6 +109,14 @@ export default class App extends React.Component {
     case 'WN8 Estimates':
       body = (
         <PageEstimates
+          server={ this.state.server }
+          accountID={ this.state.accountID }
+        />
+      );
+      break;
+    case 'History':
+      body = (
+        <PageHistory
           server={ this.state.server }
           accountID={ this.state.accountID }
         />

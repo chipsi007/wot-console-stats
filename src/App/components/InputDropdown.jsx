@@ -5,43 +5,97 @@ import React from 'react';
 
 
 export default class InputDropdown extends React.Component {
+  // this.props.data - [{'id': some_id, 'label': actual text}, ...]
+  // this.props.activeID - id of the active item.
+  // this.props.funcActivateID - function that accepts id as first positional argument.
+  // this.props.functDeactivate - function that deactivates whatever is selected.
   constructor(props) {
     super(props);
     this.state = {
       active: false
     };
-    this.activate = this.activate.bind(this);
-    this.deactivate = this.deactivate.bind(this);
   }
   
   
-  activate() {
-    this.setState({active: true});
+  dropdownDivider() {
+    return (<hr className="dropdown-divider" />);
   }
   
   
-  deactivate() {
-    this.setState({active: false});
+  clearDropdownItem() {
+    return (
+      <a className="dropdown-item" 
+        onMouseDown={ this.props.funcDeactivate }>
+        Clear
+      </a>
+    );
   }
   
   
-  render() {
+  getDropdownItems() {
+    
+    let TEXT = ''
+    if (this.refinput) { TEXT = this.refinput.value }
+    
+    let output = [];
+    for (let tank of this.props.data) {
+      
+      // If doesnt match the text in the input.
+      if (!tank.label.toLowerCase().includes(TEXT.toLowerCase())) {
+        continue;
+      }
+      
+      output.push(
+        <a className={ 'dropdown-item' + ((tank.id === this.props.activeID) ? ' is-active' : '') } 
+          onMouseDown={ () => { this.props.funcActivateID(tank.id); this.setState({active: false}); } }
+          key={ tank.id }>
+          { tank.label }
+        </a>
+      );
+      
+      // 5 items maximum in the dropdown.
+      if (output.length > 4) {
+        break;
+      }
+    }
+    
+    
+    if (output.length > 0) { return output }
+    else {
+      return (
+        <a className='dropdown-item' onClick={ () => { this.setState({active: false}) } }>
+          No tanks available
+        </a>
+      );
+    }   
+  }
+    
+  
+  render() {  
     return(
-      <div className={ 'dropdown' + ((this.state.active) ? ' is-active' : '') }>
-        <div className="dropdown-trigger">
+      <div className={ 'dropdown' + ((this.state.active) ? ' is-active' : '') }
+        style={{'width': '100%'}}>
+        
+        <div className="dropdown-trigger"
+          style={{'width': 'inherit'}}>
           <div className="field has-addons">
-            <p className="control has-icons-left">
+            <p className="control has-icons-left is-expanded">
               <input className="input" 
                 type="text" 
-                placeholder="Text input" 
-                onBlur={ this.deactivate } 
-                onFocus={ this.activate } />
+                placeholder="Start typing to select a tank"
+                defaultValue={ this.props.activeID }
+                onBlur={ () => this.setState({active: false}) } 
+                onFocus={ () => this.setState({active: true}) }
+                ref={ (x) => this.refinput = x } 
+                onChange={ null } //put the list into state.
+              />
               <span className="icon is-small is-left">
                 <i className="fa fa-search"></i>
               </span>
             </p>
             <p className="control">
-              <a className="button">
+              <a className="button"
+                onClick={ this.props.funcDeactivate } >
                 <span className="icon">
                   <i className="fa fa-times"></i>
                 </span>
@@ -50,24 +104,11 @@ export default class InputDropdown extends React.Component {
           </div>
         </div>
         
-        <div className="dropdown-menu" id="dropdown-menu" role="menu">
+        <div className="dropdown-menu" style={{'width': 'inherit'}} id="dropdown-menu" role="menu">
           <div className="dropdown-content">
-            <a href="#" className="dropdown-item">
-              Dropdown item
-            </a>
-            <a className="dropdown-item">
-              Other dropdown item
-            </a>
-            <a href="#" className="dropdown-item is-active">
-              Active dropdown item
-            </a>
-            <a href="#" className="dropdown-item">
-              Other dropdown item
-            </a>
-            <hr className="dropdown-divider" />
-            <a href="#" className="dropdown-item">
-              Remove all
-            </a>
+            { this.getDropdownItems() }
+            { (this.props.activeID) ? this.dropdownDivider() : null }
+            { (this.props.activeID) ? this.clearDropdownItem() : null }
           </div>
         </div>
       </div>
