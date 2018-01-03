@@ -15,7 +15,7 @@ export default class PageHistory extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      selectedTankID: 1,
+      selectedTankID: null,
       tankopedia: null,
       filters: [
         {label: 'Tier 1',        type: 'tier', active: true, id: '1'},
@@ -115,7 +115,45 @@ export default class PageHistory extends React.Component {
   
   
   /* render */
-  
+
+
+  buttonList() {
+    let arr = [
+      {id: 'popularity_index'},
+      {id: 'battle_life_time'},
+      {id: 'capture_points'},
+      {id: 'damage_assisted_radio'},
+      {id: 'damage_dealt'},
+      {id: 'damage_received'},
+      {id: 'direct_hits_received'},
+      {id: 'frags'},
+      {id: 'hits'},
+      {id: 'losses'},
+      {id: 'piercings'},
+      {id: 'piercings_received'},
+      {id: 'shots'},
+      {id: 'spotted'},
+      {id: 'survived_battles'},
+      {id: 'wins'},
+      {id: 'xp'}
+    ];
+
+    const ITEMS = arr.map((x) => {
+      return(
+        <span className='button is-small' key={ x.id }>
+          { x.id }
+        </span>
+      );
+    });
+
+    return(
+      <div className='buttons'>
+        { ITEMS }
+      </div>
+    );
+
+  }
+
   
   render() {
     
@@ -123,40 +161,11 @@ export default class PageHistory extends React.Component {
       <section style={{marginTop: '24px'}}>
         <div className='container'>
           
-          <div className="notification">
-            <button className="delete"></button>
+          <div className='notification'>
+            <button className='delete'></button>
             Lorem ipsum dolor sit amet, consectetur
             adipiscing elit lorem ipsum dolor. <strong>Pellentesque risus mi</strong>, tempus quis placerat ut, porta nec nulla. Vestibulum rhoncus ac ex sit amet fringilla. Nullam gravida purus diam, et dictum <a>felis venenatis</a> efficitur. Sit amet,
             consectetur adipiscing elit
-          </div>
-          
-          <div className="tabs is-centered is-fullwidth is-toggle">
-            <ul>
-              <li className="is-active">
-                <a>
-                  <span className="icon is-small"><i className="fa fa-image"></i></span>
-                  <span>Pictures</span>
-                </a>
-              </li>
-              <li>
-                <a>
-                  <span className="icon is-small"><i className="fa fa-music"></i></span>
-                  <span>Music</span>
-                </a>
-              </li>
-              <li>
-                <a>
-                  <span className="icon is-small"><i className="fa fa-film"></i></span>
-                  <span>Videos</span>
-                </a>
-              </li>
-              <li>
-                <a>
-                  <span className="icon is-small"><i className="fa fa-file-text-o"></i></span>
-                  <span>Documents</span>
-                </a>
-              </li>
-            </ul>
           </div>
           
           <div className='columns'>
@@ -186,6 +195,56 @@ export default class PageHistory extends React.Component {
             funcActivateID={ (x) => this.setState({selectedTankID: x}) }
             funcDeactivate={ () => this.setState({selectedTankID: null}) }
           />
+
+          <div className='field'>
+            <p className='control'>
+              <a className="button is-fullwidth is-light">Add</a>
+            </p>
+          </div>
+
+          <div style={{marginBottom: '24px'}}>
+            <article className="media">
+              <div className="media-content">
+                <div className="content">
+                  <p>
+                    <strong>Set A</strong>
+                    <br />
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin ornare magna eros, eu pellentesque tortor vestibulum ut. Maecenas non massa sem. Etiam finibus odio quis feugiat facilisis.
+                  </p>
+                </div>
+              </div>
+              <div className="media-right">
+                <button className="delete"></button>
+              </div>
+            </article>
+
+            <article className="media">
+              <div className="media-content">
+                <div className="content">
+                  <p>
+                    <strong>Set B</strong>
+                    <br />
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin ornare magna eros, eu pellentesque tortor vestibulum ut. Maecenas non massa sem. Etiam finibus odio quis feugiat facilisis.
+                  </p>
+                </div>
+              </div>
+              <div className="media-right">
+                <button className="delete"></button>
+              </div>
+            </article>
+          </div>
+
+          <div className='field'>
+            <p className='control'>
+              <a className="button is-fullwidth is-light">Update chart</a>
+            </p>
+          </div>
+
+          { this.buttonList() }
+
+          <div className='box'>
+            Chart area
+          </div>
           
         </div>
       </section>

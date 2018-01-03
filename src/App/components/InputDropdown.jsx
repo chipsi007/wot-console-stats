@@ -12,20 +12,21 @@ export default class InputDropdown extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      text: '',
       active: false
     };
   }
   
   
   dropdownDivider() {
-    return (<hr className="dropdown-divider" />);
+    return (<hr className='dropdown-divider' />);
   }
   
   
   clearDropdownItem() {
     return (
-      <a className="dropdown-item" 
-        onMouseDown={ this.props.funcDeactivate }>
+      <a className='dropdown-item'
+        onMouseDown={ () => { this.props.funcDeactivate(); this.refinput.value = ''; }}>
         Clear
       </a>
     );
@@ -34,20 +35,17 @@ export default class InputDropdown extends React.Component {
   
   getDropdownItems() {
     
-    let TEXT = ''
-    if (this.refinput) { TEXT = this.refinput.value }
-    
     let output = [];
     for (let tank of this.props.data) {
       
       // If doesnt match the text in the input.
-      if (!tank.label.toLowerCase().includes(TEXT.toLowerCase())) {
+      if (!tank.label.toLowerCase().includes(this.state.text.toLowerCase())) {
         continue;
       }
       
       output.push(
         <a className={ 'dropdown-item' + ((tank.id === this.props.activeID) ? ' is-active' : '') } 
-          onMouseDown={ () => { this.props.funcActivateID(tank.id); this.setState({active: false}); } }
+          onMouseDown={ () => { this.props.funcActivateID(tank.id); this.refinput.value = tank.label; } }
           key={ tank.id }>
           { tank.label }
         </a>
@@ -63,7 +61,7 @@ export default class InputDropdown extends React.Component {
     if (output.length > 0) { return output }
     else {
       return (
-        <a className='dropdown-item' onClick={ () => { this.setState({active: false}) } }>
+        <a className='dropdown-item'>
           No tanks available
         </a>
       );
@@ -83,11 +81,10 @@ export default class InputDropdown extends React.Component {
               <input className="input" 
                 type="text" 
                 placeholder="Start typing to select a tank"
-                defaultValue={ this.props.activeID }
                 onBlur={ () => this.setState({active: false}) } 
                 onFocus={ () => this.setState({active: true}) }
                 ref={ (x) => this.refinput = x } 
-                onChange={ null } //put the list into state.
+                onChange={ () => this.setState({text: this.refinput.value}) }
               />
               <span className="icon is-small is-left">
                 <i className="fa fa-search"></i>
@@ -95,7 +92,7 @@ export default class InputDropdown extends React.Component {
             </p>
             <p className="control">
               <a className="button"
-                onClick={ this.props.funcDeactivate } >
+                onClick={ () => { this.props.funcDeactivate(); this.refinput.value = ''; } } >
                 <span className="icon">
                   <i className="fa fa-times"></i>
                 </span>

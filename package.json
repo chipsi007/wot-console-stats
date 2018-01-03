@@ -9,7 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack -d",
-    "build-watch": "webpack -d --watch",
+    "watch": "webpack -d --watch",
     "build-debug": "webpack --display-error-details",
     "build-prod": "webpack -p",
     "eslint": "eslint --ext .js --ext .jsx src",
