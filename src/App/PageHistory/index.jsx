@@ -16,6 +16,7 @@ export default class PageHistory extends React.Component {
     super(props);
     this.state = {
       selectedTankID: null,
+      warningMessage: null,
       tankopedia: null,
       filters: [
         {label: 'Tier 1',        type: 'tier', active: true, id: '1'},
@@ -33,9 +34,25 @@ export default class PageHistory extends React.Component {
         {label: 'Heavy Tanks',   type: 'type', active: true, id: 'heavyTank'},
         {label: 'AT-SPG',        type: 'type', active: true, id: 'AT-SPG'},
         {label: 'SPG',           type: 'type', active: true, id: 'SPG'}
+      ],
+      // Container for selected chart items.
+      selectedItems: [
+        {
+          name: 'A',
+          tankID: null, 
+          tiers: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+          types: ['lightTank', 'mediumTank', 'heavyTank', 'AT-SPG', 'SPG']
+        },
+        {
+          name: 'IS-7',
+          tankID: 7169,
+          tiers: null,
+          types: null
+        }
       ]
     };
     this.switchFilter = this.switchFilter.bind(this);
+    this.addItem = this.addItem.bind(this);
   }
 
   
@@ -61,7 +78,7 @@ export default class PageHistory extends React.Component {
           this.setState({tankopedia: j.data});
         }
       })
-      .catch(error => {
+      .catch((error) => {
         alert('There has been a problem with the request. Error message: ' + error.message);
       });
   }
@@ -112,8 +129,80 @@ export default class PageHistory extends React.Component {
         return { id: x.tank_id, label: x.name };
       });
   }
+
+
+  /* chart-items */
+
+
+  addItem() {
+
+    const OLD_NAMES = this.state.selectedItems.map(x => x.name);
+
+    if (OLD_NAMES.length >= 5) {
+      this.setState({warningMessage: 'Can\'t add. Too many items selected.'});
+      return;
+    }
+
+    let newItem;
+    if (this.state.selectedTankID) {
+      const TANKOPEDIA_ITEM = this.state.tankopedia.filter(x => x.tank_id === this.state.selectedTankID)[0];
+      newItem = {
+        name: TANKOPEDIA_ITEM.name,
+        tankID: this.state.selectedTankID,
+        tiers: [String(TANKOPEDIA_ITEM.tier)],
+        types: [TANKOPEDIA_ITEM.type]
+      };
+    } else {
+      const ACTIVE_FILTERS = this.state.filters.filter(x => x.active);
+      newItem = {
+        name: ['F', 'E', 'D', 'C', 'B', 'A'].reduce((x, y) => OLD_NAMES.includes(y) ? x : y),
+        tankID: null, 
+        tiers: ACTIVE_FILTERS.filter(x => x.type === 'tier').map(x => x.id),
+        types: ACTIVE_FILTERS.filter(x => x.type === 'type').map(x => x.id)
+      };
+    }
+
+    this.setState({selectedItems: this.state.selectedItems.concat(newItem)});
+  }
+
+
+  removeItem(itemName) {
+    
+    const doesntHaveName = x => x.name !== itemName;
+
+    const NEW_ITEMS = this.state.selectedItems.filter(doesntHaveName);
+
+    this.setState({selectedItems: NEW_ITEMS});
+  }
   
-  
+
+  renderSelectedItems() {
+    return this.state.selectedItems.map(x => {
+
+      const NAME = (x.tankID) ? x.name : 'Set ' + x.name;
+
+      return(
+        <article className='media' key={ x.name }>
+          <div className='media-content'>
+            <div className='content'>
+              <p>
+                <strong>{ NAME }</strong>
+                <br />
+                { x.tiers }
+                <br />
+                { x.types }
+              </p>
+            </div>
+          </div>
+          <div className='media-right'>
+            <button className='delete' onClick={ () => this.removeItem(x.name) }></button>
+          </div>
+        </article>
+      );
+    });
+  }
+
+
   /* render */
 
 
@@ -198,40 +287,14 @@ export default class PageHistory extends React.Component {
 
           <div className='field'>
             <p className='control'>
-              <a className="button is-fullwidth is-light">Add</a>
+              <a className='button is-fullwidth is-light' onClick={ this.addItem }>
+                Add
+              </a>
             </p>
           </div>
 
-          <div style={{marginBottom: '24px'}}>
-            <article className="media">
-              <div className="media-content">
-                <div className="content">
-                  <p>
-                    <strong>Set A</strong>
-                    <br />
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin ornare magna eros, eu pellentesque tortor vestibulum ut. Maecenas non massa sem. Etiam finibus odio quis feugiat facilisis.
-                  </p>
-                </div>
-              </div>
-              <div className="media-right">
-                <button className="delete"></button>
-              </div>
-            </article>
-
-            <article className="media">
-              <div className="media-content">
-                <div className="content">
-                  <p>
-                    <strong>Set B</strong>
-                    <br />
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin ornare magna eros, eu pellentesque tortor vestibulum ut. Maecenas non massa sem. Etiam finibus odio quis feugiat facilisis.
-                  </p>
-                </div>
-              </div>
-              <div className="media-right">
-                <button className="delete"></button>
-              </div>
-            </article>
+          <div style={{margin: '24px'}}>
+            { this.renderSelectedItems() }
           </div>
 
           <div className='field'>

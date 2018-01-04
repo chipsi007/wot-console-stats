@@ -72,29 +72,29 @@ export default class InputDropdown extends React.Component {
   render() {  
     return(
       <div className={ 'dropdown' + ((this.state.active) ? ' is-active' : '') }
-        style={{'width': '100%'}}>
+        style={{width: '100%', marginBottom: '24px'}}>
         
-        <div className="dropdown-trigger"
-          style={{'width': 'inherit'}}>
-          <div className="field has-addons">
-            <p className="control has-icons-left is-expanded">
-              <input className="input" 
-                type="text" 
-                placeholder="Start typing to select a tank"
+        <div className='dropdown-trigger'
+          style={{width: 'inherit'}}>
+          <div className='field has-addons'>
+            <p className='control has-icons-left is-expanded'>
+              <input className='input'
+                type='text'
+                placeholder='Start typing to select a tank'
                 onBlur={ () => this.setState({active: false}) } 
                 onFocus={ () => this.setState({active: true}) }
                 ref={ (x) => this.refinput = x } 
                 onChange={ () => this.setState({text: this.refinput.value}) }
               />
-              <span className="icon is-small is-left">
-                <i className="fa fa-search"></i>
+              <span className='icon is-small is-left'>
+                <i className='fa fa-search'></i>
               </span>
             </p>
-            <p className="control">
-              <a className="button"
+            <p className='control'>
+              <a className='button'
                 onClick={ () => { this.props.funcDeactivate(); this.refinput.value = ''; } } >
-                <span className="icon">
-                  <i className="fa fa-times"></i>
+                <span className='icon'>
+                  <i className='fa fa-times'></i>
                 </span>
               </a>
             </p>
