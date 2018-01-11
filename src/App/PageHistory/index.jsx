@@ -3,6 +3,7 @@ import React from 'react';
 
 import TagsDropdown from '../components/TagsDropdown';
 import InputDropdown from '../components/InputDropdown';
+import getSequences from '../logic/getSequences';
 
 
 // "History" page.
@@ -17,7 +18,10 @@ export default class PageHistory extends React.Component {
     this.state = {
       selectedTankID: null,
       warningMessage: null,
+
       tankopedia: null,
+      history: null,
+
       filters: [
         {label: 'Tier 1',        type: 'tier', active: true, id: '1'},
         {label: 'Tier 2',        type: 'tier', active: true, id: '2'},
@@ -46,17 +50,20 @@ export default class PageHistory extends React.Component {
         {
           name: 'IS-7',
           tankID: 7169,
-          tiers: null,
-          types: null
+          tiers: ['10'],
+          types: ['heavyTank']
         }
       ]
     };
+    this.fetchHistory = this.fetchHistory.bind(this);
     this.switchFilter = this.switchFilter.bind(this);
     this.addItem = this.addItem.bind(this);
   }
 
   
   componentDidMount() {
+    this.mounted = true;
+
     if (!this.state.tankopedia) { this.fetchTankopedia() }
     
     // Google Analytics tracking.
@@ -64,6 +71,11 @@ export default class PageHistory extends React.Component {
       ga('set', 'page', 'History');
       ga('send', 'pageview');
     }  
+  }
+
+  
+  componentWillUnmount() {
+    this.mounted = false;
   }
   
   
@@ -81,6 +93,37 @@ export default class PageHistory extends React.Component {
       .catch((error) => {
         alert('There has been a problem with the request. Error message: ' + error.message);
       });
+  }
+
+
+  fetchHistory() {
+
+    const FETCH_BODY = {
+      headers: {
+        'Accept': 'application/json', 
+        'Content-Type': 'application/json'
+      },
+      method: 'POST',
+      body: JSON.stringify({
+        selected_items: this.state.selectedItems
+      })
+    };
+    
+    fetch('/api/history/get/', FETCH_BODY)
+      .then(r => r.json())
+      .then(j => {
+        if (j.error !== null) {
+          window.alert('Server returned an error: ' + j.error);
+        } else {
+          console.log(j.time);
+          console.log(j.data);
+          this.setState({history: j.data});
+        }
+      })
+      .catch(err => {
+        alert('There has been a problem with the request. Error message: ' + err.message);
+      });
+
   }
     
   
@@ -135,6 +178,8 @@ export default class PageHistory extends React.Component {
 
 
   addItem() {
+    // Add item to the list.
+    // Clear history state field.
 
     const OLD_NAMES = this.state.selectedItems.map(x => x.name);
 
@@ -162,17 +207,25 @@ export default class PageHistory extends React.Component {
       };
     }
 
-    this.setState({selectedItems: this.state.selectedItems.concat(newItem)});
+    this.setState({
+      selectedItems: this.state.selectedItems.concat(newItem),
+      history: null
+    });
   }
 
 
   removeItem(itemName) {
+    // Remove item from the list.
+    // Clear history state field.
     
     const doesntHaveName = x => x.name !== itemName;
 
     const NEW_ITEMS = this.state.selectedItems.filter(doesntHaveName);
 
-    this.setState({selectedItems: NEW_ITEMS});
+    this.setState({
+      selectedItems: NEW_ITEMS,
+      history: null
+    });
   }
   
 
@@ -181,17 +234,38 @@ export default class PageHistory extends React.Component {
 
       const NAME = (x.tankID) ? x.name : 'Set ' + x.name;
 
+      const makeTierTag = x => (<span className='tag' key={ x }>{ x }</span>);
+
+      const makeTypeTag = x => {
+        return(
+          <span className='tag' key={ x }>
+            { (x.includes('Tank')) ? x[0].toUpperCase() + 'T' : x }
+          </span>
+        )
+      }
+
+      const TIER_ITEMS = getSequences(x.tiers.map(x => parseInt(x)))
+        .map(x => {
+          if (x[0] == x[1]) {
+            // if sequence of one number e.g. [4, 4]
+            return makeTierTag(`T${x[0]}`);
+          }
+          return makeTierTag(`T${x[0]}-T${x[1]}`);
+        });
+
       return(
         <article className='media' key={ x.name }>
+          <div className='media-left'>
+            <strong>
+              { NAME }
+            </strong>
+          </div>
           <div className='media-content'>
             <div className='content'>
-              <p>
-                <strong>{ NAME }</strong>
-                <br />
-                { x.tiers }
-                <br />
-                { x.types }
-              </p>
+              <div className='tags'>
+                { TIER_ITEMS }
+                { x.types.map(makeTypeTag) }
+              </div>
             </div>
           </div>
           <div className='media-right'>
@@ -206,7 +280,7 @@ export default class PageHistory extends React.Component {
   /* render */
 
 
-  buttonList() {
+  chartArea() {
     let arr = [
       {id: 'popularity_index'},
       {id: 'battle_life_time'},
@@ -236,11 +310,27 @@ export default class PageHistory extends React.Component {
     });
 
     return(
-      <div className='buttons'>
-        { ITEMS }
+      <div>
+        <div className='buttons'>
+          { ITEMS }
+        </div>
+        chart area
       </div>
     );
 
+  }
+
+
+  chartButton() {
+    return(
+      <div className='field'>
+        <p className='control'>
+          <a className='button is-fullwidth is-light' onClick={ this.fetchHistory }>
+            Show chart
+          </a>
+        </p>
+      </div>
+    );
   }
 
   
@@ -297,17 +387,7 @@ export default class PageHistory extends React.Component {
             { this.renderSelectedItems() }
           </div>
 
-          <div className='field'>
-            <p className='control'>
-              <a className="button is-fullwidth is-light">Update chart</a>
-            </p>
-          </div>
-
-          { this.buttonList() }
-
-          <div className='box'>
-            Chart area
-          </div>
+          { (this.state.history) ? this.chartArea() : this.chartButton() }
           
         </div>
       </section>

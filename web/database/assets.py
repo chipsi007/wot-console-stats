@@ -53,6 +53,18 @@ def get_wn8():
         }
     return output
 
+def get_history():
+    '''Get history tank history.
+    
+    Returns:
+        Dict[int, Obj]
+    '''
+
+    cur = open_conn().cursor()
+    cur.execute('SELECT tank_id, data FROM history')
+    
+    return {tank_id: pickle.loads(data) for tank_id, data in cur}
+
 
 
 #Core data updaters.

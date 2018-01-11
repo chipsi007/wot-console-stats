@@ -9,7 +9,7 @@ from .assets import get_tankopedia
 from .assets import get_percentiles
 from .assets import get_percentiles_generic
 from .assets import get_wn8
-#TODO: from .assets import get_history
+from .assets import get_history
 from .assets import insert_tankopedia
 from .assets import insert_percentiles
 from .assets import insert_percentiles_generic

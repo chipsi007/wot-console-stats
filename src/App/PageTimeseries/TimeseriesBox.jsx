@@ -2,6 +2,7 @@ import React from 'react';
 
 
 import TimeseriesLineChart from './ChartLine';
+import getSequences from '../logic/getSequences';
 
 
 export default class TimeseriesBox extends React.Component {
@@ -24,7 +25,6 @@ export default class TimeseriesBox extends React.Component {
       showFormula: false
     };
     this.fetchData = this.fetchData.bind(this);
-    this.findSequences = this.findSequences.bind(this);
   }
 
   
@@ -76,28 +76,6 @@ export default class TimeseriesBox extends React.Component {
   }
   
   
-  findSequences(arr) {
-    // Find sequences of numbers in the array of ints.
-    // Returns: [[1, 2], [4, 4], [6, 10]]    
-    
-    let beg, output = [];
-    let min = Math.min(...arr), max = Math.max(...arr);
-    
-    for (let i = min; i <= max; i++) {
-      // If no beginning value.
-      if (!beg && arr.includes(i)) { beg = i }
-      // If beginning value exists but i not in the array.
-      if (beg && !arr.includes(i)) {
-        output.push([beg, i - 1]);
-        beg = null;
-      }
-      // If last item in the array.
-      if (beg && arr.includes(i) && (i == max)) { output.push([beg, i]) }
-    }
-    return output;
-  }
-  
-  
   dropdownContent() {
     
     if (this.props.dataTab == 'filters') {
@@ -105,7 +83,7 @@ export default class TimeseriesBox extends React.Component {
         .filter(x => x.active && (x.type == 'tier'))
         .map(x => parseInt(x.id));
       
-      const TIER_ITEMS = this.findSequences(TIER_NUMBERS)
+      const TIER_ITEMS = getSequences(TIER_NUMBERS)
         .map(x => {
           // x[0] must be unique for every item.
           if (x[0] == x[1]) {

@@ -71,7 +71,7 @@ def update():
 
     elif name == 'history':
         db.insert_history(data)
-        
+
     else:
         error = 'unknown name property'
 
