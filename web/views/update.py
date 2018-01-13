@@ -20,10 +20,11 @@ def update():
     Accepts:
         HTTP POST request with JSON body:
         {
-            "name":str       - name of the object.
-            "data":List[Obj] - main data to be received, processed & stored.
-            "count":int      - count of the items in the 'data' field for basic validation.
-            "access_key":str - secret access key for security purpose.
+            "name":str          - name of the object.
+            "headers":List[str] - headers of items in 'rows' field.
+            "rows":List[List]   - actual data as list of lists.
+            "count":int         - count of the items in the 'rows' field for basic validation.
+            "access_key":str    - secret access key for security purpose.
         }
     Returns:
         HTTP JSON response:
@@ -40,9 +41,8 @@ def update():
     try:
         body = request.get_json()
         assert body['access_key'] == access_key, 'access_key doesnt match'
-        name, data, count = body['name'], body['data'], body['count']
-        assert len(data) == count, 'length of "data" and "count" dont match'
-
+        name, headers, rows, count = body['name'], body['headers'], body['rows'], body['count']
+        assert len(rows) == count, 'length of \'rows\' and \'count\' dont match'
     except (KeyError, AssertionError) as e:
         return Response(json.dumps({
             'error': str(e)
@@ -52,25 +52,24 @@ def update():
     #Default.
     error = None
 
-
     if name == 'tankopedia':
-        db.insert_tankopedia(data)
+        db.insert_tankopedia(headers, rows)
         tankopedia.load()
 
     elif name == 'percentiles':
-        db.insert_percentiles(data)
+        db.insert_percentiles(headers, rows)
         percentile.load()
 
     elif name == 'percentiles_generic':
-        db.insert_percentiles_generic(data)
+        db.insert_percentiles_generic(headers, rows)
         percentile.load()
 
     elif name == 'wn8':
-        db.insert_wn8(data)
+        db.insert_wn8(headers, rows)
         wn8.load()
 
     elif name == 'history':
-        db.insert_history(data)
+        db.insert_history(headers, rows)
 
     else:
         error = 'unknown name property'

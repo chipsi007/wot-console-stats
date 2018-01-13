@@ -56,9 +56,26 @@ cur.execute('''
 
 cur.execute('''
     CREATE TABLE IF NOT EXISTS history (
-        tank_id INTEGER PRIMARY KEY,
-        updated_at INTEGER,
-        data BLOB
+        tank_id INTEGER,
+        created_at INTEGER,
+        popularity_index REAL,
+        battle_life_time REAL,
+        capture_points REAL,
+        damage_assisted_radio REAL,
+        damage_dealt REAL,
+        damage_received REAL,
+        direct_hits_received REAL,
+        frags REAL,
+        hits REAL,
+        losses REAL,
+        piercings REAL,
+        piercings_received REAL,
+        shots REAL,
+        spotted REAL,
+        survived_battles REAL,
+        wins REAL,
+        xp REAL,
+        PRIMARY KEY (tank_id, created_at)
     );
 ''')
 
