@@ -3,6 +3,7 @@ import React from 'react';
 
 import TagsDropdown from '../components/TagsDropdown';
 import InputDropdown from '../components/InputDropdown';
+import ChartController from './ChartController';
 import getSequences from '../logic/getSequences';
 
 
@@ -62,8 +63,6 @@ export default class PageHistory extends React.Component {
 
   
   componentDidMount() {
-    this.mounted = true;
-
     if (!this.state.tankopedia) { this.fetchTankopedia() }
     
     // Google Analytics tracking.
@@ -71,11 +70,6 @@ export default class PageHistory extends React.Component {
       ga('set', 'page', 'History');
       ga('send', 'pageview');
     }  
-  }
-
-  
-  componentWillUnmount() {
-    this.mounted = false;
   }
   
   
@@ -115,8 +109,6 @@ export default class PageHistory extends React.Component {
         if (j.error !== null) {
           window.alert('Server returned an error: ' + j.error);
         } else {
-          console.log(j.time);
-          console.log(j.data);
           this.setState({history: j.data});
         }
       })
@@ -135,7 +127,7 @@ export default class PageHistory extends React.Component {
     let filters = this.state.filters;
 
     filters.forEach((item) => {
-      if (item.id == sFilterID) item.active = !item.active;
+      if (item.id == sFilterID) { item.active = !item.active }
     });
 
     this.setState({filters: filters});
@@ -241,8 +233,8 @@ export default class PageHistory extends React.Component {
           <span className='tag' key={ x }>
             { (x.includes('Tank')) ? x[0].toUpperCase() + 'T' : x }
           </span>
-        )
-      }
+        );
+      };
 
       const TIER_ITEMS = getSequences(x.tiers.map(x => parseInt(x)))
         .map(x => {
@@ -280,48 +272,7 @@ export default class PageHistory extends React.Component {
   /* render */
 
 
-  chartArea() {
-    let arr = [
-      {id: 'popularity_index'},
-      {id: 'battle_life_time'},
-      {id: 'capture_points'},
-      {id: 'damage_assisted_radio'},
-      {id: 'damage_dealt'},
-      {id: 'damage_received'},
-      {id: 'direct_hits_received'},
-      {id: 'frags'},
-      {id: 'hits'},
-      {id: 'losses'},
-      {id: 'piercings'},
-      {id: 'piercings_received'},
-      {id: 'shots'},
-      {id: 'spotted'},
-      {id: 'survived_battles'},
-      {id: 'wins'},
-      {id: 'xp'}
-    ];
-
-    const ITEMS = arr.map((x) => {
-      return(
-        <span className='button is-small' key={ x.id }>
-          { x.id }
-        </span>
-      );
-    });
-
-    return(
-      <div>
-        <div className='buttons'>
-          { ITEMS }
-        </div>
-        chart area
-      </div>
-    );
-
-  }
-
-
-  chartButton() {
+  showChartButton() {
     return(
       <div className='field'>
         <p className='control'>
@@ -387,7 +338,7 @@ export default class PageHistory extends React.Component {
             { this.renderSelectedItems() }
           </div>
 
-          { (this.state.history) ? this.chartArea() : this.chartButton() }
+          { (this.state.history) ? (<ChartController data={ this.state.history } />) : this.showChartButton() }
           
         </div>
       </section>

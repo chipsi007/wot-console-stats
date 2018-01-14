@@ -47,22 +47,29 @@ def api_history_get():
         }), mimetype='application/json')
 
 
-    #Get history object from database.
-    history = db.get_history()
-
     output = []
     for item in selected_items:
+        tank_id, name = item.get('tankID'), item.get('name')
 
         #If single tank id.
-        if item.get('tankID'):
-            output.append(history.get(item['tankID'], {}))
+        if tank_id:
+            db.get_history(tank_id=tank_id)
+            output.append({
+                'name':    name,
+                'tank_id': tank_id,
+                'rows':    db.get_history(tank_id=tank_id)
+            })
             continue
 
         #If set of tank ids.
-
         types, tiers = set(item['types']), set([int(x) for x in item['tiers']])
         tank_ids = tankopedia.get_tank_ids(types, tiers)
-        output.append(tank_ids)
+        output.append({
+            'name':    name,
+            'tank_id': tank_id,
+            'rows':    db.get_history(tank_ids=tank_ids)
+        })
+
 
     return Response(json.dumps({
         'error': None,

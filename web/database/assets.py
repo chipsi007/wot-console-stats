@@ -5,7 +5,6 @@ from .utils import open_conn
 
 
 #Core data loaders.
-#Output: {key:str: {...}}
 def get_tankopedia():
     cur = open_conn().cursor()
     output = {}
@@ -53,18 +52,57 @@ def get_wn8():
         }
     return output
 
-def get_history():
+def get_history(tank_ids=[], tank_id=None):
     '''Get history tank history.
+
+    Arguments:
+        optional: tank_ids:List[int] - 
+        optional: tank_id:int        - 
+
+        #only one argument must be specified. 
+        #if both are specified priority is given to tank_id
     
     Returns:
-        Dict[int, Obj]
+        List[Dict[str, float/int]]
     '''
 
-    cur = open_conn().cursor()
-    cur.execute('SELECT tank_id, data FROM history')
-    
-    return {tank_id: pickle.loads(data) for tank_id, data in cur}
+    columns = [
+        'created_at',       'popularity_index',      
+        'battle_life_time', 'capture_points',     'damage_assisted_radio',
+        'damage_dealt',     'damage_received',    'direct_hits_received',  
+        'frags',            'hits',               'losses',  
+        'piercings',        'piercings_received', 'shots',  
+        'spotted',          'survived_battles',   'wins', 
+        'xp'
+    ]
 
+    cur = open_conn().cursor()
+
+    #one tank_id
+    if tank_id is not None:
+        columns_str = ', '.join(columns)
+        cur.execute(f'SELECT {columns_str} FROM history WHERE tank_id = ? ORDER BY created_at ASC', [tank_id])
+        output = []
+        for row in cur:
+            output.append({columns[i]: row[i] for i in range(len(columns))})
+        return output
+
+    #aggregation
+    tank_ids_str = ', '.join([str(x) for x in tank_ids])
+    columns_str = ', '.join([f'AVG({x}) AS {x}' for x in columns])
+    cur.execute(f'''
+        SELECT {columns_str}
+        FROM history
+        WHERE tank_id IN ({tank_ids_str})
+        GROUP BY
+            strftime('%Y', created_at, 'unixepoch'),
+            strftime('%W', created_at, 'unixepoch')
+        ORDER BY created_at ASC
+    ''')
+    output = []
+    for row in cur:
+        output.append({columns[i]: row[i] for i in range(len(columns))})
+    return output
 
 
 #Core data updaters.

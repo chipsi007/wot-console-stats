@@ -21,10 +21,14 @@ def get(tank_id, backup_value=None):
 
 
 def get_tank_ids(types, tiers):
-    '''
+    '''Get tank ids that match input tiers and types.
+
     Arguments:
-        types:List[str]/Set[str] - 
-        tiers:List[int]/Set[int] - 
+        types:List[str]/Set[str] - tank types to be included.
+        tiers:List[int]/Set[int] - tank tiers to be included.
+    
+    Returns:
+        List[int] - tank_ids that match input criteria.
     '''
 
     output = []
