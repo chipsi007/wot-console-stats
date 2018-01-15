@@ -67,7 +67,7 @@ def newapi_estimates_get_tank():
         account_id = int(request.args.get('account_id'))
         tank_id = int(request.args.get('tank_id'))
         assert server in ('xbox', 'ps4'), "server must be either 'xbox' or 'ps4'"
-    except (AssertionError, ValueError) as e:
+    except (AssertionError, TypeError) as e:
         return Response(json.dumps({
             'status': 'error',
             'message': str(e)
