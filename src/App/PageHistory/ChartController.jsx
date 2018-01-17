@@ -28,41 +28,54 @@ export default class ChartController extends React.Component {
   /* render */
   
   
-  buttons() {
+  genSelectors() {
 
-    let arr = [
-      {id: 'popularity_index'},
-      {id: 'battle_life_time'},
-      {id: 'capture_points'},
-      {id: 'damage_assisted_radio'},
-      {id: 'damage_dealt'},
-      {id: 'damage_received'},
-      {id: 'direct_hits_received'},
-      {id: 'frags'},
-      {id: 'hits'},
-      {id: 'losses'},
-      {id: 'piercings'},
-      {id: 'piercings_received'},
-      {id: 'shots'},
-      {id: 'spotted'},
-      {id: 'survived_battles'},
-      {id: 'wins'},
-      {id: 'xp'}
+    const ITEMS = [
+      {id: 'popularity_index',      label: 'Popularity index (0-100)'},
+      {id: 'battle_life_time',      label: 'Battle life time'},
+      {id: 'capture_points',        label: 'Capture points'},
+      {id: 'damage_assisted_radio', label: 'Damage assisted radio'},
+
+      {id: 'damage_dealt',          label: 'Damage dealt'},
+      {id: 'damage_received',       label: 'Damage received'},
+      {id: 'direct_hits_received',  label: 'Direct hits received'},
+      {id: 'frags',                 label: 'Frags'},
+
+      {id: 'hits',                  label: 'Hits'},
+      {id: 'piercings',             label: 'Piercings'},
+      {id: 'piercings_received',    label: 'Piercings received'},
+      {id: 'shots',                 label: 'Shots'},
+
+      {id: 'spotted',               label: 'Spotted'},
+      {id: 'survived_battles',      label: 'Survived ratio'},
+      {id: 'wins',                  label: 'Winrate'},
+      {id: 'xp',                    label: 'Experience'}
     ];
 
-    const ITEMS = arr.map((x) => {
+    const makeColumnItem = x => {
       return(
-        <span className={'button is-small' + ((this.state.tabID == x.id) ? ' is-active': '') }
+        <span className={'button is-small is-light is-fullwidth' + ((this.state.tabID == x.id) ? ' is-active': '') }
           onClick={ () => this.setState({tabID: x.id}) }
           key={ x.id }>
-          { x.id }
+          { x.label }
         </span>
       );
-    });
+    }
+
+    const makeColumn = arr => {
+      return(
+        <div className='column'>
+          { arr.map(makeColumnItem) }
+        </div>
+      );
+    }
 
     return(
-      <div className='buttons'>
-        { ITEMS }
+      <div className='columns is-gapless is-mobile is-multiline'>
+        { makeColumn(ITEMS.slice(0, 4)) }
+        { makeColumn(ITEMS.slice(4, 8)) }
+        { makeColumn(ITEMS.slice(8, 12)) }
+        { makeColumn(ITEMS.slice(12, 16)) }
       </div>
     );
   }
@@ -76,7 +89,7 @@ export default class ChartController extends React.Component {
 
     return(
       <div>
-        { this.buttons() }
+        { this.genSelectors() }
         <ChartLine data={ this.props.data.map(processItem) } />
       </div>
     );

@@ -67,13 +67,12 @@ def get_history(tank_ids=[], tank_id=None):
     '''
 
     columns = [
-        'created_at',       'popularity_index',      
-        'battle_life_time', 'capture_points',     'damage_assisted_radio',
-        'damage_dealt',     'damage_received',    'direct_hits_received',  
-        'frags',            'hits',               'losses',  
-        'piercings',        'piercings_received', 'shots',  
-        'spotted',          'survived_battles',   'wins', 
-        'xp'
+        'created_at',         'popularity_index',      
+        'battle_life_time',   'capture_points',   'damage_assisted_radio',
+        'damage_dealt',       'damage_received',  'direct_hits_received',  
+        'frags',              'hits',             'piercings',        
+        'piercings_received', 'shots',            'spotted',  
+        'survived_battles',   'wins',             'xp'
     ]
 
     cur = open_conn().cursor()
@@ -189,13 +188,12 @@ def insert_wn8(headers, rows):
 def insert_history(headers, rows):
 
     columns = [
-        'tank_id',          'created_at',         'popularity_index',      
-        'battle_life_time', 'capture_points',     'damage_assisted_radio',
-        'damage_dealt',     'damage_received',    'direct_hits_received',  
-        'frags',            'hits',               'losses',  
-        'piercings',        'piercings_received', 'shots',  
-        'spotted',          'survived_battles',   'wins', 
-        'xp'
+        'tank_id',            'created_at',      'popularity_index',      
+        'battle_life_time',   'capture_points',  'damage_assisted_radio',
+        'damage_dealt',       'damage_received', 'direct_hits_received',  
+        'frags',              'hits',            'piercings',
+        'piercings_received', 'shots',           'spotted',
+        'survived_battles',   'wins',            'xp'
     ]
 
     #Headers must columns.

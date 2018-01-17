@@ -17,12 +17,11 @@ export default class PageHistory extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      selectedTankID: null,
-      warningMessage: null,
-
-      tankopedia: null,
-      history: null,
-
+      isShowingHelp: true,  // Render help message.
+      isLoading: false,     // Show chart button loading indicator.
+      selectedTankID: null, // tankID goes here before being added to 'selectedItems'.
+      tankopedia: null,     // Tankopedia data onMount.
+      history: null,        // Fetched data goes here.
       filters: [
         {label: 'Tier 1',        type: 'tier', active: true, id: '1'},
         {label: 'Tier 2',        type: 'tier', active: true, id: '2'},
@@ -40,13 +39,12 @@ export default class PageHistory extends React.Component {
         {label: 'AT-SPG',        type: 'type', active: true, id: 'AT-SPG'},
         {label: 'SPG',           type: 'type', active: true, id: 'SPG'}
       ],
-      // Container for selected chart items.
       selectedItems: [
         {
           name: 'A',
           tankID: null, 
-          tiers: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-          types: ['lightTank', 'mediumTank', 'heavyTank', 'AT-SPG', 'SPG']
+          tiers: ['10'],
+          types: ['heavyTank']
         },
         {
           name: 'IS-7',
@@ -92,6 +90,9 @@ export default class PageHistory extends React.Component {
 
   fetchHistory() {
 
+    // Start loading.
+    this.setState({isLoading: true});
+
     const FETCH_BODY = {
       headers: {
         'Accept': 'application/json', 
@@ -106,6 +107,7 @@ export default class PageHistory extends React.Component {
     fetch('/api/history/get/', FETCH_BODY)
       .then(r => r.json())
       .then(j => {
+        this.setState({isLoading: false});
         if (j.error !== null) {
           window.alert('Server returned an error: ' + j.error);
         } else {
@@ -113,6 +115,7 @@ export default class PageHistory extends React.Component {
         }
       })
       .catch(err => {
+        this.setState({isLoading: false});
         alert('There has been a problem with the request. Error message: ' + err.message);
       });
 
@@ -155,14 +158,14 @@ export default class PageHistory extends React.Component {
   getInputDropdownItems() {
     if (!this.state.tankopedia) { return [] }
     
+    // ACTIVE_TIERS and ACTIVE_TYPES are arrays of strings.
     const ACTIVE_TIERS = this.state.filters.filter((x) => (x.type === 'tier') && (x.active)).map((x) => x.id);
     const ACTIVE_TYPES = this.state.filters.filter((x) => (x.type === 'type') && (x.active)).map((x) => x.id);
     
-    return this.state.tankopedia
-      .filter((x) => ACTIVE_TIERS.includes(String(x.tier)) && ACTIVE_TYPES.includes(x.type))
-      .map((x) => {
-        return { id: x.tank_id, label: x.name };
-      });
+    const includesTierType = x => (ACTIVE_TIERS.includes(String(x.tier)) && ACTIVE_TYPES.includes(x.type));
+    const mapperFunc = x => ({ id: x.tank_id, label: x.name });
+
+    return this.state.tankopedia.filter(includesTierType).map(mapperFunc);
   }
 
 
@@ -175,8 +178,8 @@ export default class PageHistory extends React.Component {
 
     const OLD_NAMES = this.state.selectedItems.map(x => x.name);
 
+    // Maximum 5 items.
     if (OLD_NAMES.length >= 5) {
-      this.setState({warningMessage: 'Can\'t add. Too many items selected.'});
       return;
     }
 
@@ -227,7 +230,6 @@ export default class PageHistory extends React.Component {
       const NAME = (x.tankID) ? x.name : 'Set ' + x.name;
 
       const makeTierTag = x => (<span className='tag' key={ x }>{ x }</span>);
-
       const makeTypeTag = x => {
         return(
           <span className='tag' key={ x }>
@@ -272,11 +274,23 @@ export default class PageHistory extends React.Component {
   /* render */
 
 
+  renderHelpMessage() {
+    return(
+      <div className='notification has-text-centered'>
+        <button className='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
+        This page shows performace differences between individual tanks and / or any filtered combination on a timeline.
+        Data is collected using random sample of recent players.
+      </div>
+    );
+  }
+
+
   showChartButton() {
     return(
       <div className='field'>
         <p className='control'>
-          <a className='button is-fullwidth is-light' onClick={ this.fetchHistory }>
+          <a className={'button is-fullwidth is-light' + ((this.state.isLoading) ? ' is-loading' : '') }
+            onClick={ this.fetchHistory }>
             Show chart
           </a>
         </p>
@@ -291,12 +305,7 @@ export default class PageHistory extends React.Component {
       <section style={{marginTop: '24px'}}>
         <div className='container'>
           
-          <div className='notification'>
-            <button className='delete'></button>
-            Lorem ipsum dolor sit amet, consectetur
-            adipiscing elit lorem ipsum dolor. <strong>Pellentesque risus mi</strong>, tempus quis placerat ut, porta nec nulla. Vestibulum rhoncus ac ex sit amet fringilla. Nullam gravida purus diam, et dictum <a>felis venenatis</a> efficitur. Sit amet,
-            consectetur adipiscing elit
-          </div>
+          { (this.state.isShowingHelp) ? this.renderHelpMessage() : null }
           
           <div className='columns'>
             <div className='column'>
