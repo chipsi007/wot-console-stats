@@ -140,19 +140,19 @@ export default class PageHome extends React.Component {
             <div className='column'>
               <TagsDropdown 
                 tags={ this.state.filters.filter((x) => x.type == 'tiers') }
-                buttonMsg={ 'Add more tiers...' }
-                toggle={ this.switchFilter }
-                toggleAllOn={ () => this.switchFilters('tiers', true) }
-                toggleAllOff={ () => this.switchFilters('tiers', false) }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('tiers', true) }
+                deactivateAllTags={ () => this.switchFilters('tiers', false) }
+                lastButtonMessage={ 'Add more tiers...' }
               />
             </div>
             <div className='column is-6'>
               <TagsDropdown 
                 tags={ this.state.filters.filter((x) => x.type == 'class') }
-                buttonMsg={ 'Add more types...' }
-                toggle={ this.switchFilter }
-                toggleAllOn={ () => this.switchFilters('class', true) }
-                toggleAllOff={ () => this.switchFilters('class', false) }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('class', true) }
+                deactivateAllTags={ () => this.switchFilters('class', false) }
+                lastButtonMessage={ 'Add more types...' }
               />
             </div>
           </div>

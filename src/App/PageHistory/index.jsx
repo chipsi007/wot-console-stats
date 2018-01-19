@@ -311,19 +311,19 @@ export default class PageHistory extends React.Component {
             <div className='column'>
               <TagsDropdown 
                 tags={ this.state.filters.filter((x) => x.type == 'tier') }
-                buttonMsg={ 'Add more tiers...' }
-                toggle={ this.switchFilter }
-                toggleAllOn={ () => this.switchFilters('tier', true) }
-                toggleAllOff={ () => this.switchFilters('tier', false) }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('tier', true) }
+                deactivateAllTags={ () => this.switchFilters('tier', false) }
+                lastButtonMessage={ 'Add more tiers...' }
               />
             </div>
             <div className='column is-6'>
               <TagsDropdown 
                 tags={ this.state.filters.filter((x) => x.type == 'type') }
-                buttonMsg={ 'Add more types...' }
-                toggle={ this.switchFilter }
-                toggleAllOn={ () => this.switchFilters('type', true) }
-                toggleAllOff={ () => this.switchFilters('type', false) }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('type', true) }
+                deactivateAllTags={ () => this.switchFilters('type', false) }
+                lastButtonMessage={ 'Add more types...' }
               />
             </div>
           </div>
