@@ -312,7 +312,7 @@ export default class PageHistory extends React.Component {
           
           <div className='columns'>
             <div className='column'>
-              <div className='notification' style={{padding: '0.75em'}}>
+              <div className='notification' style={{padding: '0.75em', height: '100%'}}>
                 <TagsMultiline 
                   tags={ this.state.filters.filter((x) => x.type == 'tier') }
                   toggleTag={ this.switchFilter }
@@ -322,7 +322,7 @@ export default class PageHistory extends React.Component {
               </div>
             </div>
             <div className='column is-6'>
-              <div className='notification' style={{padding: '0.75em'}}>
+              <div className='notification' style={{padding: '0.75em', height: '100%'}}>
                 <TagsMultiline 
                   tags={ this.state.filters.filter((x) => x.type == 'type') }
                   toggleTag={ this.switchFilter }

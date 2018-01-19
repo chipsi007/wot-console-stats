@@ -35,7 +35,7 @@ export default class TagsMultiline extends React.PureComponent {
    
   render() {
     return(
-      <div className='field is-grouped is-grouped-multiline '>
+      <div className='field is-grouped is-grouped-multiline'>
         { this.props.tags.map(this.makeTag, this) }
         <div className='control'>
           <div className='tags'>
