@@ -176,12 +176,12 @@ export default class PageHistory extends React.Component {
     // Add item to the list.
     // Clear history state field.
 
-    const OLD_NAMES = this.state.selectedItems.map(x => x.name);
-
     // Maximum 5 items.
-    if (OLD_NAMES.length >= 5) {
+    if (this.state.selectedItems.length >= 5) { 
       return;
     }
+
+    const OLD_NAMES = this.state.selectedItems.map(x => x.name);
 
     let newItem;
     if (this.state.selectedTankID) {
@@ -200,6 +200,11 @@ export default class PageHistory extends React.Component {
         tiers: ACTIVE_FILTERS.filter(x => x.type === 'tier').map(x => x.id),
         types: ACTIVE_FILTERS.filter(x => x.type === 'type').map(x => x.id)
       };
+    }
+
+    // Do not add if already name is in old names. (Case with tank_id).
+    if (OLD_NAMES.includes(newItem.name)) {
+      return;
     }
 
     this.setState({
@@ -225,33 +230,29 @@ export default class PageHistory extends React.Component {
   
 
   renderSelectedItems() {
+
+    const makeTierTag = x => (<span className='tag' key={ x }>{ x }</span>);
+    const makeTypeTag = x => {
+      return(
+        <span className='tag' key={ x }>
+          { (x.includes('Tank')) ? x[0].toUpperCase() + 'T' : x }
+        </span>
+      );
+    };
+    const makeTierTagFromSequence = x => {
+      // If sequence of one number e.g. [4, 4]
+      if (x[0] == x[1]) { return makeTierTag(`T${x[0]}`); }
+      // If sequence of > 1 number e.g. [6, 7]
+      return makeTierTag(`T${x[0]}-T${x[1]}`);
+    };
+
     return this.state.selectedItems.map(x => {
-
-      const NAME = (x.tankID) ? x.name : 'Set ' + x.name;
-
-      const makeTierTag = x => (<span className='tag' key={ x }>{ x }</span>);
-      const makeTypeTag = x => {
-        return(
-          <span className='tag' key={ x }>
-            { (x.includes('Tank')) ? x[0].toUpperCase() + 'T' : x }
-          </span>
-        );
-      };
-
-      const TIER_ITEMS = getSequences(x.tiers.map(x => parseInt(x)))
-        .map(x => {
-          if (x[0] == x[1]) {
-            // if sequence of one number e.g. [4, 4]
-            return makeTierTag(`T${x[0]}`);
-          }
-          return makeTierTag(`T${x[0]}-T${x[1]}`);
-        });
-
+      const TIER_ITEMS = getSequences(x.tiers.map(x => parseInt(x))).map(makeTierTagFromSequence);
       return(
         <article className='media' key={ x.name }>
           <div className='media-left'>
             <strong>
-              { NAME }
+              { (x.tankID) ? x.name : 'Set ' + x.name }
             </strong>
           </div>
           <div className='media-content'>
@@ -263,7 +264,9 @@ export default class PageHistory extends React.Component {
             </div>
           </div>
           <div className='media-right'>
-            <button className='delete' onClick={ () => this.removeItem(x.name) }></button>
+            <button className='delete' 
+              onClick={ () => this.removeItem(x.name) }>
+            </button>
           </div>
         </article>
       );
