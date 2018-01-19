@@ -1,7 +1,7 @@
 import React from 'react';
 
 
-import TagsDropdown from '../components/TagsDropdown';
+import TagsMultiline from '../components/TagsMultiline';
 import InputDropdown from '../components/InputDropdown';
 import ChartController from './ChartController';
 import getSequences from '../logic/getSequences';
@@ -312,22 +312,24 @@ export default class PageHistory extends React.Component {
           
           <div className='columns'>
             <div className='column'>
-              <TagsDropdown 
-                tags={ this.state.filters.filter((x) => x.type == 'tier') }
-                toggleTag={ this.switchFilter }
-                activateAllTags={ () => this.switchFilters('tier', true) }
-                deactivateAllTags={ () => this.switchFilters('tier', false) }
-                lastButtonMessage={ 'Add more tiers...' }
-              />
+              <div className='notification' style={{padding: '0.75em'}}>
+                <TagsMultiline 
+                  tags={ this.state.filters.filter((x) => x.type == 'tier') }
+                  toggleTag={ this.switchFilter }
+                  activateAllTags={ () => this.switchFilters('tier', true) }
+                  deactivateAllTags={ () => this.switchFilters('tier', false) }
+                />
+              </div>
             </div>
             <div className='column is-6'>
-              <TagsDropdown 
-                tags={ this.state.filters.filter((x) => x.type == 'type') }
-                toggleTag={ this.switchFilter }
-                activateAllTags={ () => this.switchFilters('type', true) }
-                deactivateAllTags={ () => this.switchFilters('type', false) }
-                lastButtonMessage={ 'Add more types...' }
-              />
+              <div className='notification' style={{padding: '0.75em'}}>
+                <TagsMultiline 
+                  tags={ this.state.filters.filter((x) => x.type == 'type') }
+                  toggleTag={ this.switchFilter }
+                  activateAllTags={ () => this.switchFilters('type', true) }
+                  deactivateAllTags={ () => this.switchFilters('type', false) }
+                />
+              </div>
             </div>
           </div>
           

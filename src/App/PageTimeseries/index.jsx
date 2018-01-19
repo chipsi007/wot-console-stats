@@ -2,7 +2,7 @@ import React from 'react';
 
 
 import TimeseriesBox from './TimeseriesBox';
-import TagsDropdown from '../components/TagsDropdown';
+import TagsMultiline from '../components/TagsMultiline';
 
 
 export default class PageTimeseries extends React.Component {
@@ -534,21 +534,19 @@ export default class PageTimeseries extends React.Component {
     return( 
       <div className='columns'>
         <div className='column is-6'>       
-          <TagsDropdown 
+          <TagsMultiline 
             tags={ this.state.filters.filter((x) => x.type === 'tier') }
             toggleTag={ this.switchFilter }
             activateAllTags={ () => this.switchFilters('tier', true) }
             deactivateAllTags={ () => this.switchFilters('tier', false) }
-            lastButtonMessage={ 'Add more tiers...' }
           />
         </div>
         <div className='column is-6'>
-          <TagsDropdown 
+          <TagsMultiline 
             tags={ this.state.filters.filter((x) => x.type === 'type') }
             toggleTag={ this.switchFilter }
             activateAllTags={ () => this.switchFilters('type', true) }
             deactivateAllTags={ () => this.switchFilters('type', false) }
-            lastButtonMessage={ 'Add more types...' }
           />
         </div>
       </div>
