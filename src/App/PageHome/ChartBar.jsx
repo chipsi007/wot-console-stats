@@ -30,36 +30,42 @@ export default class ChartBar extends React.PureComponent {
   
   openChart() {
 
-    // Destroying the chart and picking the reference.
-    if (this.Chart) this.Chart.destroy();
-    let ctx = this.chartRef;
-    
-    // Creating the chart.
+    const DATASETS = [
+      {
+        label: 'Average in period',
+        type: 'bar',
+        backgroundColor: (this.props.overrideBarColors) ? this.props.overrideBarColors : 'hsl(130, 25%,  63%)',
+        borderColor: 'hsl(0, 0%, 100%)',
+        borderWidth: 3,
+        data: this.props.change
+      },
+      {
+        label: 'All time average',
+        type: 'line',
+        fill: false,
+        borderColor: 'hsl(195, 20%, 63%)',
+        pointBackgroundColor: 'hsl(195, 20%, 63%)',
+        pointBorderColor: '#ffffff',
+        pointHoverBackgroundColor: '#ffffff',
+        pointHoverBorderColor: 'hsl(195, 20%, 63%)',
+        data: this.props.totals
+      }
+    ];
+
+    // Update chart if already exists.
+    if (this.Chart) {
+      this.Chart.data.datasets = DATASETS;
+      this.Chart.update();
+      return
+    }
+
+    // If doesnt exist, create chart.
+    let ctx = this.chartRef
     this.Chart = new Chart(ctx, {
       type: 'bar',
       data:  {
         labels: this.props.timestamps,
-        datasets: [
-          {
-            label: 'Average in period',
-            type: 'bar',
-            backgroundColor: (this.props.overrideBarColors) ? this.props.overrideBarColors : 'hsl(130, 25%,  63%)',
-            borderColor: 'hsl(0, 0%, 100%)',
-            borderWidth: 3,
-            data: this.props.change
-          },
-          {
-            label: 'All time average',
-            type: 'line',
-            fill: false,
-            borderColor: 'hsl(195, 20%, 63%)',
-            pointBackgroundColor: 'hsl(195, 20%, 63%)',
-            pointBorderColor: '#ffffff',
-            pointHoverBackgroundColor: '#ffffff',
-            pointHoverBorderColor: 'hsl(195, 20%, 63%)',
-            data: this.props.totals
-          }
-        ]
+        datasets: DATASETS
       },
       options: {
         scales: {
