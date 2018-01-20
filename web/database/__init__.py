@@ -1,3 +1,6 @@
+from .schema import initialize_database
+
+
 from .checkpoints import get_latest_checkpoint
 from .checkpoints import get_all_checkpoints
 from .checkpoints import add_or_update_checkpoint
