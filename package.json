@@ -21,7 +21,7 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
     "base-64": "^0.1.0",
-    "bulma": "^0.6.1",
+    "bulma": "^0.6.2",
     "bulma-pageloader": "0.1.0",
     "chart.js": "^2.7.1",
     "font-awesome": "^4.7.0",
