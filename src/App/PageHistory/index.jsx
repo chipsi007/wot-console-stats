@@ -282,7 +282,7 @@ export default class PageHistory extends React.Component {
       <div className='notification has-text-centered'>
         <button className='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
         This page shows performace differences between individual tanks and / or any filtered combination on a timeline.
-        Data is collected using random sample of recent players.
+        The data is constantly being collected using random sample of recent players.
       </div>
     );
   }
@@ -334,10 +334,10 @@ export default class PageHistory extends React.Component {
           </div>
           
           <InputDropdown 
-            data={ this.getInputDropdownItems() }
+            items={ this.getInputDropdownItems() }
             activeID={ this.state.selectedTankID }
-            funcActivateID={ (x) => this.setState({selectedTankID: x}) }
-            funcDeactivate={ () => this.setState({selectedTankID: null}) }
+            activateID={ (x) => this.setState({selectedTankID: x}) }
+            deactivate={ () => this.setState({selectedTankID: null}) }
           />
 
           <div className='field'>
