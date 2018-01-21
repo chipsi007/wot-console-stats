@@ -5,22 +5,23 @@ import TimeseriesLineChart from './ChartLine';
 import getSequences from '../logic/getSequences';
 
 
-export default class TimeseriesBox extends React.Component {
-  //this.props.server
-  //this.props.accountID
-  //this.props.timeScale
-  //this.props.formula
-  //this.props.dataTab
-  //this.props.filters
-  //this.props.dataTankID
-  //this.props.tankInfo
-  //this.props.remove
+export default class TimeseriesBox extends React.PureComponent {
+  //this.props.server:str        - server of the player: 'xbox' or 'ps4'.
+  //this.props.accountID:int     - accountID of the player.
+  //this.props.timeScale:str     - 'daily' or 'weekly'
+  //this.props.formula:List[Obj] - formula objects.
+  //this.props.tankID:int/None   - Integer if single tank, otherwise None.
+  //this.props.tankInfo:Obj/None - Tankopedia object if tankID is present, otherwise None.
+  //this.props.tiers:List[str]   - List of tiers. Ignore if tankID is present.
+  //this.props.types:List[str]   - List of types. Ignore if tankID is present.
+  //this.props.remove:f()        - Function to remove this TimeseriesBox.
   constructor(props) {
     super(props);
     this.state = {
-      timestamps: null,
-      totals: null,
-      change: null,
+      isLoading: true,
+      timestamps: null, // received data. x-axis.
+      totals: null,     // received data. y-axis.
+      change: null,     // received data. y-axis.
       
       showFormula: false
     };
@@ -29,60 +30,53 @@ export default class TimeseriesBox extends React.Component {
 
   
   fetchData() {
-    
-    fetch('/newapi/timeseries/get-data/', {
+
+    const FETCH_BODY = {
       method: 'POST',
       headers: {
+        'Accept': 'application/json', 
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        server:     this.props.server,
-        account_id: this.props.accountID,
-        time_scale: this.props.timeScale,
-        formula:    this.props.formula,
-        filter_by:  this.props.dataTab,
-        filters:    this.props.filters.filter((x) => x.active).map((x) => x.id),
-        tank_id:    this.props.dataTankID
+      body: JSON.stringify({     
+        server:    this.props.server,
+        accountID: this.props.accountID,
+        timeScale: this.props.timeScale,
+        formula:   this.props.formula,
+        tankID:    this.props.tankID,
+        tiers:     this.props.tiers,
+        types:     this.props.types
       })
-    })
-      .then(response => { return response.json() })
+    };
+
+    fetch('/api/timeseries/get/', FETCH_BODY)
+      .then(r => r.json())
       .then(j => {
-      
-        if (j.status != 'ok') {
-          alert(j.message);
-          return;
+        if (j.error !== null) {
+          window.alert('Server returned an error: ' + j.error);
+        } else {
+          this.setState({
+            isLoading:  false,
+            timestamps: j.xTimestamps,
+            totals:     j.yTotals,
+            change:     j.yChange
+          });
         }
-        
-        this.setState({
-          timestamps: j.timestamps,
-          totals:     j.data_totals,
-          change:     j.data_change
-        });
       })
-      .catch(error => {
-        alert('There has been a problem with your fetch operation: ' + error.message);
+      .catch(err => {
+        alert('There has been a problem with the request. Error message: ' + err.message);
       });
   }
 
   
   componentDidMount() {
-    // Fetchng the data only once.
-    if (!this.state.tankData) { this.fetchData() }
-  }
-
-  
-  shouldComponentUpdate(nextProps, nextState) {
-    return(this.state != nextState);
+    if (this.state.isLoading) { this.fetchData(); }
   }
   
   
   dropdownContent() {
     
-    if (this.props.dataTab == 'filters') {
-      const TIER_NUMBERS = this.props.filters
-        .filter(x => x.active && (x.type == 'tier'))
-        .map(x => parseInt(x.id));
-      
+    if (!this.props.tankID) {
+      const TIER_NUMBERS = this.props.tiers.map(x => parseInt(x.id));    
       const TIER_ITEMS = getSequences(TIER_NUMBERS)
         .map(x => {
           // x[0] must be unique for every item.
@@ -92,9 +86,7 @@ export default class TimeseriesBox extends React.Component {
           return(<div className='tag is-rounded' key={ x[0] }>{ `T${x[0]}-T${x[1]}` }</div>);
         });
       
-      const TYPES = this.props.filters
-        .filter(x => x.active && (x.type == 'type'))
-        .map(x => x.id)
+      const TYPES = this.props.tiers.concat(this.props.types)
         .map(x => (x.includes('Tank')) ? (x[0].toUpperCase() + 'T') : x)
         .map(x => (<div className='tag is-rounded' key={ x }>{x}</div>));
       
@@ -110,7 +102,7 @@ export default class TimeseriesBox extends React.Component {
       );
     } 
     
-    if (this.props.dataTab == 'tank') {
+    if (this.props.tankID) {
       return (
         <div className='dropdown-content'>
           <div className='dropdown-item'>
@@ -132,18 +124,16 @@ export default class TimeseriesBox extends React.Component {
   }
   
   
-  loading() {
+  renderLoading() {
     return(
       <article className='media'>
         <div className='media-content'>
           <div className='content'>
-
             <div className='columns'>
               <div className='column is-4 is-offset-4'>
                 <a className='button is-large is-white is-loading is-fullwidth'></a>
               </div>
             </div>
-
           </div>
         </div>
         <div className='media-right'>
@@ -153,28 +143,29 @@ export default class TimeseriesBox extends React.Component {
     );
   }
 
-  
-  render() {
-    
-    // Loading if no tank data.
-    if (!this.state.timestamps) { return(this.loading()) }
-    
-    const FORMULA_ITEMS = this.props.formula.map((x, index) => {
+
+  renderFormula() {
+
+    const makeFormulaItem = (x, index) => {
       return( 
         <span className={ 'tag' + ((x.type == 'op') ? ' is-warning' : ' is-primary') } key={ index }>
           { x.label }
         </span>
       );
-    });
-    
-    const FORMULA = (
+    }
+
+    return(
       <div className='field'>
         <div className='tags'>
-          { FORMULA_ITEMS }
+          { this.props.formula.map(makeFormulaItem) }
         </div>
       </div>
     );
-     
+  }
+
+  
+  render() {
+    if (this.state.isLoading) { return this.renderLoading(); }
     return( 
       <article className='media'>
         <div className='media-content'>
@@ -183,7 +174,7 @@ export default class TimeseriesBox extends React.Component {
             <div className='control dropdown is-hoverable'>
               <div className='dropdown-trigger'>
                 <button className='button is-info is-small' aria-haspopup='true' aria-controls='dropdown-menu4'>
-                  <span>{ (this.props.dataTab == 'filters') ? 'Filters' : this.props.tankInfo.short_name }</span>
+                  <span>{ (this.props.tankID === null) ? 'Filters' : this.props.tankInfo.short_name }</span>
                   <span className='icon is-small'>
                     <i className='fa fa-angle-down' aria-hidden='true'></i>
                   </span>
@@ -201,7 +192,7 @@ export default class TimeseriesBox extends React.Component {
             </p>
           </div>
 
-          { (this.state.showFormula) ? FORMULA : null }  
+          { (this.state.showFormula) ? this.renderFormula() : null }  
 
           <TimeseriesLineChart 
             timestamps={ this.state.timestamps } 

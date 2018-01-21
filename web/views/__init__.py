@@ -7,12 +7,12 @@ from .frontend import index_dev #GET:/dev
 
 from .newapi import newapi_general_get_player_tanks #GET:/newapi/general/get-player-tanks/
 from .newapi import newapi_estimates_get_tank       #GET:/newapi/estimates/get-tank/
-from .newapi import newapi_timeseries_get_data      #POST:/newapi/timeseries/get-data/
 
 
-from .pages import api_main                 #GET:/api/<page>/<server>/<int:account_id>/<int:timestamp>/<filters>/
-from .page_home import api_page_home        #POST:/api/home/
-from .page_history import api_history_get   #POST:/api/history/get/
+from .pages import api_main                     #GET:/api/<page>/<server>/<int:account_id>/<int:timestamp>/<filters>/
+from .page_home import api_page_home            #POST:/api/home/
+from .page_timeseries import api_timeseries_get #POST:/api/timeseries/get/
+from .page_history import api_history_get       #POST:/api/history/get/
 
 
 from .export import export_tankopedia       #GET:/export/tankopedia/

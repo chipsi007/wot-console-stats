@@ -3,6 +3,7 @@ import React from 'react';
 
 import TimeseriesBox from './TimeseriesBox';
 import TagsMultiline from '../components/TagsMultiline';
+import InputDropdown from '../components/InputDropdown';
 
 
 export default class PageTimeseries extends React.Component {
@@ -11,18 +12,13 @@ export default class PageTimeseries extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      
-      // Data to request.
-      timeScale: 'daily', // 'daily' or 'weekly'
-      
-      // Editors expanded state. 
-      formulaExpanded: false,
-      dataExpanded: false,
-      
-      // Editor tab state.
-      dataTab: 'filters', // 'filters' or 'tank'
-      
-      // editorDataFilters state.
+      isShowingHelp: true,    // Render help message.
+      warningMessage: null,   // Warning message above formula.
+      selectedTankID: null,   // selected tank_id when filtering by single tank.s
+      timeScale: 'daily',     // timescale selector for chart, 'daily' or 'weekly'
+      formulaExpanded: false, // Editors expanded state. 
+      playerTanks: null,      // Tankopedia List[Obj] only including player tanks.
+      timeseriesBoxes: [],    // Container for timeseriesBoxes to be rendered.
       filters: [
         {label: 'Tier 1',       shortLabel: 'T1',  type: 'tier', active: true, id: '1'},
         {label: 'Tier 2',       shortLabel: 'T2',  type: 'tier', active: true, id: '2'},
@@ -40,39 +36,21 @@ export default class PageTimeseries extends React.Component {
         {label: 'AT-SPG',       shortLabel: 'AT',  type: 'type', active: true, id: 'AT-SPG'},
         {label: 'SPG',          shortLabel: 'SPG', type: 'type', active: true, id: 'SPG'}
       ],
-      
-      // editorDataTank state.
-      dataTankText: '',
-      dataTankType: 'all',
-      dataTankTier: 0,
-      dataTankID: null,
-      dataTankMaxItems: 12,
-      
-      // Formula container, default formula placed here.
       formula: [
         {label: 'wins',    id: 'wins',    type: 'raw'},
         {label: '÷',       id: 'divide',  type: 'op'},
         {label: 'battles', id: 'battles', type: 'raw'}
-      ],
-      
-      // Messages under formula.
-      infoMsg: 'This section allows to calculate various account or tank metrics and view it on a time series chart. Click this message to dismiss.',//null,
-      dangerMsg: null,
-      
-      // Container for player tanks loaded on mount.
-      playerTanks: [],
-      chartboxes: []
+      ]
     };
-    this.fetchTanks = this.fetchTanks.bind(this);
-    this.addChartBox = this.addChartBox.bind(this);
     this.removeLastFormulaItem = this.removeLastFormulaItem.bind(this);
-    this.switchFilter = this.switchFilter.bind(this);
-    this.resetFilters = this.resetFilters.bind(this);
+    this.clearFormula = this.clearFormula.bind(this);
+
+    this.addTimeseriesBox = this.addTimeseriesBox.bind(this);
   }
   
   
   componentDidMount() {
-    if (this.state.playerTanks.length === 0) { this.fetchTanks() }
+    if (!this.state.playerTanks) { this.fetchTanks() }
     
     // Google Analytics tracking.
     if (typeof(ga) == 'function') {
@@ -109,6 +87,23 @@ export default class PageTimeseries extends React.Component {
         alert('There has been a problem with your fetch operation: ' + error.message);
       });
   }
+
+
+  /* InputDropdown */
+
+
+  getInputDropdownItems() {
+    if (!this.state.playerTanks) { return [] }
+    
+    // ACTIVE_TIERS and ACTIVE_TYPES are arrays of strings.
+    const ACTIVE_TIERS = this.state.filters.filter((x) => (x.type === 'tier') && (x.active)).map((x) => x.id);
+    const ACTIVE_TYPES = this.state.filters.filter((x) => (x.type === 'type') && (x.active)).map((x) => x.id);
+    
+    const includesTierType = x => (ACTIVE_TIERS.includes(String(x.tier)) && ACTIVE_TYPES.includes(x.type));
+    const mapperFunc = x => ({ id: x.tank_id, label: x.name });
+
+    return this.state.playerTanks.filter(includesTierType).map(mapperFunc);
+  }
   
   
   /* formula */
@@ -120,20 +115,20 @@ export default class PageTimeseries extends React.Component {
     // Validation.
     if (item.type == 'op') {
       if (formula.length === 0) {
-        this.setState({dangerMsg: 'Formula can\'t start with an operation'});
+        this.setState({warningMessage: 'Formula can\'t start with an operation.'});
         return;
       }
       if (formula[formula.length - 1].type == 'op') {
-        this.setState({dangerMsg: 'Operation has to be followed by a value'});
+        this.setState({warningMessage: 'Operation has to be followed by a value.'});
         return;
       }
       if (formula.length >= 10) {
-        this.setState({dangerMsg: 'Formula is too large'});
+        this.setState({warningMessage: 'Formula is too large.'});
         return;
       }
     } else if (formula.length > 0) {
       if (['num', 'raw', 'wn8', 'perc'].includes(formula[formula.length - 1].type)) {
-        this.setState({dangerMsg: 'Value has to be followed by an operation'});
+        this.setState({warningMessage: 'Value has to be followed by an operation.'});
         return;
       }
     }
@@ -143,18 +138,126 @@ export default class PageTimeseries extends React.Component {
   }
   
   
-  removeFormulaItem(item) {
-    const output = this.state.formula.filter((x) => x != item);
-    this.setState({formula: output});
-  }
-  
-  
   removeLastFormulaItem() {
     this.setState({formula: this.state.formula.slice(0, -1)});
   }
+
+
+  clearFormula() {
+    this.setState({formula: []});
+  }
+    
+  
+  /* timeseriesBoxes */
   
   
-  formula() {
+  addTimeseriesBox() {
+    
+    // Validation. Empty formula.
+    if (this.state.formula.length === 0) {
+      this.setState({warningMessage: 'Formula doesn\'t contain any values.'});
+      return;
+    }
+
+    // Validation. Cant't be finished with an operation.
+    if ((this.state.formula.length > 0) && (this.state.formula[this.state.formula.length - 1].type == 'op')) {
+      this.setState({warningMessage: 'Formula can\'t be finished with an operation.'});
+      return;
+    }
+    
+    // Reset message.
+    this.setState({warningMessage: null});
+    
+    // Adding chartbox.
+    const KEYS = this.state.timeseriesBoxes.map(x => x.key);
+    const ACTIVE_FILTERS = this.state.filters.filter(x => x.active);
+    
+    const NEW_ITEM = {
+      timeScale: this.state.timeScale,
+      formula: this.state.formula,
+      tankID: this.state.selectedTankID,
+      tankInfo: this.state.playerTanks.filter(x => x.tank_id == this.state.selectedTankID)[0],
+      tiers: ACTIVE_FILTERS.filter(x => x.type === 'tier').map(x => x.id),
+      types: ACTIVE_FILTERS.filter(x => x.type === 'type').map(x => x.id),
+      key: (KEYS.length > 0) ? Math.max(...KEYS) + 1 : 1
+    };
+
+    this.setState({timeseriesBoxes: this.state.timeseriesBoxes.concat(NEW_ITEM)});
+  }
+  
+  
+  delTimeseriesBox(key) {
+    const notKey = x => x.key !== key;
+    this.setState({timeseriesBoxes: this.state.timeseriesBoxes.filter(notKey)});
+  }
+
+  
+  /* filters */
+  
+  
+  switchFilter(filterID) {
+    let filters = this.state.filters;
+    for (let item of filters) {
+      if (item.id === filterID) { 
+        item.active = !item.active; 
+        break;
+      }
+    }
+    this.setState({filters: filters});
+  }
+
+
+  activateFilters(filterType) {
+    let filters = this.state.filters;
+    filters.forEach(x => {
+      if (x.type === filterType) {
+        x.active = true;
+      }
+    });
+    this.setState({filters: filters});
+  }
+
+
+  deactivateFilters(filterType) {
+    let filters = this.state.filters;
+    filters.forEach(x => {
+      if (x.type === filterType) {
+        x.active = false;
+      }
+    });
+    this.setState({filters: filters});
+  }
+
+  
+  /* render */
+
+
+  renderHelpMessage() {
+    return(
+      <div className='notification has-text-centered'>
+        <button className='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
+        This section allows to calculate various account or tank metrics and view it on a time series chart.
+        1.Select filtered combination or a single tank. 
+        2.Change the formula to calculate the necessary metric. 
+        3.Pick time scale: 'daily' or 'weekly'.
+        4.Click 'Add chart'.
+      </div>
+    );
+  }
+
+
+  renderWarningMessage() {
+    const close = () => this.setState({warningMessage: null});
+    return(
+      <div className='notification is-warning' onClick={ close }>
+        <button className='delete' onClick={ close }></button>
+        { this.state.warningMessage }
+      </div>
+    );
+  }
+
+
+  renderFormula() {
     
     const FORMULA = this.state.formula;
     
@@ -190,7 +293,7 @@ export default class PageTimeseries extends React.Component {
           <div className='level-item'>
             <span className='icon'>
               <a className='fa fa-angle-double-right'
-                onClick={ () => this.setState({formula: []}) }>
+                onClick={ this.clearFormula }>
               </a>
             </span>
           </div>
@@ -208,7 +311,7 @@ export default class PageTimeseries extends React.Component {
             { (this.state.timeScale === 'weekly') ? strongWeekly : linkWeekly }
           </p>
           <p className='level-item'>
-            <a className='button is-success' onClick={ this.addChartBox }>
+            <a className='button is-success' onClick={ this.addTimeseriesBox }>
               Add chart
             </a>
           </p>
@@ -217,100 +320,10 @@ export default class PageTimeseries extends React.Component {
     );
   }
   
-  
-  /* chartboxes */
-  
-  
-  addChartBox() {
-    
-    // Validation.
-    if (this.state.formula.length === 0) {
-      this.setState({dangerMsg: 'Formula doesn\'t contain any values'});
-      return;
-    }
-    if ((this.state.dataTab == 'tank') && (this.state.dataTankID === null)) {
-      this.setState({dangerMsg: 'Filter by tank tab is active but no tanks are selected'});
-      return;
-    }
-    if ((this.state.formula.length > 0) && (this.state.formula[this.state.formula.length - 1].type == 'op')) {
-      this.setState({dangerMsg: 'Formula can\'t be finished with an operation'});
-      return;
-    }
-    
-    // Reset message.
-    this.setState({dangerMsg: null});
-    
-    // Adding chartbox.
-    let charts = this.state.chartboxes;
-    charts.push({
-      timeScale: this.state.timeScale,
-      formula: this.state.formula,
-      dataTab: this.state.dataTab,
-      filters: this.state.filters,
-      dataTankID: this.state.dataTankID,
-      tankInfo: (this.state.dataTab == 'tank') ? this.state.playerTanks.find(x => x.tank_id == this.state.dataTankID) : null,
-      key: (charts.length > 0) ? Math.max(...charts.map((x) => x.key)) + 1 : 1
-    });
-    this.setState({chartboxes: charts});
-  }
-  
-  
-  removeChartBox(key) {
-    let output = this.state.chartboxes.filter((x) => x.key != key);
-    this.setState({chartboxes: output});
-  }
-
-  
-  /* filters */
-  
-  
-  switchFilter(filterID) {
-    let filters = this.state.filters;
-    for (let item of filters) {
-      if (item.id == filterID) { 
-        item.active = !item.active; 
-        break;
-      }
-    }
-    this.setState({filters: filters});
-  }
-  
-  
-  switchFilters(sType, bActive) {
-
-    let filters = this.state.filters;
-
-    filters
-      .filter((x) => x.type == sType)
-      .forEach((x) => {
-        if (bActive) { x.active = true }
-        else { x.active = false }
-      });
-
-    this.setState({filters: filters});
-  }
-  
-  
-  resetFilters() {
-    this.reftext.value = '';
-    this.reftier.value = '0';
-    this.reftype.value = 'all';
-    this.setState({
-      dataTankText: '',
-      dataTankType: 'all',
-      dataTankTier: 0,
-      dataTankID: null,
-      dataTankMaxItems: 12, // actually 12 - 1 for the extend button.
-    });
-  }
-  
-  
-  /* render */
-  
 
   editorFormula() {
     
-    const RAW_FIELDS = [
+    const RAW_ITEMS = [
       {label: 'last_battle_time(sec)',        id: 'last_battle_time',                type: 'raw'},
       {label: 'battle_life_time(sec)',        id: 'battle_life_time',                type: 'raw'},
       {label: 'battles',                      id: 'battles',                         type: 'raw'},
@@ -339,18 +352,18 @@ export default class PageTimeseries extends React.Component {
       {label: 'wins',                         id: 'wins',                            type: 'raw'},
       {label: 'xp',                           id: 'xp',                              type: 'raw'}
     ];
-    const OP_FIELDS = [
+    const OP_ITEMS = [
       {label: '+', id: 'plus',   type: 'op'},
       {label: '-', id: 'minus',  type: 'op'},
       {label: '×', id: 'times',  type: 'op'},
       {label: '÷', id: 'divide', type: 'op'}
     ];
-    const NUM_FIELDS = [
+    const NUM_ITEMS = [
       {label: '100', id: 'hundred',    type: 'num'},
       {label: '60',  id: 'sixty',      type: 'num'},
       {label: '24',  id: 'twentyfour', type: 'num'}
     ];  
-    const CALC_FIELDS = [
+    const CALC_ITEMS = [
       {label: 'WN8',                              id: 'wn8',                            type: 'wn8'},
       {label: 'PERC:battle_life_time',            id: 'battle_life_time',               type: 'perc'},
       {label: 'PERC:damage_dealt',                id: 'damage_dealt',                   type: 'perc'},
@@ -380,8 +393,9 @@ export default class PageTimeseries extends React.Component {
       {label: 'PERC:accuracy',                    id: 'accuracy',                       type: 'perc'}
     ];
     
-    const OP_ITEMS = OP_FIELDS.map((x, index) => {
-      // Items don't change order, so index keys are acceptable.
+
+    // Items never change order, so index keys are acceptable.
+    const renderOpItem = (x, index) => {
       return( 
         <p className='control' key={ x.type + index }>
           <a className='button is-small is-warning'
@@ -390,10 +404,9 @@ export default class PageTimeseries extends React.Component {
           </a>
         </p>
       );
-    });
-    const NUM_ITEMS = NUM_FIELDS.map((x, index) => {
-      // Items don't change order, so index keys are acceptable.
-      return(
+    };
+    const renderNumItem = (x, index) => {
+      return( 
         <p className='control' key={ x.type + index }>
           <a className='button is-small is-light'
             onClick={ () => this.addFormulaItem(x) }>
@@ -401,10 +414,9 @@ export default class PageTimeseries extends React.Component {
           </a>
         </p>
       );
-    });
-    const RAW_ITEMS = RAW_FIELDS.map((x, index) => {
-      // Items don't change order, so index keys are acceptable.
-      return(
+    };
+    const renderRawItem = (x, index) => {
+      return( 
         <p className='control' key={ index }>
           <a className='button is-small is-info'
             onClick={ () => this.addFormulaItem(x) }>
@@ -412,9 +424,8 @@ export default class PageTimeseries extends React.Component {
           </a>
         </p>
       );
-    });
-    const CALC_ITEMS = CALC_FIELDS.map((x, index) => {
-      // Items don't change order, so index keys are acceptable.
+    };
+    const renderCalcItem = (x, index) => {
       return(
         <p className='control' key={ index }>
           <a className='button is-small is-danger'
@@ -423,43 +434,28 @@ export default class PageTimeseries extends React.Component {
           </a>
         </p>
       );
-    });
-   
-    const HEADER = (
-      <header className='card-header'>
-        <a className='card-header-title'
-          onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }>
-          <span className='icon'>
-            <i className={ (this.state.formulaExpanded) ? 'fa fa-angle-down' : 'fa fa-angle-right' }></i>
-          </span>
-          Edit formula
-        </a>
-        <a className='card-header-icon' 
-          onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }>
-          { (this.state.formulaExpanded) ? 'Hide' : 'Show' }
-        </a>
-      </header>
-    );
+    }
+
     
     const CONTENT = (
       <div className='card-content'>
         <div className='content'>
           <small>Operations and basic numbers:</small>
           <div className='field is-grouped is-grouped-multiline'>
-            { OP_ITEMS }
-            { NUM_ITEMS }
+            { OP_ITEMS.map(renderOpItem) }
+            { NUM_ITEMS.map(renderNumItem) }
           </div>
         </div>
         <div className='content'>
           <small>Raw data properties:</small>
           <div className='field is-grouped is-grouped-multiline'>
-            { RAW_ITEMS }
+            { RAW_ITEMS.map(renderRawItem) }
           </div>
         </div>
         <div className='content'>
           <small>WN8 and percentiles:</small>
           <div className='field is-grouped is-grouped-multiline'>
-            { CALC_ITEMS }
+            { CALC_ITEMS.map(renderCalcItem) }
           </div>
         </div>
       </div>
@@ -467,303 +463,92 @@ export default class PageTimeseries extends React.Component {
     
     return( 
       <div className='card is-unselectable'>
-        { HEADER }
+        <header className='card-header'>
+          <a className='card-header-title'
+            onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }>
+            <span className='icon'>
+              <i className={ (this.state.formulaExpanded) ? 'fa fa-angle-down' : 'fa fa-angle-right' }></i>
+            </span>
+            Edit formula
+          </a>
+          <a className='card-header-icon' 
+            onClick={ () => this.setState({formulaExpanded: !this.state.formulaExpanded}) }>
+            { (this.state.formulaExpanded) ? 'Hide' : 'Show' }
+          </a>
+        </header>
         { (this.state.formulaExpanded) ? CONTENT : null }
       </div>
     );
   }
-  
-  
-  editorData() {
-    
-    const HEADER = (
-      <header className='card-header'>
-        <a className='card-header-title'
-          onClick={ () => this.setState({dataExpanded: !this.state.dataExpanded}) }>
-          <span className='icon'>
-            <i className={ (this.state.dataExpanded) ? 'fa fa-angle-down' : 'fa fa-angle-right' }></i>
-          </span>
-          Choose data
-        </a>
-        <a className='card-header-icon' 
-          onClick={ () => this.setState({dataExpanded: !this.state.dataExpanded}) }>
-          { (this.state.dataExpanded) ? 'Hide' : 'Show' }
-        </a>
-      </header>
-    );
-    
-    const TABS = (
-      <div className='tabs'>
-        <ul>
-          <li className={ (this.state.dataTab === 'filters') ? 'is-active' : '' }>
-            <a onClick={ () => this.setState({dataTab: 'filters'}) }>Filters</a>
-          </li>
-          <li className={ (this.state.dataTab === 'tank') ? 'is-active' : '' }>
-            <a onClick={ () => this.setState({dataTab: 'tank'}) }>Single vehicle</a>
-          </li>
-        </ul>
-      </div>
-    );
 
-    const CONTENT = (
-      <div className='card-content'>                        
-        <div className='content'>
 
-          { (this.state.dataTab === 'filters') ? this.editorDataFilters() : null }
-          { (this.state.dataTab === 'tank') ? this.editorDataTank() : null }
-
-        </div>
-      </div>
-    );
-    
-    
-    return( <div className='card is-unselectable'>
-              
-      { HEADER }
-        
-      { (this.state.dataExpanded) ? TABS : null }
-        
-      { (this.state.dataExpanded) ? CONTENT : null }
-        
-    </div>);
-  }
-  
-  
-  editorDataFilters() {
-    
+  renderTimeseriesBox(x) {
     return( 
-      <div className='columns'>
-        <div className='column is-6'>       
-          <TagsMultiline 
-            tags={ this.state.filters.filter((x) => x.type === 'tier') }
-            toggleTag={ this.switchFilter }
-            activateAllTags={ () => this.switchFilters('tier', true) }
-            deactivateAllTags={ () => this.switchFilters('tier', false) }
-          />
-        </div>
-        <div className='column is-6'>
-          <TagsMultiline 
-            tags={ this.state.filters.filter((x) => x.type === 'type') }
-            toggleTag={ this.switchFilter }
-            activateAllTags={ () => this.switchFilters('type', true) }
-            deactivateAllTags={ () => this.switchFilters('type', false) }
-          />
-        </div>
-      </div>
-    );
-  }
-  
-  
-  editorDataTank() {
-    
-    const TIER_SELECT_ITEMS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-      .map((x) => {
-        return( 
-          <option key={ x } value={ x }>
-            { (x != 0) ? `Tier ${x}` : 'All tiers' }
-          </option>
-        );
-      });
-    
-    const TYPE_SELECT_ITEMS = ['all', 'lightTank', 'mediumTank', 'heavyTank', 'AT-SPG', 'SPG']
-      .map((x) => {
-        return( 
-          <option key={ x } value={ x }>
-            { (x != 'all') ? x[0].toUpperCase() + x.slice(1).replace('Tank', ' Tank') : 'All types' }
-          </option>
-        );
-      });
-    
-    const TANKS = this.state.playerTanks
-      .filter((x) => {
-        const typePass = ((this.state.dataTankType == 'all') || (this.state.dataTankType == x.type)) ? true : false;
-        const tierPass = ((this.state.dataTankTier == 0) || (this.state.dataTankTier == x.tier)) ? true : false;
-        return typePass && tierPass;
-      })
-      .filter((x) => x.name.toLowerCase().includes(this.state.dataTankText))
-      .map((x) => {
-        return( 
-          <div className='field' key={ x.tank_id }>
-            <p className='control is-expanded'>
-              <a className={ 'button is-small is-fullwidth' + ((this.state.dataTankID == x.tank_id) ? ' is-info' : ' is-light') }
-                onClick={ () => this.setState({dataTankID: x.tank_id}) }>
-                { x.short_name }
-              </a>
-            </p>
-          </div>
-        );
-      });
-    
-    // Limit to show as defined in state.
-    const TANKS_TO_VIEW = TANKS.slice(0, this.state.dataTankMaxItems);
-    
-    // Splitting tanks onto 4 columns.
-    function splitItems(arr) {
-      let col1 = [], col2 = [], col3 = [], col4 = [];
-      const floor = Math.floor(arr.length / 4);
-      let remainder = arr.length % 4;
-      
-      if (floor > 0) {
-        for (let i = 0; i < floor * 4; i += 4) {
-          col1.push(arr[i]);
-          col2.push(arr[i + 1]);
-          col3.push(arr[i + 2]);
-          col4.push(arr[i + 3]);
-        }
-      }    
-      
-      if (remainder > 0) {
-        const remainderArr = arr.slice(arr.length - remainder, arr.length);
-        col1.push(remainderArr[0]);
-        col2.push(remainderArr[1]);
-        col3.push(remainderArr[2]);
-        col4.push(remainderArr[3]);
-      }
-      
-      return [col1, col2, col3, col4];
-    }
-    
-    let [col1, col2, col3, col4] = splitItems(TANKS_TO_VIEW);
-    
-    // Put extend button to column 4 if more than 12 tanks.
-    if (TANKS.length > this.state.dataTankMaxItems) {
-      col4[col4.length - 1] = (
-        <div className='field' key='extend'>
-          <p className='control is-expanded'>
-            <a className='button is-small is-fullwidth'
-              onClick={ () => this.setState({dataTankMaxItems: this.state.dataTankMaxItems + 12}) }>
-              { '• • •' }
-            </a>
-          </p>
-        </div>
-      );
-    }
-    
-    
-    return( 
-      <div>
-        <nav className='level'>
-
-          <div className='level-left'>
-            <div className='level-item'>
-              <div className='field'>
-                <p className={ 'control has-icons-left' + ((this.state.playerTanks.length === 0) ? ' is-loading' : '') }>
-                  <input className='input' 
-                    type='text' 
-                    placeholder='Filter by tank name'
-                    onChange={ () => this.setState({dataTankText: this.reftext.value}) }
-                    ref={ (x) => this.reftext = x }
-                  />
-                  <span className='icon is-left'>
-                    <i className='fa fa-search'></i>
-                  </span>
-                </p>
-              </div>
-            </div>
-            <div className='level-item'>
-              <p className='control'>
-                <button className='button is-outlined' onClick={ this.resetFilters }>
-                  <span className='icon is-small'>
-                    <i className='fa fa-times'></i>
-                  </span>
-                </button>
-              </p>
-            </div>
-            <div className='level-item'>
-              <p className='subtitle is-5'>
-                <strong>{ TANKS.length }</strong> vehicles
-              </p>
-            </div>
-          </div>
-
-          <div className='level-right'>
-            <div className='level-item'>
-              <div className='select'>
-                <select ref={ (x) => this.reftier = x } 
-                  onChange={ () => this.setState({dataTankTier: this.reftier.value}) }>
-                  { TIER_SELECT_ITEMS }
-                </select>
-              </div>
-            </div>
-            <div className='level-item'>
-              <div className='select'>
-                <select ref={ (x) => this.reftype = x }
-                  onChange={ () => this.setState({dataTankType: this.reftype.value}) }>
-                  { TYPE_SELECT_ITEMS }
-                </select>
-              </div>
-            </div>
-          </div>
-
-        </nav>
-
-        <div className='columns'>
-          <div className='column is-3'>
-            { col1 }
-          </div>
-          <div className='column is-3'>
-            { col2 }
-          </div>
-          <div className='column is-3'>
-            { col3 }
-          </div>
-          <div className='column is-3'>
-            { col4 }      
-          </div>
-        </div>
-        
-      </div>
+      <TimeseriesBox
+        server={ this.props.server }
+        accountID={ this.props.accountID }
+        timeScale={ x.timeScale } 
+        formula={ x.formula }
+        tankID={ x.tankID }
+        tankInfo={ x.tankInfo }
+        tiers={ x.tiers }
+        types={ x.types }
+        remove={ () => this.delTimeseriesBox(x.key) }
+        key={ x.key }
+      />
     );
   }
   
 
   render() {
-    
-    const CHARTBOXES = this.state.chartboxes.map((x) => {
-      return( 
-        <TimeseriesBox
-          server={ this.props.server }
-          accountID={ this.props.accountID }
-          timeScale={ x.timeScale } 
-          formula={ x.formula }
-          dataTab={ x.dataTab } 
-          filters={ x.filters } 
-          dataTankID={ x.dataTankID }
-          tankInfo={ x.tankInfo }
-          remove={ () => this.removeChartBox(x.key) }
-          key={ x.key }
-        />
-      );
-    });
-    
-    const DANGER_MESSAGE = (
-      <article className='message is-danger'>
-        <div className='message-body' onClick={ () => this.setState({dangerMsg: null}) }>
-          { this.state.dangerMsg }
-        </div>
-      </article>
-    );
-    
-    const INFO_MESSAGE = (
-      <article className='message'>
-        <div className='message-body' onClick={ () => this.setState({infoMsg: null}) }>
-          { this.state.infoMsg }
-        </div>
-      </article>
-    );
-        
     return(
       <section style={{marginTop: '24px'}}>
         <div className='container'>
-          { this.formula() }
-          { (this.state.dangerMsg) ? DANGER_MESSAGE : null }
-          { (this.state.infoMsg) ? INFO_MESSAGE : null }   
+
+          { (this.state.isShowingHelp) ? this.renderHelpMessage() : null }
+
+          <div className='columns'>
+            <div className='column'>
+              <div className='notification' style={{padding: '0.75em', height: '100%'}}>       
+                <TagsMultiline 
+                  tags={ this.state.filters.filter(x => x.type === 'tier') }
+                  toggleTag={ this.switchFilter }
+                  activateAllTags={ () => this.activateFilters('tier') }
+                  deactivateAllTags={ () => this.deactivateFilters('tier') }
+                />
+              </div>
+            </div>
+            <div className='column is-6'>
+              <div className='notification' style={{padding: '0.75em', height: '100%'}}>   
+                <TagsMultiline 
+                  tags={ this.state.filters.filter(x => x.type === 'type') }
+                  toggleTag={ this.switchFilter }
+                  activateAllTags={ () => this.activateFilters('type') }
+                  deactivateAllTags={ () => this.deactivateFilters('type') }
+                />
+              </div>
+            </div>
+          </div>
+
+          <InputDropdown 
+            items={ this.getInputDropdownItems() }
+            activeID={ this.state.selectedTankID }
+            activateID={ (x) => this.setState({selectedTankID: x}) }
+            deactivate={ () => this.setState({selectedTankID: null}) }
+          />
+
+          { (this.state.warningMessage) ? this.renderWarningMessage() : null }
+
+          { this.renderFormula() }
+
           { this.editorFormula() }
-          { this.editorData() }
+
         </div>
-        <div className='container' style={ {marginTop: 25 + 'px'} }>
-          { CHARTBOXES }
+
+        <div className='container' style={{marginTop: 25 + 'px'}}>
+          { this.state.timeseriesBoxes.map(this.renderTimeseriesBox, this) }
         </div>
+
       </section>
     );
   }
