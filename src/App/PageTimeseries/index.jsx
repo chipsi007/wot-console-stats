@@ -17,7 +17,7 @@ export default class PageTimeseries extends React.Component {
       selectedTankID: null,   // selected tank_id when filtering by single tank.s
       timeScale: 'daily',     // timescale selector for chart, 'daily' or 'weekly'
       formulaExpanded: false, // Editors expanded state. 
-      playerTanks: null,      // Tankopedia List[Obj] only including player tanks.
+      tankopedia: null,       // Tankopedia List[Obj] only including player tanks.
       timeseriesBoxes: [],    // Container for timeseriesBoxes to be rendered.
       filters: [
         {label: 'Tier 1',       shortLabel: 'T1',  type: 'tier', active: true, id: '1'},
@@ -50,7 +50,7 @@ export default class PageTimeseries extends React.Component {
   
   
   componentDidMount() {
-    if (!this.state.playerTanks) { this.fetchTanks() }
+    if (!this.state.tankopedia) { this.fetchTanks() }
     
     // Google Analytics tracking.
     if (typeof(ga) == 'function') {
@@ -81,7 +81,7 @@ export default class PageTimeseries extends React.Component {
           window.alert('No tanks on the account.');
           return;
         }
-        this.setState({playerTanks: j.data});
+        this.setState({tankopedia: j.data});
       })
       .catch(error => {
         alert('There has been a problem with your fetch operation: ' + error.message);
@@ -93,7 +93,7 @@ export default class PageTimeseries extends React.Component {
 
 
   getInputDropdownItems() {
-    if (!this.state.playerTanks) { return [] }
+    if (!this.state.tankopedia) { return [] }
     
     // ACTIVE_TIERS and ACTIVE_TYPES are arrays of strings.
     const ACTIVE_TIERS = this.state.filters.filter((x) => (x.type === 'tier') && (x.active)).map((x) => x.id);
@@ -102,7 +102,7 @@ export default class PageTimeseries extends React.Component {
     const includesTierType = x => (ACTIVE_TIERS.includes(String(x.tier)) && ACTIVE_TYPES.includes(x.type));
     const mapperFunc = x => ({ id: x.tank_id, label: x.name });
 
-    return this.state.playerTanks.filter(includesTierType).map(mapperFunc);
+    return this.state.tankopedia.filter(includesTierType).map(mapperFunc);
   }
   
   
@@ -176,7 +176,7 @@ export default class PageTimeseries extends React.Component {
       timeScale: this.state.timeScale,
       formula: this.state.formula,
       tankID: this.state.selectedTankID,
-      tankInfo: this.state.playerTanks.filter(x => x.tank_id == this.state.selectedTankID)[0],
+      tankItem: this.state.tankopedia.filter(x => x.tank_id == this.state.selectedTankID)[0],
       tiers: ACTIVE_FILTERS.filter(x => x.type === 'tier').map(x => x.id),
       types: ACTIVE_FILTERS.filter(x => x.type === 'type').map(x => x.id),
       key: (KEYS.length > 0) ? Math.max(...KEYS) + 1 : 1
@@ -490,7 +490,7 @@ export default class PageTimeseries extends React.Component {
         timeScale={ x.timeScale } 
         formula={ x.formula }
         tankID={ x.tankID }
-        tankInfo={ x.tankInfo }
+        tankItem={ x.tankItem }
         tiers={ x.tiers }
         types={ x.types }
         remove={ () => this.delTimeseriesBox(x.key) }

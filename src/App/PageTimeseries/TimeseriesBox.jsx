@@ -11,7 +11,7 @@ export default class TimeseriesBox extends React.PureComponent {
   //this.props.timeScale:str     - 'daily' or 'weekly'
   //this.props.formula:List[Obj] - formula objects.
   //this.props.tankID:int/None   - Integer if single tank, otherwise None.
-  //this.props.tankInfo:Obj/None - Tankopedia object if tankID is present, otherwise None.
+  //this.props.tankItem:Obj/None - Tankopedia object if tankID is present, ignore otherwise.
   //this.props.tiers:List[str]   - List of tiers. Ignore if tankID is present.
   //this.props.types:List[str]   - List of types. Ignore if tankID is present.
   //this.props.remove:f()        - Function to remove this TimeseriesBox.
@@ -25,7 +25,6 @@ export default class TimeseriesBox extends React.PureComponent {
       
       showFormula: false
     };
-    this.fetchData = this.fetchData.bind(this);
   }
 
   
@@ -69,59 +68,11 @@ export default class TimeseriesBox extends React.PureComponent {
 
   
   componentDidMount() {
-    if (this.state.isLoading) { this.fetchData(); }
+    this.fetchData();
   }
   
-  
-  dropdownContent() {
-    
-    if (!this.props.tankID) {
-      const TIER_NUMBERS = this.props.tiers.map(x => parseInt(x.id));    
-      const TIER_ITEMS = getSequences(TIER_NUMBERS)
-        .map(x => {
-          // x[0] must be unique for every item.
-          if (x[0] == x[1]) {
-            return(<div className='tag is-rounded' key={ x[0] }>{ `T${x[0]}` }</div>);
-          }
-          return(<div className='tag is-rounded' key={ x[0] }>{ `T${x[0]}-T${x[1]}` }</div>);
-        });
-      
-      const TYPES = this.props.tiers.concat(this.props.types)
-        .map(x => (x.includes('Tank')) ? (x[0].toUpperCase() + 'T') : x)
-        .map(x => (<div className='tag is-rounded' key={ x }>{x}</div>));
-      
-      return (
-        <div className='dropdown-content'>
-          <div className='dropdown-item'>
-            <div className='tags'>
-              { TIER_ITEMS }
-              { TYPES }
-            </div>
-          </div>
-        </div>
-      );
-    } 
-    
-    if (this.props.tankID) {
-      return (
-        <div className='dropdown-content'>
-          <div className='dropdown-item'>
-            <div className='tags'>
-              <div className='tag is-rounded'>
-                { 'T' + this.props.tankInfo.tier }
-              </div>
-              <div className='tag is-rounded'>
-                {  (this.props.tankInfo.type.includes('Tank')) ? this.props.tankInfo.type[0].toUpperCase() + 'T' : this.props.tankInfo.type }
-              </div>
-              <div className='tag is-rounded'>
-                { this.props.tankInfo.nation.toUpperCase() }
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-  }
+
+  /* render */
   
   
   renderLoading() {
@@ -137,9 +88,72 @@ export default class TimeseriesBox extends React.PureComponent {
           </div>
         </div>
         <div className='media-right'>
-          <button className='delete' onClick={ () => this.props.remove() }></button>
+          <button className='delete' onClick={ this.props.remove }></button>
         </div>
       </article>
+    );
+  }
+
+
+  renderSetButtons() {
+
+    const makeStaticButton = x => {
+      return(
+        <span className='button is-small is-static' key={ x }>
+          { x }
+        </span>
+      );
+    };
+
+    const makeTierButton = x => {
+      // If sequence of one number e.g. [4, 4]
+      if (x[0] == x[1]) { return makeStaticButton(`T${x[0]}`); }
+      // If sequence of > 1 number e.g. [6, 7]
+      return makeStaticButton(`T${x[0]}-T${x[1]}`);
+    };
+
+    const makeType = x => (x.includes('Tank')) ? x[0].toUpperCase() + 'T' : x;
+
+    const TIER_ITEMS = getSequences(this.props.tiers.map(x => parseInt(x))).map(makeTierButton);
+    const TYPE_ITEMS = this.props.types.map(makeType).map(makeStaticButton);
+
+    return(
+      <div className='buttons'>
+        { makeStaticButton('Filters') }
+        { TIER_ITEMS }
+        { TYPE_ITEMS }
+        <span className='button is-small' 
+          onClick={ () => this.setState({showFormula: !this.state.showFormula}) }>
+          { ((this.state.showFormula) ? 'Hide' : 'View') + ' formula' }
+        </span>
+      </div>
+    );
+  }
+
+
+  renderTankButtons() {
+
+    const makeStaticButton = x => {
+      return(
+        <span className='button is-small is-static' key={ x }>
+          { x }
+        </span>
+      );
+    };
+
+    const makeType = x => (x.includes('Tank')) ? x[0].toUpperCase() + 'T' : x;
+
+    return(
+      <div className='buttons'>
+        { makeStaticButton(this.props.tankItem.name) }
+        { makeStaticButton('T' + this.props.tankItem.tier) }
+        { makeStaticButton(makeType(this.props.tankItem.type)) }
+        { makeStaticButton(this.props.tankItem.nation.toUpperCase()) }
+        <span className='button is-small' 
+          onClick={ () => this.setState({showFormula: !this.state.showFormula}) }>
+          { ((this.state.showFormula) ? 'Hide' : 'View') + ' formula' }
+        </span>
+      </div>
     );
   }
 
@@ -155,10 +169,8 @@ export default class TimeseriesBox extends React.PureComponent {
     }
 
     return(
-      <div className='field'>
-        <div className='tags'>
-          { this.props.formula.map(makeFormulaItem) }
-        </div>
+      <div className='tags'>
+        { this.props.formula.map(makeFormulaItem) }
       </div>
     );
   }
@@ -170,27 +182,7 @@ export default class TimeseriesBox extends React.PureComponent {
       <article className='media'>
         <div className='media-content'>
 
-          <div className='field is-grouped'>
-            <div className='control dropdown is-hoverable'>
-              <div className='dropdown-trigger'>
-                <button className='button is-info is-small' aria-haspopup='true' aria-controls='dropdown-menu4'>
-                  <span>{ (this.props.tankID === null) ? 'Filters' : this.props.tankInfo.short_name }</span>
-                  <span className='icon is-small'>
-                    <i className='fa fa-angle-down' aria-hidden='true'></i>
-                  </span>
-                </button>
-              </div>
-              <div className='dropdown-menu' role='menu'>
-                { this.dropdownContent() }
-              </div>
-            </div>
-            <p className='control'>
-              <a className='button is-small' 
-                onClick={ () => this.setState({showFormula: !this.state.showFormula}) }>
-                { ((this.state.showFormula) ? 'Hide' : 'View') + ' formula' }
-              </a>
-            </p>
-          </div>
+          { (this.props.tankID) ? this.renderTankButtons() : this.renderSetButtons() }
 
           { (this.state.showFormula) ? this.renderFormula() : null }  
 
@@ -202,7 +194,7 @@ export default class TimeseriesBox extends React.PureComponent {
 
         </div>
         <div className='media-right'>
-          <button className='delete' onClick={ () => this.props.remove() }></button>
+          <button className='delete' onClick={ this.props.remove }></button>
         </div>
       </article>
     );
