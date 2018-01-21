@@ -284,7 +284,7 @@ export default class PageHistory extends React.Component {
           <p>What is this?</p>
           <button className='delete' aria-label='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
         </div>
-        <div class='message-body' onClick={ () => this.setState({isShowingHelp: false}) }>
+        <div className='message-body' onClick={ () => this.setState({isShowingHelp: false}) }>
           This page shows performace differences between individual tanks and / or any filtered combination on a timeline.
           <br /> The data is constantly being collected using random sample of recent players.
           <br /> 1. Select a filtered combination or a single tank. 

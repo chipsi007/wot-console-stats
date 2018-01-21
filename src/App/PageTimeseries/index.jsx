@@ -241,7 +241,7 @@ export default class PageTimeseries extends React.Component {
           <p>What is this?</p>
           <button className='delete' aria-label='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
         </div>
-        <div class='message-body' onClick={ () => this.setState({isShowingHelp: false}) }>
+        <div className='message-body' onClick={ () => this.setState({isShowingHelp: false}) }>
           This section allows to calculate various account or tank metrics and view it on a time series chart.
           <br /> 1. Select a filtered combination or a single tank. 
           <br /> 2. Change the formula to calculate the necessary metric. 
