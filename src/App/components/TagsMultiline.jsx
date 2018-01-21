@@ -35,20 +35,22 @@ export default class TagsMultiline extends React.PureComponent {
    
   render() {
     return(
-      <div className='field is-grouped is-grouped-multiline'>
-        { this.props.tags.map(this.makeTag, this) }
-        <div className='control'>
-          <div className='tags'>
-            <span className='tag is-add is-success'
-              onClick={ this.props.activateAllTags }>
-            </span>
+      <div className='notification' style={{padding: '0.75em', height: '100%'}}>   
+        <div className='field is-grouped is-grouped-multiline'>
+          { this.props.tags.map(this.makeTag, this) }
+          <div className='control'>
+            <div className='tags'>
+              <span className='tag is-add is-success'
+                onClick={ this.props.activateAllTags }>
+              </span>
+            </div>
           </div>
-        </div>
-        <div className='control'>
-          <div className='tags'>
-            <span className='tag is-delete is-danger'
-              onClick={ this.props.deactivateAllTags }>
-            </span>
+          <div className='control'>
+            <div className='tags'>
+              <span className='tag is-delete is-danger'
+                onClick={ this.props.deactivateAllTags }>
+              </span>
+            </div>
           </div>
         </div>
       </div>

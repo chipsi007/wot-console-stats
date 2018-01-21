@@ -508,25 +508,21 @@ export default class PageTimeseries extends React.Component {
           { (this.state.isShowingHelp) ? this.renderHelpMessage() : null }
 
           <div className='columns'>
-            <div className='column'>
-              <div className='notification' style={{padding: '0.75em', height: '100%'}}>       
-                <TagsMultiline 
-                  tags={ this.state.filters.filter(x => x.type === 'tier') }
-                  toggleTag={ this.switchFilter }
-                  activateAllTags={ () => this.activateFilters('tier') }
-                  deactivateAllTags={ () => this.deactivateFilters('tier') }
-                />
-              </div>
+            <div className='column'>     
+              <TagsMultiline 
+                tags={ this.state.filters.filter(x => x.type === 'tier') }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.activateFilters('tier') }
+                deactivateAllTags={ () => this.deactivateFilters('tier') }
+              />
             </div>
             <div className='column is-6'>
-              <div className='notification' style={{padding: '0.75em', height: '100%'}}>   
-                <TagsMultiline 
-                  tags={ this.state.filters.filter(x => x.type === 'type') }
-                  toggleTag={ this.switchFilter }
-                  activateAllTags={ () => this.activateFilters('type') }
-                  deactivateAllTags={ () => this.deactivateFilters('type') }
-                />
-              </div>
+              <TagsMultiline 
+                tags={ this.state.filters.filter(x => x.type === 'type') }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.activateFilters('type') }
+                deactivateAllTags={ () => this.deactivateFilters('type') }
+              />
             </div>
           </div>
 

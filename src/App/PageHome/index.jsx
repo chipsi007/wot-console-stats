@@ -138,24 +138,20 @@ export default class PageHome extends React.Component {
 
           <div className='columns'>
             <div className='column'>
-              <div className='notification' style={{padding: '0.75em', height: '100%'}}>
-                <TagsMultiline 
-                  tags={ this.state.filters.filter((x) => x.type == 'tiers') }
-                  toggleTag={ this.switchFilter }
-                  activateAllTags={ () => this.switchFilters('tiers', true) }
-                  deactivateAllTags={ () => this.switchFilters('tiers', false) }
-                />
-              </div>
+              <TagsMultiline 
+                tags={ this.state.filters.filter((x) => x.type == 'tiers') }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('tiers', true) }
+                deactivateAllTags={ () => this.switchFilters('tiers', false) }
+              />
             </div>
             <div className='column is-6'>
-              <div className='notification' style={{padding: '0.75em', height: '100%'}}>
-                <TagsMultiline 
-                  tags={ this.state.filters.filter((x) => x.type == 'class') }
-                  toggleTag={ this.switchFilter }
-                  activateAllTags={ () => this.switchFilters('class', true) }
-                  deactivateAllTags={ () => this.switchFilters('class', false) }
-                />
-              </div>
+              <TagsMultiline 
+                tags={ this.state.filters.filter((x) => x.type == 'class') }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('class', true) }
+                deactivateAllTags={ () => this.switchFilters('class', false) }
+              />
             </div>
           </div>
 

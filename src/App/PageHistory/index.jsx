@@ -312,24 +312,20 @@ export default class PageHistory extends React.Component {
           
           <div className='columns'>
             <div className='column'>
-              <div className='notification' style={{padding: '0.75em', height: '100%'}}>
-                <TagsMultiline 
-                  tags={ this.state.filters.filter((x) => x.type == 'tier') }
-                  toggleTag={ this.switchFilter }
-                  activateAllTags={ () => this.switchFilters('tier', true) }
-                  deactivateAllTags={ () => this.switchFilters('tier', false) }
-                />
-              </div>
+              <TagsMultiline 
+                tags={ this.state.filters.filter((x) => x.type == 'tier') }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('tier', true) }
+                deactivateAllTags={ () => this.switchFilters('tier', false) }
+              />
             </div>
             <div className='column is-6'>
-              <div className='notification' style={{padding: '0.75em', height: '100%'}}>
-                <TagsMultiline 
-                  tags={ this.state.filters.filter((x) => x.type == 'type') }
-                  toggleTag={ this.switchFilter }
-                  activateAllTags={ () => this.switchFilters('type', true) }
-                  deactivateAllTags={ () => this.switchFilters('type', false) }
-                />
-              </div>
+              <TagsMultiline 
+                tags={ this.state.filters.filter((x) => x.type == 'type') }
+                toggleTag={ this.switchFilter }
+                activateAllTags={ () => this.switchFilters('type', true) }
+                deactivateAllTags={ () => this.switchFilters('type', false) }
+              />
             </div>
           </div>
           
