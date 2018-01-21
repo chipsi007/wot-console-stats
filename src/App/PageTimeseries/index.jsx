@@ -42,6 +42,8 @@ export default class PageTimeseries extends React.Component {
         {label: 'battles', id: 'battles', type: 'raw'}
       ]
     };
+    this.switchFilter = this.switchFilter.bind(this);
+
     this.removeLastFormulaItem = this.removeLastFormulaItem.bind(this);
     this.clearFormula = this.clearFormula.bind(this);
 
@@ -234,25 +236,31 @@ export default class PageTimeseries extends React.Component {
 
   renderHelpMessage() {
     return(
-      <div className='notification has-text-centered'>
-        <button className='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
-        This section allows to calculate various account or tank metrics and view it on a time series chart.
-        1.Select filtered combination or a single tank. 
-        2.Change the formula to calculate the necessary metric. 
-        3.Pick time scale: 'daily' or 'weekly'.
-        4.Click 'Add chart'.
-      </div>
+      <article className='message is-primary'>
+        <div className='message-header'>
+          <p>What is this?</p>
+          <button className='delete' aria-label='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
+        </div>
+        <div class='message-body' onClick={ () => this.setState({isShowingHelp: false}) }>
+          This section allows to calculate various account or tank metrics and view it on a time series chart.
+          <br /> 1. Select a filtered combination or a single tank. 
+          <br /> 2. Change the formula to calculate the necessary metric. 
+          <br /> 3. Pick the time scale: 'daily' or 'weekly'.
+          <br /> 4. Click 'Add chart' button.
+          <br /> Note: the formula is evaluated from left to right regardless of algebra rules.
+        </div>
+      </article>
     );
   }
 
 
   renderWarningMessage() {
-    const close = () => this.setState({warningMessage: null});
     return(
-      <div className='notification is-warning' onClick={ close }>
-        <button className='delete' onClick={ close }></button>
-        { this.state.warningMessage }
-      </div>
+      <article className='message is-danger'>
+        <div className='message-body' onClick={ () => this.setState({warningMessage: null}) }>
+          { this.state.warningMessage }
+        </div>
+      </article>
     );
   }
 

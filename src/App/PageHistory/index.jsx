@@ -279,11 +279,19 @@ export default class PageHistory extends React.Component {
 
   renderHelpMessage() {
     return(
-      <div className='notification has-text-centered'>
-        <button className='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
-        This page shows performace differences between individual tanks and / or any filtered combination on a timeline.
-        The data is constantly being collected using random sample of recent players.
-      </div>
+      <article className='message is-primary'>
+        <div className='message-header'>
+          <p>What is this?</p>
+          <button className='delete' aria-label='delete' onClick={ () => this.setState({isShowingHelp: false}) }></button>
+        </div>
+        <div class='message-body' onClick={ () => this.setState({isShowingHelp: false}) }>
+          This page shows performace differences between individual tanks and / or any filtered combination on a timeline.
+          <br /> The data is constantly being collected using random sample of recent players.
+          <br /> 1. Select a filtered combination or a single tank. 
+          <br /> 2. Click "Add" to add the selected tank or the filtered combination to the list. 
+          <br /> 3. Click "Show chart" button for the visuals and additional controls.
+        </div>
+      </article>
     );
   }
 
