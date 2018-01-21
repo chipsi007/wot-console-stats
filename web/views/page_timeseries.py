@@ -82,8 +82,6 @@ def api_timeseries_get():
             else:
                 checkpoints_filtered.append([])
         checkpoints = checkpoints_filtered
-        for checkpoint in checkpoints:
-            print(len(checkpoint))
     else:
         checkpoints_filtered = []
         for checkpoint in checkpoints:
