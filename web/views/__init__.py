@@ -6,13 +6,14 @@ from .frontend import index_dev #GET:/dev
 
 
 from .newapi import newapi_general_get_player_tanks #GET:/newapi/general/get-player-tanks/
-from .newapi import newapi_estimates_get_tank       #GET:/newapi/estimates/get-tank/
 
 
-from .pages import api_main                     #GET:/api/<page>/<server>/<int:account_id>/<int:timestamp>/<filters>/
-from .page_home import api_page_home            #POST:/api/home/
-from .page_timeseries import api_timeseries_get #POST:/api/timeseries/get/
-from .page_history import api_history_get       #POST:/api/history/get/
+from .page_home import api_page_home                #POST:/api/home/
+from .page_vehicles import api_vehicles             #GET:/api/vehicles/<server>/<int:account_id>/<int:timestamp>/<filters>/
+from .page_timeseries import api_timeseries_get     #POST:/api/timeseries/get/
+from .page_sessiontracker import api_sessiontracker #GET:/api/session_tracker/<server>/<int:account_id>/<int:timestamp>/<filters>/
+from .page_estimates import api_estimates_get       #GET:/api/estimates/get/
+from .page_history import api_history_get           #POST:/api/history/get/
 
 
 from .export import export_tankopedia       #GET:/export/tankopedia/

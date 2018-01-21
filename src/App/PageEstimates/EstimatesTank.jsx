@@ -28,7 +28,7 @@ export default class EstimatesTank extends React.Component {
 
     // Assemble the url.
     const ARGS = `?server=${ SERVER }&account_id=${ ACCOUNT_ID }&tank_id=${ TANK_ID }`;
-    const URL = '/newapi/estimates/get-tank/' + ARGS;
+    const URL = '/api/estimates/get/' + ARGS;
 
     // Fetching.
     fetch(URL)

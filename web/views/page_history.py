@@ -11,11 +11,6 @@ from .. import database as db
 #Page History.
 
 
-def aggregate_tank_ids(tank_ids, history_obj):
-    # TODO
-    pass
-
-
 @app.route('/api/history/get/', methods=['POST'])
 def api_history_get():
     '''Endpoint for PageHistory to get historical data. Accepts JSON as the body.
