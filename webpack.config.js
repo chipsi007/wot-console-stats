@@ -1,16 +1,20 @@
+const path = require('path');
+
 module.exports = {
   entry: ['whatwg-fetch', './src/index.jsx'],
   output: {
-    filename: './web/static/app.js'
+    path: path.resolve(__dirname, "web/static/"),
+    filename: 'app.js',
+    publicPath: '/static/'
   },
   module: {
-    loaders: [
+    rules: [
       { 
         test: /\.(jsx|js)$/,
         loader: 'babel-loader',
-        exclude: /node_modules/,
-        query: {
-          presets: ["react", "env"]
+        exclude: ['node_modules/'],
+        options: {
+          presets: ['react', 'env']
         }
       }
     ]

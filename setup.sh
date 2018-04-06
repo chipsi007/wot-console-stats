@@ -3,10 +3,12 @@
 cd "${0%/*}"
 
 
-#Creating secret file with default values.
-touch web/secret.py
-echo 'app_id = "demo"' > web/secret.py
-echo 'access_key = "12345"' >> web/secret.py
+#Creating "secret.py" file with default Wargaming API keys.
+AUTH_CONF_FILE="web/secret.py"
+if [ ! -f $AUTH_CONF_FILE ]; then
+    echo 'app_id = "demo"' > $AUTH_CONF_FILE
+    echo 'access_key = "12345"' >> $AUTH_CONF_FILE
+fi
 
 
 #Python 3.6
@@ -16,7 +18,7 @@ pip3 install -r requirements.txt
 deactivate
 
 
-#Node modules.
+#Install node modules.
 npm install
 
 
@@ -25,6 +27,4 @@ npm run build
 
 
 #Compile stylesheet bundle.
-node scripts/font_to_base64.js node_modules/font-awesome/fonts/fontawesome-webfont.woff src/base64font.sass
-./node_modules/.bin/node-sass -q -x --output-style compressed src/style.sass --output web/static/
-rm src/base64font.sass
+npm run build-style

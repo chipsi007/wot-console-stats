@@ -12,28 +12,33 @@
     "watch": "webpack -d --watch",
     "build-debug": "webpack --display-error-details",
     "build-prod": "webpack -p",
+    "make-font": "node scripts/font_to_base64.js node_modules/font-awesome/fonts/fontawesome-webfont.woff src/base64font.sass",
+    "make-css": "node-sass -q -x --output-style compressed src/style.sass --output web/static/",
+    "make-clean": "rm src/base64font.sass",
+    "build-style": "npm run make-font && npm run make-css && npm run make-clean",
     "eslint": "eslint --ext .js --ext .jsx src",
     "eslint-fix": "eslint --ext .js --ext .jsx src --fix"
   },
   "dependencies": {
     "babel-core": "^6.26.0",
-    "babel-loader": "^7.1.2",
+    "babel-loader": "^7.1.4",
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
     "base-64": "^0.1.0",
     "bulma": "^0.6.2",
-    "bulma-pageloader": "0.1.0",
-    "chart.js": "^2.7.1",
+    "bulma-pageloader": "^1.0.1",
+    "chart.js": "^2.7.2",
     "font-awesome": "^4.7.0",
-    "node-sass": "^4.7.2",
-    "react": "^16.2.0",
-    "react-dom": "^16.2.0",
-    "webpack": "^3.10.0",
-    "whatwg-fetch": "^2.0.3"
+    "node-sass": "^4.8.3",
+    "react": "^16.3.1",
+    "react-dom": "^16.3.1",
+    "webpack": "^4.5.0",
+    "webpack-cli": "^2.0.14",
+    "whatwg-fetch": "^2.0.4"
   },
   "devDependencies": {
-    "eslint": "^4.12.1",
-    "eslint-plugin-react": "^7.5.1"
+    "eslint": "^4.19.1",
+    "eslint-plugin-react": "^7.7.0"
   },
   "repository": {
     "type": "git",
