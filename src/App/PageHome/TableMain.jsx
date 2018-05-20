@@ -15,7 +15,6 @@ export default class TableMain extends React.PureComponent {
   
   
   calculateCell(sRowID, oData) {
-    
     if (oData.battles == 0) { return 0 }
     
     switch(sRowID) {
@@ -27,9 +26,9 @@ export default class TableMain extends React.PureComponent {
     case 'dmgd_to_dmgr':
       if (oData.damage_received == 0) { return 0 } 
       return oData.damage_dealt / oData.damage_received;
-    case 'frags_to_surv':
+    case 'frags_to_deaths':
       if (oData.survived_battles == 0) { return 0 }
-      return oData.frags / oData.survived_battles;
+      return oData.frags / (oData.battles - oData.survived_battles);
       // Averages per battle.
     default:
       return oData[sRowID] / oData.battles;
@@ -56,7 +55,7 @@ export default class TableMain extends React.PureComponent {
       {id: 'spotted',                label: 'spotted per battle',      round: 2},
       {id: 'dropped_capture_points', label: 'defence points',          round: 2},
       {id: 'capture_points',         label: 'capture points',          round: 2},
-      {id: 'frags_to_surv',          label: 'kills / deaths ratio',    round: 2},
+      {id: 'frags_to_deaths',        label: 'kills / deaths ratio',    round: 2},
       {id: 'battle_life_time',       label: 'lifetime seconds avg',    round: 0},
       {id: 'perc_battle_life_time',  label: 'lifetime percentile',     round: 2},
       {id: 'perc_xp',                label: 'xp percentile',           round: 2},
@@ -64,7 +63,7 @@ export default class TableMain extends React.PureComponent {
       {id: 'wn8',                    label: 'wn8',                     round: 0}
     ];
     
-    // Calculate column values.
+    // Calculate column values. Add 'col1', 'col2', 'col3' keys to 'tableItems'.
     for (let c = 0; c < 3; c++ ) {
       const COL_NAME = 'col' + c;
       const DATA = COLUMNS[c];
@@ -122,8 +121,8 @@ export default class TableMain extends React.PureComponent {
     const TABLE_ITEMS = this.calculateRows();
     
     const ROWS = TABLE_ITEMS.map((row) => {
-      
       let cell0, cell1, cell2;
+
       if (row.id == 'wn8') {
         cell0 = this.getWn8Cell(row.col0, row.diff0);
         cell1 = this.getWn8Cell(row.col1, row.diff1);
